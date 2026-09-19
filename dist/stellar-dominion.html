@@ -4221,7 +4221,7 @@ function heldSystems(){ return SYS.filter(s=>!s.home&&sysHeld(s.id)) }
    Owner decision 3: no new verb - Nodes just trickle from held ring-3/4 systems,
    regardless of what they mine. Kept OUT of the EXO/S.exo machinery on purpose
    (see the patch header) so Market can never list them without extra guarding. */
-const EN_RING3=1, EN_RING4=3;   /* TUNING-PENDING: Nodes/hour per held system, by ring */
+const EN_RING3=4, EN_RING4=12;   /* TUNING-PENDING: Nodes/hour per held system, by ring */
 const EN_COL="#5affc2";         /* TUNING-PENDING: own colour, distinct from all 4 EXO cols */
 function enRate(){
   let r3=0,r4=0;
