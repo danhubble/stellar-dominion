@@ -60,9 +60,10 @@ const { chromium } = require('playwright-core');
    oldSaveUnseen.seen===true && !oldSaveUnseen.queued, oldSaveUnseen);
 
  // ---------- Node rates ----------
- const rates=await p.evaluate(()=>({r3:window.__SD.EN_RING3, r4:window.__SD.EN_RING4}));
+ const rates=await p.evaluate(()=>{const SD=window.__SD,L=SD.S.lvl; SD.S.lvl=9; const cap9=SD.fleetCap(); SD.S.lvl=8; const cap8=SD.fleetCap(); SD.S.lvl=L; return {r3:SD.EN_RING3, r4:SD.EN_RING4, raidlv:SD.RAIDLV, cap9, cap8}});
  ok('EN_RING3===4', rates.r3===4, rates);
  ok('EN_RING4===12', rates.r4===12, rates);
+ ok('RAIDLV reads UNLOCK (fleet cap opens at the Raids level, 9)', rates.raidlv===9 && rates.cap9>0 && rates.cap8===0, rates);
 
  // ---------- header line reads the constants ----------
  const claimFixture=()=>({

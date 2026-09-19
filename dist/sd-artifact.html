@@ -1834,7 +1834,7 @@ body.syspage #toasts{bottom:calc(var(--sysbarh) + 8px + env(safe-area-inset-bott
 "use strict";
 /* bumped by hand, one per patch that ships - shown in the dev panel so the owner
    can tell which build a report/screenshot came from. */
-const BUILD=639;
+const BUILD=640;
 /* ============================ storage (safe) ============================ */
 const Store=(()=>{let mem={},ok=false;
   try{const k="__sd";window.localStorage.setItem(k,"1");window.localStorage.removeItem(k);ok=true}catch(e){ok=false}
@@ -2928,9 +2928,11 @@ const ACHS=[
 
 /* ---------------- fleet & raids ---------------- */
 /* ---------------- fleet capacity ----------------
-   RAIDLV must track the Raids entry in UNLOCK; below it there is no fleet and the
-   cap reads 0 rather than a negative number. */
-const RAIDLV=12, FCAP0=20, FCAPK=8, CP_PER=24;
+   RAIDLV IS the Raids entry in UNLOCK (read, not copied - PLAN-pacing moved Raids
+   to lv 9 and the old literal 12 was left behind, giving three levels of an open
+   Raids tab with zero fleet cap); below it there is no fleet and the cap reads 0
+   rather than a negative number. */
+const RAIDLV=unlockLv("p-raid"), FCAP0=20, FCAPK=8, CP_PER=24;
 /* ---------------- the par curve ----------------
    What a player at this level fields if they just fill capacity with the best hull that
    fits - no refits, no crew, no programmes. Enemies are sized off THIS, never off the

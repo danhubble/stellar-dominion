@@ -11755,3 +11755,12 @@ level-5 modal lists both Research and Map. Pre-existing, noted for later: on mob
 `#left` (SCAN SECTOR + Getting Started) sits under every tab, ~200px at 667.
 csim: unchanged by this batch (csim never reads UNLOCK pane levels or S.en), so the
 baseline file is the same bytes. Published to the existing artifact (Version 39).
+
+## b640 — RAIDLV follows UNLOCK (pacing follow-up)
+
+Found while reading the fleet code for PLAN-fleets: `RAIDLV` was a literal 12 with a
+comment saying "must track the Raids entry in UNLOCK". PLAN-pacing moved Raids to 9,
+so levels 9–11 had the Raids tab and `fleetCap()===0`. Now `RAIDLV=unlockLv("p-raid")`.
+Side effect, intended: the par curve (`refDPS`/`refHP`, floored at RAIDLV) now starts
+growing at 9, so early raids are sized for a level-9 fleet. csim unchanged (never
+fights). `tpacing2` asserts RAIDLV===9, cap>0 at 9, 0 at 8.

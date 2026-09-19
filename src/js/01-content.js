@@ -761,9 +761,11 @@ const ACHS=[
 
 /* ---------------- fleet & raids ---------------- */
 /* ---------------- fleet capacity ----------------
-   RAIDLV must track the Raids entry in UNLOCK; below it there is no fleet and the
-   cap reads 0 rather than a negative number. */
-const RAIDLV=12, FCAP0=20, FCAPK=8, CP_PER=24;
+   RAIDLV IS the Raids entry in UNLOCK (read, not copied - PLAN-pacing moved Raids
+   to lv 9 and the old literal 12 was left behind, giving three levels of an open
+   Raids tab with zero fleet cap); below it there is no fleet and the cap reads 0
+   rather than a negative number. */
+const RAIDLV=unlockLv("p-raid"), FCAP0=20, FCAPK=8, CP_PER=24;
 /* ---------------- the par curve ----------------
    What a player at this level fields if they just fill capacity with the best hull that
    fits - no refits, no crew, no programmes. Enemies are sized off THIS, never off the
