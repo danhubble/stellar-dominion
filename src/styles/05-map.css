@@ -1,0 +1,318 @@
+/* ---------- map ---------- */
+#mapWrap{position:relative;width:100%;aspect-ratio:1/1;max-height:52vh;margin:0 auto 10px;
+  border:1px solid rgba(120,150,255,.22);border-radius:14px;overflow:hidden;
+  background:radial-gradient(circle at 50% 50%,rgba(60,90,190,.18),rgba(6,9,22,.85) 68%)}
+/* patch618: while the map is showing home only (level()<8 - the same condition
+   sysInSec()/buildMap() already gate on, see renderMap()), the square caps
+   smaller so #left (SCAN SECTOR + the Getting Started box) sits above the fold
+   on a short phone once the sheet no longer auto-opens to fill that space. */
+/* patch619: dropped from 30vh - at 390x667 that was 200px against only 173px of
+   usable #view (measured in HANDOVER after patch618b), clipping the square's own
+   bottom 39% without a scroll. 25vh is 167px at 667 (fits) and 211px at 844
+   (still well inside #view's 350px there, so the already-fine taller case is
+   untouched). */
+#mapWrap.homeonly{max-height:25vh}
+/* patch626 (PLAN-page.md): a system page's header - the map square becomes a
+   fixed 34vh band spanning the pane's full width, squared bottom corners meeting
+   the page content flowing directly below it (#sysSheet, now in-flow - see its
+   own CSS comment). No aspect-ratio: the page decides the height now, not the
+   square's own width. width:auto (not the base rule's own width:100%) is
+   deliberate - with the negative margin below cancelling #view's own left/right
+   padding, width:100% would still compute against the un-cancelled 100% and leave
+   the box narrower than its own margin-extended position, a gap at each edge;
+   width:auto solves the box to the full viewport width the way it would for any
+   ordinary block. body.syspage is syncSysPage()'s own class (patch627; patch628b made it the
+   ONLY writer, after the coordinator's review caught renderMap() still carrying
+   a second, redundant set/clear of it - see HANDOVER). #sysSheet's own
+   visibility derives from the same one class now too, not a separate .open
+   toggle - see its own CSS comment. The explicit .homeonly line right below is
+   so this does
+   not depend on selector-count arithmetic against patch619's own #mapWrap.homeonly
+   rule just above - the coordinator asked for that explicitly, not left to chance
+   if either rule changes later. */
+body.syspage #mapWrap{height:34vh;max-height:34vh;aspect-ratio:auto;width:auto;
+  margin:0 calc(-12px - env(safe-area-inset-right,0px)) 0 calc(-12px - env(safe-area-inset-left,0px));
+  border-radius:0;border-left:none;border-right:none}
+body.syspage #mapWrap.homeonly{height:34vh;max-height:34vh}
+/* patch632: on a short phone (max-height:720px - 390x667, not 390x844) the 34vh
+   band above leaves #sysBuildRows' first row's own BUY button half-covered by
+   #sshScanBar, the pinned SCAN SECTOR bar - a brand-new player's very first
+   purchase should never need a scroll to reach it. 26vh is 173px at 667 -
+   verified in HANDOVER to clear the bar with no scroll, planet still drawn.
+   Equal specificity to the two rules just above, later in source order, only
+   inside a query the taller 390x844 case never matches - the standard shape
+   for "override under a query", same as the base rule needing no changes. */
+@media(max-height:720px){
+  body.syspage #mapWrap{height:26vh;max-height:26vh}
+  body.syspage #mapWrap.homeonly{height:26vh;max-height:26vh}
+}
+#mapLinks{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+#mapBg{position:absolute;inset:0;width:100%;height:100%;display:block}
+#mapEdge{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+#mapEdge[hidden],#mapChips[hidden]{display:none}
+/* patch603: map zoom - the map square becomes the tapped system's planet scene.
+   #mapZoom/#mapZoomBar are static markup (see #mapWrap above), created once - opened
+   or closed purely by toggling #mapWrap.zoomed and setting #mapZoomName's text, see
+   setMapZoom(). Cross-fades with the ordinary map layers rather than swapping
+   display, so tapping in and tapping "‹ MAP" back out both read as one move. */
+#mapBg,#mapLinks,#mapNodes,#mapEdge{transition:opacity .28s ease}
+#mapWrap.zoomed #mapBg,#mapWrap.zoomed #mapLinks,#mapWrap.zoomed #mapNodes,#mapWrap.zoomed #mapEdge{
+  opacity:0;pointer-events:none}
+#mapZoom{position:absolute;inset:0;width:100%;height:100%;display:block;opacity:0;
+  pointer-events:none;transition:opacity .28s ease}
+#mapWrap.zoomed #mapZoom{opacity:1;pointer-events:auto}
+#mapZoomBar{position:absolute;left:0;right:0;top:0;display:flex;align-items:center;gap:7px;
+  padding:8px 8px;z-index:6;
+  /* patch606: bottom stop was fully transparent, fading to nothing exactly where the
+     name text sits (align-items:center) - a bright orbit sprite on a full-ladder
+     system read straight through with no contrast under it. Kept as a visible fade
+     (still a gradient, still "subtle"), just never all the way to zero. */
+  background:linear-gradient(180deg,rgba(4,6,16,.85),rgba(4,6,16,.55));
+  opacity:0;pointer-events:none;transition:opacity .2s ease}
+/* patch627: #mapWrap.zoomed #mapZoomBar{...} used to live here - superseded by
+   the body.syspage rule near #mapChips (see its own comment): the bar now shows
+   on any page, not only a zoomed one. */
+#mapZoomBack{border:1px solid var(--line2);background:rgba(8,12,30,.8);color:var(--mut);
+  border-radius:6px;padding:5px 9px;cursor:pointer;font:700 11px/1 system-ui;letter-spacing:.12em;flex:none}
+#mapZoomBack:hover{color:var(--txt);border-color:var(--cy)}
+#mapZoomName{flex:1;text-align:center;font:700 11px/1 system-ui;letter-spacing:.14em;color:var(--txt);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-right:34px}
+#mapChips{display:flex;gap:6px;margin-bottom:10px;flex-wrap:nowrap;overflow:hidden}
+/* patch627 (PLAN-page.md, "one fact"): replaces the patch613b/614 #p-map.zoomed
+   hooks just above (chips/mode hid only while actually ZOOMED - exactly the
+   "sector chips disappeared" bug: a page with no planet, e.g. unclaimed, was
+   never zoomed, so it never hid them at all; closing via anything but the
+   zoom's own back button could leave .zoomed - and so this - stuck). Everything
+   here keys off body.syspage instead, one fact set by syncSysPage() every
+   render() pass - see its own comment. #lfBanner had no hide-while-paged rule at
+   all before this (it is outside #mapWrap, so #mapWrap.zoomed's own opacity
+   cross-fade never reached it either) - PLAN-page.md decision 2 lists it
+   explicitly (#exoStrip, listed alongside it there, is gone outright as of
+   patch630 - nothing left to hide). #mapZoomBar used to show only while
+   #mapWrap.zoomed (see its own base rule) - "any page, planet or not" replaces
+   that condition here rather than adding to it. */
+body.syspage #mapChips{display:none}
+body.syspage #mapMode{display:none}
+body.syspage #lfBanner{display:none}
+body.syspage #mapEdge{display:none}
+body.syspage #mapZoomBar{opacity:1;pointer-events:auto}
+#mapMode.rmode{margin-bottom:10px}
+/* patch614: LIST replaces the map square one-for-one, same vertical slot -
+   #mapWrap and #mapList are never both visible, syncMapMode() below toggles
+   [hidden] on whichever one isn't current. */
+#mapList{display:flex;flex-direction:column;margin-bottom:10px}
+#mapList[hidden]{display:none}
+.chip{flex:1 1 0;min-width:0;text-align:center;padding:6px 1px;border-radius:9px;
+  border:1px solid var(--line);background:rgba(255,255,255,.02);cursor:pointer;
+  font:800 7.1px/1 system-ui;letter-spacing:.01em;color:var(--dim);white-space:nowrap;
+  overflow:hidden;text-overflow:clip}
+.chip.on{border-color:var(--cy);background:rgba(72,226,255,.12);color:var(--txt);
+  box-shadow:0 0 10px -2px rgba(72,226,255,.6)}
+.edgearrow{position:absolute;right:6px;font:800 7.6px/1 system-ui;letter-spacing:.05em;
+  color:var(--cy);background:rgba(4,5,13,.62);padding:3px 5px;border-radius:5px;white-space:nowrap}
+.edgewarn{position:absolute;right:6px;width:118px;font:800 7.4px/1.35 system-ui;letter-spacing:.03em;
+  color:var(--rd);background:rgba(4,5,13,.7);padding:4px 6px;border-radius:5px;text-align:right}
+.edgewarn.trip{color:var(--gd)}
+.endflag{position:absolute;right:8px;bottom:8px;font:800 8px/1 system-ui;letter-spacing:.08em;
+  color:var(--dim2);text-align:right}
+.fleetbadge{position:absolute;top:-19px;left:50%;transform:translateX(-50%);
+  font:800 6.6px/1 system-ui;letter-spacing:.05em;color:#fff;background:rgba(255,107,138,.92);
+  padding:2px 4px;border-radius:4px;white-space:nowrap;box-shadow:0 0 8px rgba(255,107,138,.7);
+  pointer-events:none}
+#mapLinks .terr{pointer-events:none}
+#mapLinks .terrlab{font:700 2.6px/1 system-ui;letter-spacing:.28px;text-anchor:middle;
+  opacity:.62;pointer-events:none;
+  paint-order:stroke;stroke:rgba(3,4,12,.85);stroke-width:.9px;stroke-linejoin:round}
+#mapLinks line{stroke:rgba(140,170,255,.20);stroke-width:1}
+#mapLinks line.held{stroke:rgba(92,230,165,.55);stroke-width:1.6}
+.mnode{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;
+  align-items:center;gap:3px;cursor:pointer;background:none;border:0;padding:4px;
+  min-width:44px;min-height:44px;justify-content:center}
+.mdot{width:15px;height:15px;border-radius:50%;border:2px solid var(--a);
+  background:rgba(6,9,22,.9);box-shadow:0 0 9px -1px var(--a);transition:transform .18s}
+.mnode:hover .mdot{transform:scale(1.25)}
+.mnode .mlab{font:700 8.5px/1 system-ui;letter-spacing:.08em;color:var(--mut);white-space:nowrap;
+  text-shadow:0 0 5px #000}
+.mnode.held .mdot{background:var(--a)}
+.mnode.held .mlab{color:var(--txt)}
+.mnode.home .mdot{width:20px;height:20px;border-width:3px}
+.mnode.open .mdot{animation:mpulse 1.9s ease-in-out infinite}
+.mnode.foe .mdot{border-style:double;border-width:4px}
+.mnode.sdfort .mdot{box-shadow:0 0 0 2px rgba(72,226,255,.35)}
+.mnode.occ .mdot{box-shadow:0 0 0 2px var(--rd)}                 /* STAGE 2 */
+.mnode.incoming .mdot{animation:mincoming 1.1s ease-in-out infinite}  /* STAGE 2 (2C) */
+@keyframes mincoming{0%,100%{box-shadow:0 0 6px -1px var(--rd)}50%{box-shadow:0 0 16px 3px var(--rd)}}
+/* scoped to the panel it lives in: a bare `button.something` selector will find every
+   button in the game that happens to share the word, and map nodes are buttons */
+#sysAct button.fortbtn{width:100%;margin-top:8px;border:1px solid rgba(72,226,255,.55);
+  background:rgba(72,226,255,.10);color:var(--cy);border-radius:9px;padding:10px;
+  cursor:pointer;font:800 11px/1 system-ui;letter-spacing:.14em}
+#sysAct button.fortbtn:hover:not(:disabled){background:rgba(72,226,255,.2)}
+#sysAct button.fortbtn:disabled{opacity:.4;cursor:not-allowed}
+.mnode.foe .mlab{color:var(--a)}
+#mapLinks line.foe{stroke:rgba(255,107,138,.35);stroke-dasharray:3 3}
+#sysInfo button.foe,#sysAct button.foe{border-color:rgba(255,107,138,.6);background:rgba(255,107,138,.14);color:#ffb3c2}
+.mnode.locked{opacity:.42}
+.mnode.locked .mdot{border-style:dashed;box-shadow:none}
+.mnode.sel .mdot{transform:scale(1.35);box-shadow:0 0 14px 1px var(--a)}
+.mnode.sel .mlab{color:var(--a)}
+@keyframes mpulse{0%,100%{box-shadow:0 0 6px -1px var(--a)}50%{box-shadow:0 0 15px 2px var(--a)}}
+/* ---------- system page (patch595, redesigned patch626 - PLAN-page.md "a system
+   is a page, not a sheet"): in-flow content under the map header, not an overlay -
+   #sysInfo/#sysAct keep their ids and guarded-render idiom. No position/transform/
+   height/border/shadow of its own any more - full-bleed to the pane edges using the
+   same safe-area-aware calc #view's own left/right padding uses, so the edges line
+   up exactly under a notch (not the approved mock's own flat -12px). display:none
+   by default; body.syspage #sysSheet{display:block} (patch628b - previously a
+   separate .open class, toggled from renderMap(), which duplicated the very
+   fact syncSysPage() already derives; the coordinator's review caught this as
+   "a second class expressing the same fact" and asked for the derivation
+   instead - see HANDOVER) is what shows it. renderMap() still renders the
+   page's own CONTENT keyed on S.msel exactly as before - content is not
+   visibility. The grab
+   handle, the close X, and the FULL/PEEK three-state machinery that used to live
+   here (patch620/623) are deleted outright this patch, not disabled - see
+   HANDOVER for the full list. */
+#sysSheet{display:none;
+  margin:0 calc(-12px - env(safe-area-inset-right,0px)) 0 calc(-12px - env(safe-area-inset-left,0px));
+  padding:6px 14px 0;
+  background:linear-gradient(180deg,#101637,#0a0e24)}
+body.syspage #sysSheet{display:block}
+#sysThreatActs[hidden]{display:none}
+#sysThreatActs button.ghost{background:transparent;border-color:var(--line);color:var(--mut)}
+/* owner review polish item 1: DEFEND IT / LET THEM HOLD pinned to the bottom of
+   the viewport, always visible at 390x844 even with the threat block + defences
+   row both showing, everything above scrolling underneath it. The gradient masks
+   scrolled content that would otherwise show through the row's own button gaps. */
+/* patch626: position:fixed, not sticky - #sysSheet is no longer a scroll
+   container (#view is - see its own CSS comment), so a sticky child of it would
+   just sit wherever it fell in flow, not pinned at all. max-width/margin:0 auto
+   re-imposes #app's own column cap, the same scheme the retired #sysSheet used to
+   use for the same reason (a position:fixed box escapes the normal flow that
+   would otherwise keep it inside that column). The patch625 bottom-gap fix
+   (this bar's own safe-area-aware padding, not a margin trick) is unchanged. */
+#sysThreatActs{position:fixed;left:0;right:0;bottom:0;z-index:15;max-width:1360px;margin:0 auto;
+  padding:12px 14px calc(10px + env(safe-area-inset-bottom,0px));
+  background:#0a0e24;border-top:1px solid var(--line);box-shadow:0 -10px 18px -8px rgba(0,0,0,.6)}
+#sysHanWrap[hidden]{display:none}
+#sysHanWrap button.ghost{background:transparent;border-color:var(--line);color:var(--mut)}
+.hanrow{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+.hanrow:last-child{border-bottom:none}
+.hanrow .hi{width:32px;height:32px;border-radius:9px;display:grid;place-items:center;flex:none;
+  border:1px solid var(--line);background:rgba(255,255,255,.03)}
+.hanrow .hi svg{width:20px;height:20px;display:block}
+.hanrow .hn{font:700 11px/1.2 system-ui;color:var(--txt)}
+.hanrow .hd2{font:600 9.5px/1.3 ui-monospace,monospace;color:var(--dim)}
+.hanstep{display:flex;align-items:center;gap:8px;margin-left:auto;flex:none}
+.hanstep button{width:28px;height:28px;border-radius:8px;border:1px solid var(--line2);
+  background:rgba(72,226,255,.09);color:var(--cy);font:700 15px/1 system-ui;cursor:pointer;padding:0}
+.hanstep button:disabled{opacity:.35;cursor:not-allowed}
+.hanstep .hcnt{min-width:16px;text-align:center;font:700 12px/1 ui-monospace,monospace;color:var(--txt)}
+/* patch626 (PLAN-page.md): the grab handle (.sshgrab/#sshGrab, patch620/623) and
+   the close X (.sshx/#sshClose, patch595) are deleted outright here, not hidden -
+   a system page has exactly one closing affordance now, `‹ MAP`. Their markup
+   and JS wiring are gone along with this CSS - see HANDOVER for the full list. */
+/* patch624: the sheet's own SCAN SECTOR button, replacing patch622's chip on
+   the owner's own request (three placements mocked, bottom chosen - see the
+   patch header). #sshScanBar (this wrapper) is what gets hidden when
+   #sysThreatActs is showing, not just the button, so no empty bar/padding is
+   left behind - see renderMap()'s own threat block for the toggle. */
+/* patch625: bottom-gap fix, this bar's own safe-area-aware padding, not a margin
+   trick - see #sysThreatActs's own comment, same reasoning. */
+/* patch626: position:fixed, not sticky, same reason and same max-width/margin:0
+   auto re-imposed column cap as #sysThreatActs just above - see its own comment.
+   Both bars share this exact positioning scheme on purpose (mutually exclusive,
+   same footprint, never both visible at once). */
+.sshscanbot{position:fixed;left:0;right:0;bottom:0;z-index:15;max-width:1360px;margin:0 auto;
+  padding:10px 14px calc(20px + env(safe-area-inset-bottom,0px));
+  background:#0a0e24;border-top:1px solid var(--line);
+  box-shadow:0 -10px 18px -8px rgba(0,0,0,.6)}
+.sshscanbot[hidden]{display:none}
+#sysInfo h4{margin:0;font:700 15px/1.2 system-ui}
+.sysmeta{font:600 9.5px/1 system-ui;letter-spacing:.14em;color:var(--dim);margin-top:4px}
+.sysd{font-size:11.5px;color:var(--mut);line-height:1.5;margin:8px 0 10px}
+.sysrow{display:flex;justify-content:space-between;gap:10px;font-size:11.5px;padding:3px 0;
+  border-top:1px solid rgba(255,255,255,.05)}
+.sysrow b{font-family:ui-monospace,monospace}
+#sysInfo button,#sysAct button{width:100%;margin-top:10px;padding:10px;border-radius:9px;cursor:pointer;
+  border:1px solid rgba(92,230,165,.55);background:rgba(92,230,165,.13);color:var(--gr);
+  font:800 11.5px/1 system-ui;letter-spacing:.14em}
+#sysInfo button:disabled,#sysAct button:disabled{opacity:.4;cursor:not-allowed}
+/* ---- Held state: "garrison holds n%" bar (patch598) ---- */
+#sysOdds[hidden]{display:none}
+#sysOdds .odds{display:flex;justify-content:space-between;align-items:baseline;
+  font:600 10px/1 system-ui;letter-spacing:.14em;color:var(--dim);text-transform:uppercase;margin-top:6px}
+#sysOdds .odds b{font:700 13px/1 ui-monospace,monospace;color:var(--gr);letter-spacing:0}
+#sysOdds .obar{height:7px;border-radius:4px;background:rgba(255,255,255,.07);overflow:hidden;margin-top:3px}
+#sysOdds .obar i{display:block;height:100%;background:linear-gradient(90deg,#3fbf8a,#5ce6a5)}
+#sysOdds .onote{font-size:10.5px;color:var(--dim);margin-top:5px;line-height:1.45}
+/* ---- the defences row: three equal cards (patch598) ---- */
+#sysDefWrap[hidden]{display:none}
+#sysDefHead{font:600 9.5px/1 system-ui;letter-spacing:.18em;color:var(--dim);text-transform:uppercase;
+  margin:14px 0 7px;display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px}
+/* patch621: the defence gate's one dim line - sentence case, not the header's own
+   uppercase/tracked style, so it reads as a helper note not a section label.
+   flex-basis:100% (on a flex-wrap:wrap parent, added above) forces it onto its
+   own row under the existing "Defences ... N of 3 slots" line rather than
+   squeezing into the same row as them. */
+.defgatehint{flex:1 0 100%;margin-top:2px;font:600 10.5px/1.45 system-ui;
+  letter-spacing:0;text-transform:none;color:var(--dim)}
+/* patch610: BUILDINGS is the same header family as DEFENCES just above - same
+   font/case/colour/spacing, so the sheet reads as one set of sections, not two
+   different styles bolted together. */
+#sysBuild[hidden]{display:none}
+#sysBuildHead{font:600 9.5px/1 system-ui;letter-spacing:.18em;color:var(--dim);text-transform:uppercase;
+  margin:2px 0 7px;display:flex;justify-content:space-between;gap:8px}
+#sysDefRow{display:flex;gap:7px}
+#sysDefRow .sc{flex:1 1 0;min-width:0;border:1px solid var(--line);border-radius:11px;
+  background:rgba(255,255,255,.02);padding:9px 6px 8px;display:flex;flex-direction:column;
+  align-items:center;gap:5px;text-align:center;border-top:3px solid var(--a,var(--line2));
+  position:relative;cursor:pointer}
+#sysDefRow .sc .si{width:26px;height:26px;border-radius:8px;display:grid;place-items:center;
+  border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--a,var(--mut));
+  font:700 11px/1 ui-monospace,monospace}
+#sysDefRow .sc .si svg{width:16px;height:16px;display:block}
+#sysDefRow .sc .n{font:700 9.5px/1.2 system-ui;color:var(--txt)}
+#sysDefRow .sc .lv{font:700 8px/1 ui-monospace,monospace;color:var(--dim);letter-spacing:.06em;min-height:8px}
+#sysDefRow .sc .e{font:700 9.5px/1.2 ui-monospace,monospace;color:var(--a,var(--gd))}
+#sysDefRow .sc button{width:100%;margin-top:auto;border:1px solid var(--line2);
+  background:rgba(72,226,255,.09);color:var(--cy);border-radius:8px;padding:6px 2px;
+  font:700 9px/1.15 ui-monospace,monospace;cursor:pointer}
+#sysDefRow .sc button.warn{border-color:rgba(255,180,92,.55);background:rgba(255,180,92,.12);color:#ffb45c}
+#sysDefRow .sc button:disabled{opacity:.45;cursor:not-allowed}
+#sysDefRow .sc.empty{border-style:dashed;border-top-style:solid;border-top-color:var(--line);background:rgba(255,255,255,.015)}
+#sysDefRow .sc.empty .n{color:var(--dim2)}
+#sysDefRow .sc.sel{border-color:var(--a);box-shadow:0 0 0 1px var(--a) inset,0 0 14px -6px var(--a)}
+#sysDefRow .sc .tag{position:absolute;top:-8px;right:5px;font:800 6.8px/1 system-ui;letter-spacing:.08em;
+  padding:2px 4px;border-radius:4px;background:#0b1026;border:1px solid currentColor}
+#sysDefRow .sc .tag.ok{color:var(--gr)} #sysDefRow .sc .tag.bad{color:var(--rd)}
+#sysDefRow .sc .tag:not(.ok):not(.bad){color:var(--gd)}
+/* ---- detail strip / module picker (patch598) ---- */
+#sysDefDetail[hidden]{display:none}
+#sysDefDetail .detail{margin-top:9px;border:1px solid var(--line);border-left:3px solid var(--a);
+  border-radius:10px;padding:9px 11px;background:rgba(255,255,255,.03)}
+#sysDefDetail .dn{font:700 12px/1.2 system-ui;display:flex;justify-content:space-between;gap:8px;color:var(--txt)}
+#sysDefDetail .dn span{font:700 10px/1.2 ui-monospace,monospace;color:var(--ice,var(--cy))}
+#sysDefDetail .de{font:600 10.5px/1.35 ui-monospace,monospace;color:var(--a);margin-top:4px}
+#sysDefDetail p{margin:4px 0 0;font-size:10.5px;color:var(--dim);line-height:1.45}
+#sysDefDetail .acts{display:flex;gap:8px;margin-top:10px}
+#sysDefDetail .acts button{flex:1;border-radius:9px;padding:9px;font:800 10.5px/1 system-ui;
+  letter-spacing:.12em;cursor:pointer;background:transparent;border:1px solid var(--line);color:var(--mut)}
+#sysDefDetail .acts button:hover{color:var(--txt);border-color:var(--line2)}
+/* patch631: no longer scoped to #sysDefDetail - the picker is a modal now
+   (openDefPicker(), #defPickRows inside #modal), the only place this markup
+   renders any more. */
+.pk{margin-top:8px;border:1px solid var(--line);border-left:3px solid var(--a);
+  border-radius:10px;padding:8px 10px;display:flex;gap:9px;align-items:flex-start;cursor:pointer}
+.pk:first-child{margin-top:0}
+.pk.dim{opacity:.42;cursor:not-allowed}
+.pki{width:22px;height:22px;flex:none;border-radius:7px;display:grid;place-items:center;
+  border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--a);font:700 10px/1 ui-monospace,monospace}
+.pki svg{width:14px;height:14px;display:block}
+.pkb{min-width:0;flex:1}
+.pkn{font:700 11px/1.2 system-ui;color:var(--txt);display:flex;justify-content:space-between;gap:8px}
+.pkn span{font:700 9.5px/1.2 ui-monospace,monospace;color:var(--dim)}
+.pkg{font-size:10px;color:var(--dim);line-height:1.4;margin-top:2px}
+
+#sysInfo button.dev{border-color:rgba(72,226,255,.5);background:rgba(72,226,255,.11);color:var(--cy)}
+.gexo{font:600 10px/1 ui-monospace,monospace;color:var(--a)}

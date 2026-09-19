@@ -1,0 +1,12 @@
+{
+  "name": "stellar-dominion",
+  "private": true,
+  "description": "Single-file mobile idle/strategy game. src/ builds to dist/stellar-dominion.html.",
+  "scripts": {
+    "build": "python3 build.py",
+    "check": "node tests/tq2.js",
+    "test": "cd tests && bash ../tools/runall.sh",
+    "sim": "node tests/csim4.js"
+  },
+  "devDependencies": { "playwright-core": "*" }
+}

@@ -1,0 +1,296 @@
+:root{
+  --bg:#04050d; --bg2:#080b1c;
+  --panel:rgba(14,19,42,.72); --panel2:rgba(20,26,54,.85);
+  --line:rgba(96,142,255,.20); --line2:rgba(96,142,255,.38);
+  --txt:#dde5ff; --mut:#8390bd; --dim:#5a6693; --dim2:#7683ad;
+  --cy:#48e2ff; --vi:#a878ff; --gd:#ffd166; --gr:#5ce6a5; --rd:#ff6b8a; --sv:#a9bcd4;
+  /* Per-kind system colors (held-row tint pass, patch443). Single source of truth:
+     KIND_INFO in the script block reads these seven via getComputedStyle at boot, so
+     JS and CSS can never drift apart - see KIND_INFO's definition. Hex values are
+     unchanged from the original KIND_INFO literals (ore/rock/gas/belt/ice/void/
+     mixed===home).
+     --k-void-text is a separate, lightened stat-text variant for void only: raw
+     --k-void against its own ~30% tinted held-row header background computes to
+     3.84:1 (fails WCAG AA's 4.5:1 for normal text). Every other kind's raw --k-*
+     value already clears 4.5:1 against its own header tint (4.98-6.11:1, computed
+     with the target set at >=4.6:1 for a small safety margin) so those six reuse the
+     raw kind color directly as stat text - only void needed a distinct value.
+     --k-void-text (#b58cff) is --k-void lightened toward white by ~14.5% in RGB
+     space, which lands at 4.61:1 against void's own tinted header - same WCAG
+     relative-luminance formula as --dim2 (patch421), not eyeballed. Full numbers for
+     all seven kinds are in the 2026-09-04 HANDOVER.md section. */
+  --k-ore:#ffb45c; --k-rock:#c7b299; --k-gas:#ffd166; --k-belt:#8fb8ff;
+  --k-ice:#79c6ef; --k-void:#a878ff; --k-home:#5ce6a5;
+  --k-void-text:#b58cff;
+  /* patch628b: single source of truth for how much room a system page's own
+     pinned bottom bar (#sshScanBar/#sysThreatActs, patch626) needs reserved
+     above it - #view's own body.syspage padding-bottom and #toasts' own
+     body.syspage bottom offset both read this, so they cannot drift apart the
+     way #toasts had already done (the coordinator's own review screenshot
+     caught a claim toast sitting on top of the bar). 96px is the same
+     empirically-measured figure patch626 sized #view's padding against - the
+     taller of the two bars measured 91.3125px at 390x844, see HANDOVER. */
+  --sysbarh:96px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;
+  -webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+/* the save code is the one thing a player is meant to select and copy */
+textarea,input{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
+html,body{margin:0;padding:0;height:100%}
+body{
+  touch-action:manipulation;
+  background:var(--bg); color:var(--txt);
+  font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  overflow:hidden;
+}
+#sky{position:fixed;inset:0;z-index:0;display:block}
+#glow{position:fixed;inset:0;z-index:1;pointer-events:none;
+  background:
+   radial-gradient(90vw 60vh at 78% -8%, rgba(120,80,255,.20), transparent 62%),
+   radial-gradient(70vw 50vh at 10% 108%, rgba(0,190,255,.14), transparent 60%);}
+#app{position:relative;z-index:2;height:100%;width:100%;max-width:1360px;margin:0 auto;
+  display:flex;flex-direction:column}
+
+/* ---------- one-time unlock notice (patch629: VEGA overlay) ---------- */
+/* #notice itself moved out of #app - see its markup, now a body-level sibling of
+   #mask/#battle/#defence/#toasts, not a child of #app any more. #app is
+   position:relative with an explicit z-index (2), so it is its own stacking
+   context - a z-index set on a descendant only ranks within #app's local context
+   and can never outrank a SIBLING of #app like #mask(20)/#toasts(30)/#battle(40)/
+   #defence(41), however high it is set. #notice had to leave before z-index:25
+   below could mean anything relative to those. .noticebar is now the full-
+   viewport dimming backdrop: ALWAYS display:flex (never display:none - display
+   cannot be transitioned, and toggling it in lockstep with opacity/transform is
+   the classic trap where the browser never paints a "before" state to animate
+   from), opacity+pointer-events do the actual showing/hiding instead, so a real
+   transition is possible with no JS involved. .noticepanel is the visible,
+   bottom-anchored card; z-index 25 sits above .mask(20) and the pinned scan/
+   threat bars(15), below #toasts(30)/#battle(40)/#defence(41) - verified by
+   queuing a notice with #battle.on: #battle's own opaque (no-alpha) background
+   fully covers #notice regardless of #notice's .on state, so a notice firing
+   mid-battle waits underneath, invisible, until the fight ends. Reduced-motion
+   (see the consolidated @media block further down): kills both transitions
+   below, collapsing the state change to instant - "no slide, just show". */
+.noticebar{display:flex;position:fixed;inset:0;z-index:25;
+  align-items:flex-end;justify-content:center;
+  background:rgba(2,3,10,.6);
+  padding:0 12px calc(12px + env(safe-area-inset-bottom,0px));
+  opacity:0;pointer-events:none;transition:opacity .2s ease}
+.noticebar.on{opacity:1;pointer-events:auto}
+.noticepanel{width:100%;max-width:1360px;margin:0 auto;
+  display:flex;align-items:center;gap:10px;
+  padding:9px 12px;border:1px solid var(--line2);border-radius:11px;
+  background:rgba(20,28,58,.96);box-shadow:0 8px 28px -8px rgba(0,0,0,.6);
+  transform:translateY(16px);transition:transform .2s ease}
+.noticebar.on .noticepanel{transform:translateY(0)}
+.noticebody{flex:1;min-width:0;display:flex;align-items:flex-start}
+.noticecontent{flex:1;min-width:0}
+.vegaav{flex:none;width:44px;height:44px;margin-right:10px}
+.vegaturn{filter:hue-rotate(170deg) saturate(1.9) brightness(.55) contrast(1.05)}   /* patch589: turned/dimmed VEGA, same SVG */
+.noticetxt{font:600 12px/1.4 system-ui;color:var(--txt)}
+.noticewho{font:700 9px/1 ui-monospace,monospace;letter-spacing:.18em;color:var(--dim);
+  text-transform:uppercase;margin-bottom:4px}
+.noticebtns{display:flex;gap:6px;flex:none}
+#noticeGo{border:1px solid var(--line2);border-radius:8px;padding:7px 12px;cursor:pointer;
+  background:rgba(72,226,255,.12);color:var(--cy);font:700 10.5px/1 system-ui;
+  letter-spacing:.05em;white-space:nowrap}
+#noticeX{border:1px solid var(--line);border-radius:8px;width:26px;height:26px;cursor:pointer;
+  background:rgba(255,255,255,.04);color:var(--mut);font:700 12px/1 system-ui}
+
+/* ---------- top bar ---------- */
+header{
+  flex:0 0 auto;padding:8px 12px 6px;border-bottom:1px solid var(--line);
+  background:linear-gradient(180deg,rgba(6,9,24,.94),rgba(6,9,24,.62));
+  backdrop-filter:blur(10px)
+}
+.brand{display:flex;align-items:center;gap:10px}
+.brand h1{
+  margin:0;font-size:15px;letter-spacing:.30em;font-weight:700;
+  background:linear-gradient(90deg,var(--cy),var(--vi) 60%,var(--gd));
+  -webkit-background-clip:text;background-clip:text;color:transparent;white-space:nowrap
+}
+#runlbl{border:1px solid var(--line);color:var(--dim);--p:0%;
+  background:linear-gradient(90deg,rgba(255,209,102,.85) var(--p),rgba(255,255,255,.08) var(--p)) bottom/100% 2px no-repeat,
+             rgba(255,255,255,.05);
+  border-radius:8px;padding:5px 9px;font:700 9px/1 system-ui;letter-spacing:.22em;
+  text-transform:uppercase;cursor:pointer;white-space:nowrap;
+  transition:border-color .15s,color .15s}
+#runlbl:hover{color:var(--txt);border-color:var(--line2)}
+#runlbl.ready{color:var(--gd);border-color:rgba(255,209,102,.6);
+  background:rgba(255,209,102,.14);animation:lvpulse 2.1s ease-in-out infinite}
+.brand .sp{flex:1}
+.icnbtn{
+  background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--mut);
+  border-radius:8px;padding:5px 8px;font-size:11px;cursor:pointer
+}
+.icnbtn:hover{color:var(--txt);border-color:var(--line2)}
+
+.res{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px}
+.rcard{
+  border:1px solid var(--line);border-radius:10px;padding:6px 8px;
+  background:linear-gradient(180deg,rgba(30,40,80,.45),rgba(12,16,36,.45));
+  display:flex;align-items:center;gap:9px;min-width:0;width:100%;
+  text-align:left;font:inherit;cursor:pointer;position:relative;
+  transition:border-color .15s,background .15s
+}
+.rcard:hover{border-color:var(--line2);background:linear-gradient(180deg,rgba(40,52,100,.55),rgba(14,19,44,.55))}
+.rcard:after{                       /* quiet "there is more here" dot */
+  content:"";position:absolute;top:5px;right:6px;width:3px;height:3px;border-radius:50%;
+  background:currentColor;opacity:.30}
+.c-ore:after{color:var(--cy)} .c-cry:after{color:var(--vi)} .c-dm:after{color:var(--gd)}
+.rcard:hover:after{opacity:.75}
+.xprow{margin:7px 0 9px}
+.xprow .l,.xplvl .l{display:flex;justify-content:space-between;gap:10px;font-size:11.5px;color:var(--txt)}
+.xprow .l b,.xplvl .l b{color:var(--gd);font:700 11px/1.4 ui-monospace,monospace;white-space:nowrap}
+.xpbar{height:5px;border-radius:3px;background:rgba(255,255,255,.08);margin-top:5px;overflow:hidden}
+.xpbar i{display:block;height:100%;background:linear-gradient(90deg,#c9a24a,#ffd166);border-radius:3px;transition:width .3s}
+.xpbar.xplvlbar{height:10px;margin:2px 0 6px}
+.xprow .s{font:10px/1 ui-monospace,monospace;color:var(--dim);margin-top:4px}
+.xprow.ready .xpbar i{background:linear-gradient(90deg,#3fbf8a,#5ce6a5)} .xprow.ready .s{color:var(--gr)}
+.xplvl{margin:4px 0 10px}
+.rrow{display:flex;justify-content:space-between;gap:10px;padding:3px 0;font-size:11.5px;color:var(--mut);
+  border-bottom:1px solid rgba(96,142,255,.10)}
+.rrow b{color:var(--txt);font-family:ui-monospace,monospace}
+.rmore{font-size:11.5px;color:var(--dim);margin-top:10px;line-height:1.5}
+.rcard>div:last-child{min-width:0}
+.ricon{flex:0 0 32px;width:32px;height:32px}
+.ricon svg{width:100%;height:100%;display:block}
+.c-ore .ricon{color:var(--cy)} .c-cry .ricon{color:var(--vi)} .c-dm .ricon{color:var(--gd)}
+.ci{width:1.15em;height:1.15em;vertical-align:-.22em;display:inline-block;flex:none}
+.ci.ore{color:var(--cy)} .ci.cry{color:var(--vi)} .ci.dm{color:var(--gd)} .ci.pw{color:#ffb45c}
+.ci.sv{color:var(--sv)}
+.eff .ci,.card button .ci{width:1.4em;height:1.4em;vertical-align:-.34em}
+.ricon svg .sp3,.ricon svg .pl,.ci .sp3,.ci .pl{transform-box:fill-box;transform-origin:center}
+.ricon svg .sp3{animation:spinf 11s linear infinite}
+.ricon svg .pl{animation:plz 2.8s ease-in-out infinite}
+.ci .sp3{animation:spinf 14s linear infinite}
+.rcard .val{font:600 17px/1.15 ui-monospace,SFMono-Regular,Menlo,monospace;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rcard .sub{font-size:10px;color:var(--mut);font-family:ui-monospace,monospace;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.c-ore .val{color:var(--cy)} .c-cry .val{color:var(--vi)} .c-dm .val{color:var(--gd)}
+/* patch607: the context card reads S.msel, not a fixed currency, and (patch630:
+   only until anything has ever been banked - exoEverBankedAny(), see
+   renderCtxCard()'s own .tappable toggle) is not tappable - these three overrides
+   undo the generic .rcard affordances (pointer cursor, hover brighten, the top-
+   right "more" dot) so it doesn't visually promise a tap that does nothing. Once
+   .tappable is added they stop matching outright, rather than being fought with a
+   second set of "yes tappable after all" rules that could drift from these. */
+.c-ctx:not(.tappable){cursor:default}
+.c-ctx:not(.tappable):hover{border-color:var(--line);background:linear-gradient(180deg,rgba(30,40,80,.45),rgba(12,16,36,.45))}
+.c-ctx:not(.tappable):after{content:none}
+.c-ctx .ricon{display:flex;align-items:center;justify-content:center}
+.c-ctx .exdot{width:12px;height:12px;border-radius:50%;background:var(--a,var(--dim));flex:none;opacity:1;transition:background .15s,opacity .15s}
+.c-ctx .val{color:var(--a,var(--txt))}
+.c-ctx .sub{color:var(--a,var(--mut))}
+/* patch609c: name+rate stack instead of sharing one line - see the patch header,
+   same overflow patch582b fixed for #exoStrip's own name/rate pair. */
+.c-ctx .ctxnums{display:flex;flex-direction:column;min-width:0;overflow:hidden}
+#resCryStrip{margin-bottom:10px}
+
+/* ---------- main ---------- */
+main{flex:1 1 auto;display:flex;min-height:0}
+#left{
+  flex:0 0 250px;padding:12px;border-right:1px solid var(--line);
+  display:flex;flex-direction:column;gap:10px;overflow:auto
+}
+#right{flex:1 1 auto;display:flex;flex-direction:column;min-width:0}
+
+/* patch612: the old planet widget and its site-view bar are gone - the map zoom
+   replaced the planet, and the site view itself moves onto the zoom canvas in
+   Run 3 (patch615). */
+.g .gi{transition:box-shadow .15s,border-color .15s}
+/* patch615: only ore-ladder tiers have site art (SITE has 14 entries, matching
+   GENS[0..13]) - ladderTierRow() adds this class only when GENS[gi].kind==="ore",
+   so a kind-ladder row's icon no longer looks tappable either. */
+.g .gi.gi-site{cursor:zoom-in}
+.g .gi.gi-site:hover{box-shadow:0 0 0 2px var(--a)}
+.g.viewing{outline:1px solid var(--a);outline-offset:-1px}
+
+/* patch624: factored into a shared class so #scan (in #left) and #sshScan
+   (pinned to the bottom of #sysSheet) can never drift apart - one source of
+   truth for the padding/radius/border/gradient/glow/label/:active treatment.
+   The #left-only compact override just below (inside @media(max-width:760px))
+   is still keyed to the id #scan specifically, on purpose - see the patch
+   header for why the sheet's own button must NOT inherit it. */
+.scanbtn{
+  width:100%;padding:14px 10px;border-radius:12px;cursor:pointer;
+  border:1px solid rgba(72,226,255,.45);
+  background:linear-gradient(180deg,rgba(72,226,255,.20),rgba(72,226,255,.05));
+  color:#eafcff;font:700 13px/1 system-ui;letter-spacing:.18em;
+  box-shadow:0 0 22px rgba(72,226,255,.12) inset;transition:transform .06s,box-shadow .2s
+}
+.scanbtn:active{transform:scale(.97);box-shadow:0 0 32px rgba(72,226,255,.35) inset}
+.scanbtn small{display:block;margin-top:5px;font:400 10px/1 ui-monospace,monospace;letter-spacing:.05em;color:#a9e9ff}
+
+.mini{border:1px solid var(--line);border-radius:10px;padding:8px;background:var(--panel)}
+.mini h4{margin:0 0 6px;font:600 9px/1 system-ui;letter-spacing:.18em;color:var(--dim);text-transform:uppercase}
+.krow{display:flex;justify-content:space-between;gap:8px;font-size:11px;padding:2px 0}
+.krow span:last-child{font-family:ui-monospace,monospace;color:var(--txt)}
+.krow span:first-child{color:var(--mut)}
+
+/* ---------- tabs ---------- */
+nav{
+  flex:0 0 auto;display:flex;gap:4px;padding:8px 10px 0;overflow-x:auto;
+  border-bottom:1px solid var(--line);scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.18) transparent
+}
+nav::-webkit-scrollbar{height:4px}
+nav::-webkit-scrollbar-thumb{background:rgba(255,255,255,.18);border-radius:2px}
+nav.hs-more,#resTabs.hs-more{
+  mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent);
+  -webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent)
+}
+.tab{
+  border:1px solid transparent;border-bottom:none;background:none;color:var(--mut);
+  padding:7px 12px;border-radius:9px 9px 0 0;cursor:pointer;white-space:nowrap;
+  font:600 11px/1 system-ui;letter-spacing:.10em;text-transform:uppercase;position:relative
+}
+.tab:hover{color:var(--txt)}
+.tab.on{color:var(--txt);border-color:var(--line);background:var(--panel);box-shadow:0 -2px 0 var(--cy) inset}
+.tab .dot{position:absolute;top:3px;right:4px;width:6px;height:6px;border-radius:50%;background:var(--gr);display:none}
+.tab.alert .dot{display:block;animation:pulse 1.4s infinite}
+@keyframes pulse{50%{opacity:.25}}
+
+#view{flex:1 1 auto;overflow:auto;scroll-behavior:smooth;
+  /* the panes swap wholesale, so Chrome's scroll anchoring has nothing meaningful to
+     anchor to - it only ever drags us off the position we just set */
+  overflow-anchor:none;
+  padding-top:12px;
+  padding-bottom:calc(12px + env(safe-area-inset-bottom, 0px));
+  padding-left:calc(12px + env(safe-area-inset-left, 0px));
+  padding-right:calc(12px + env(safe-area-inset-right, 0px))}
+.pane{display:none} .pane.on{display:block}
+/* patch626 (PLAN-page.md): reserve room for #sshScanBar/#sysThreatActs, now
+   pinned position:fixed to the viewport bottom instead of sticky inside the (now
+   in-flow, non-scrolling) sheet - see their own CSS comments. Sized empirically
+   against the taller of the two bars, not guessed - see HANDOVER for the numbers.
+   body.syspage: see #mapWrap's own comment above for why 626 can already use the
+   final class name. */
+body.syspage #view{padding-bottom:calc(var(--sysbarh) + env(safe-area-inset-bottom,0px))}
+/* patch608: the old #p-emp tab/pane, kept in the DOM for tests that still drive it
+   (Run 2/patch612 deletes both outright) but never shown again - !important because
+   .pane.on{display:block} (two classes) otherwise outranks a plain .legacyhide
+   (one class) by specificity alone, on-class or not. */
+.tab.legacyhide,.pane.legacyhide{display:none!important}
+.hint{color:var(--mut);font-size:12px;margin:0 0 10px}
+.sechead{font:600 10px/1 system-ui;letter-spacing:.2em;color:var(--dim);text-transform:uppercase;margin:16px 0 8px}
+
+.chip.scrapc.on{border-color:var(--rd);color:var(--rd);background:rgba(255,107,138,.10)}
+.g.sellmode .gb{border-color:rgba(255,107,138,.5);background:rgba(255,107,138,.08)}
+.g.sellmode .gb b{color:var(--rd)}
+/* ---------- level ---------- */
+.lvup{color:var(--gd)}
+@keyframes lvpulse{0%,100%{box-shadow:0 0 0 0 rgba(255,209,102,0)}
+  50%{box-shadow:0 0 16px 0 rgba(255,209,102,.28)}}
+#lvPicks{display:flex;flex-direction:column;gap:8px;margin:10px 0}
+.lvpick{display:block;width:100%;text-align:left;cursor:pointer;padding:10px 12px;border-radius:10px;
+  border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--txt);
+  box-shadow:inset 3px 0 0 var(--a)}
+.lvpick:hover{border-color:var(--a);background:rgba(255,255,255,.07)}
+.lvpick b{display:block;font:700 13px/1.2 system-ui;color:var(--a)}
+.lvpi{display:block;font:700 11.5px/1.3 ui-monospace,monospace;color:var(--txt);margin-top:3px}
+.lvpt{display:block;font-size:11px;color:var(--mut);margin-top:3px;line-height:1.4}
+.lvph{display:block;font-size:10px;color:var(--dim);margin-top:4px;font-family:ui-monospace,monospace}
+.lvmore{font-size:11.5px;color:var(--gd);margin:4px 0 0}
+.lvun{font-size:12px;color:var(--mut);margin:0 0 4px}
+button.ghost{background:transparent;border-color:var(--line);color:var(--mut)}

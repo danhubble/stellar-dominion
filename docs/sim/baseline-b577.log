@@ -1,0 +1,53 @@
+=== tchurn2.js
+0 failures
+=== tcollapse2.js
+page.evaluate: TypeError: G.collapseAvailable is not a function
+=== tcombat2.js
+0 failures
+=== tcore2.js
+FAIL desktop: an old save with the panel hidden still shows it  store=300x150 css=0x0
+FAIL desktop: and the canvas is sized correctly after it  store=300x150 css=0x0
+FAIL s21: an old save with the panel hidden still shows it  store=300x150 css=0x0
+FAIL s21: and the canvas is sized correctly after it  store=300x150 css=0x0
+=== tcpolish2.js
+0 failures
+=== tearlycontest2.js
+0 failures
+=== tladders2.js
+0 failures
+=== tlockstates2.js
+0 failures
+=== tlvsummary2.js
+0 failures
+=== tmap2.js
+0 failures
+=== tmapoverlap2.js
+0 failures
+=== tmarket2.js
+0 failures
+=== tnotices2.js
+0 failures
+=== torbfollow2.js
+0 failures
+=== toreclaim2.js
+0 failures
+=== tprogresearch2.js
+0 failures
+=== tq2.js
+=== trivals2.js
+0 failures
+=== tsave2.js
+0 failures
+=== tscrolldevfix2.js
+0 failures
+=== tsilhouette2.js
+=== ttaborder2.js
+0 failures
+=== ttelegraph2.js
+Error: ENOENT: no such file or directory, open '/home/claude/csim4.js'
+=== ttravel2.js
+0 failures
+=== ttree2.js
+=== txp2.js
+0 failures
+SUITE DONE

@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Zoom-in mock — Koru</title>
+<style>
+/* ============================================================
+   Colours / tokens copied verbatim from stellar-dominion-empire2.html :root
+   ============================================================ */
+:root{
+  --bg:#04050d; --bg2:#080b1c;
+  --line:rgba(96,142,255,.20); --line2:rgba(96,142,255,.38);
+  --txt:#dde5ff; --mut:#8390bd; --dim:#5a6693; --dim2:#7683ad;
+  --cy:#48e2ff; --vi:#a878ff; --gd:#ffd166; --gr:#5ce6a5; --rd:#ff6b8a; --sv:#a9bcd4;
+  --k-rock:#c7b299;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:#000; color:var(--txt);
+  font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  padding:32px 16px 80px;
+}
+h1{color:var(--txt);font:700 18px/1.3 system-ui;text-align:center;margin:0 0 34px}
+.row{display:flex;flex-direction:column;align-items:center;gap:10px;margin:0 0 54px}
+.cap{font:800 12px/1 system-ui;letter-spacing:.14em;color:var(--cy);text-transform:uppercase;
+  background:rgba(72,226,255,.10);border:1px solid rgba(72,226,255,.35);padding:6px 14px;border-radius:20px}
+
+/* ---------------- phone frame ---------------- */
+.phone{width:390px;height:844px;max-width:100%;position:relative;overflow:hidden;
+  background:var(--bg);border:1px solid rgba(120,150,255,.28);border-radius:38px;
+  box-shadow:0 30px 60px -20px rgba(0,0,0,.8), 0 0 0 6px #0a0c18;
+}
+.phone .screen{position:absolute;inset:0;display:flex;flex-direction:column;padding:22px 14px 0}
+.notch{position:absolute;top:10px;left:50%;transform:translateX(-50%);width:120px;height:22px;
+  background:#000;border-radius:12px;z-index:30}
+
+/* ============================================================
+   Map (copied / adapted from #mapWrap, #mapBg, #mapLinks, #mapNodes,
+   .mnode/.mdot/.mlab and drawMapBg/MAP_BACKDROPS[0] "Core" backdrop)
+   ============================================================ */
+.mapWrap{position:relative;width:100%;height:362px;flex:none;margin:0 auto 10px;
+  border:1px solid rgba(120,150,255,.22);border-radius:14px;overflow:hidden;
+  background:radial-gradient(circle at 50% 50%,rgba(60,90,190,.18),rgba(6,9,22,.85) 68%)}
+.mapBg{position:absolute;inset:0;width:100%;height:100%;display:block}
+.mapLinks{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.mapLinks line{stroke:rgba(140,170,255,.20);stroke-width:1}
+.mapLinks line.held{stroke:rgba(92,230,165,.55);stroke-width:1.6}
+.mapNodes{position:absolute;inset:0}
+.mnode{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;
+  align-items:center;gap:3px;background:none;border:0;padding:4px;
+  min-width:44px;min-height:44px;justify-content:center}
+.mdot{width:15px;height:15px;border-radius:50%;border:2px solid var(--a);
+  background:rgba(6,9,22,.9);box-shadow:0 0 9px -1px var(--a)}
+.mnode .mlab{font:700 8.5px/1 system-ui;letter-spacing:.08em;color:var(--mut);white-space:nowrap;
+  text-shadow:0 0 5px #000}
+.mnode.held .mdot{background:var(--a)}
+.mnode.held .mlab{color:var(--txt)}
+.mnode.home .mdot{width:20px;height:20px;border-width:3px}
+.mnode.open .mdot{animation:mpulse 1.9s ease-in-out infinite}
+.mnode.locked{opacity:.42}
+.mnode.locked .mdot{border-style:dashed;box-shadow:none}
+.mnode.sel .mdot{transform:scale(1.35);box-shadow:0 0 14px 1px var(--a)}
+.mnode.sel .mlab{color:var(--a)}
+@keyframes mpulse{0%,100%{box-shadow:0 0 6px -1px var(--a)}50%{box-shadow:0 0 15px 2px var(--a)}}
+
+/* fade for state B's non-focused nodes/lanes */
+.faded{opacity:.35}
+
+/* siteHud-style back-arrow / title bar, reused verbatim for state A's planet header */
+.planetHud{position:absolute;left:0;right:0;top:0;display:flex;align-items:center;gap:7px;
+  padding:8px 8px;z-index:5;
+  background:linear-gradient(180deg,rgba(4,6,16,.85),rgba(4,6,16,0))}
+.planetBack{border:1px solid var(--line2);background:rgba(8,12,30,.8);
+  color:var(--mut);border-radius:6px;padding:5px 9px;cursor:pointer;
+  font:700 11px/1 system-ui;letter-spacing:.12em;flex:none}
+.planetTitle{flex:1;text-align:center;font:700 11px/1 system-ui;letter-spacing:.14em;color:var(--txt);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-right:34px}
+
+/* mini planet overlay for state B */
+.miniPlanetWrap{position:absolute;left:50%;top:50%;transform:translate(-50%,-58%);
+  display:flex;flex-direction:column;align-items:center;gap:4px;pointer-events:none}
+.miniLab{font:700 8.5px/1 system-ui;letter-spacing:.1em;color:var(--txt);text-shadow:0 0 6px #000}
+
+/* ============================================================
+   System sheet (copied / adapted from #sysSheet and its children)
+   ============================================================ */
+.sysSheet{position:relative;flex:1;border-radius:16px 16px 0 0;border:1px solid var(--line2);border-bottom:none;
+  background:linear-gradient(180deg,#101637,#0a0e24);box-shadow:0 -14px 34px -6px rgba(0,0,0,.6);
+  padding:8px 14px 8px;overflow:hidden}
+.sshgrab{width:38px;height:4px;border-radius:2px;background:rgba(255,255,255,.22);margin:2px auto 8px}
+.sshx{position:absolute;top:10px;right:12px;border:1px solid var(--line);border-radius:8px;
+  width:26px;height:26px;background:rgba(255,255,255,.05);color:var(--mut);
+  font:700 12px/1 system-ui;display:grid;place-items:center}
+.sysInfo h4{margin:0;font:700 15px/1.2 system-ui}
+.sysmeta{font:600 9.5px/1 system-ui;letter-spacing:.14em;color:var(--dim);margin-top:4px}
+.sysd{font-size:11.5px;color:var(--mut);line-height:1.4;margin:5px 0 6px}
+.sysrow{display:flex;justify-content:space-between;gap:10px;font-size:11.5px;padding:3px 0;
+  border-top:1px solid rgba(255,255,255,.05)}
+.sysrow b{font-family:ui-monospace,monospace}
+
+.sysOdds .odds{display:flex;justify-content:space-between;align-items:baseline;
+  font:600 10px/1 system-ui;letter-spacing:.14em;color:var(--dim);text-transform:uppercase;margin-top:7px}
+.sysOdds .odds b{font:700 13px/1 ui-monospace,monospace;color:var(--gr);letter-spacing:0}
+.sysOdds .obar{height:7px;border-radius:4px;background:rgba(255,255,255,.07);overflow:hidden;margin-top:3px}
+.sysOdds .obar i{display:block;height:100%;background:linear-gradient(90deg,#3fbf8a,#5ce6a5)}
+.sysOdds .onote{font-size:10.5px;color:var(--dim);margin-top:4px;line-height:1.4}
+
+.sysDefHead{font:600 9.5px/1 system-ui;letter-spacing:.18em;color:var(--dim);text-transform:uppercase;
+  margin:6px 0 4px;display:flex;justify-content:space-between;gap:8px}
+.sysDefRow{display:flex;gap:7px}
+.sysDefRow .sc{flex:1 1 0;min-width:0;border:1px solid var(--line);border-radius:11px;
+  background:rgba(255,255,255,.02);padding:5px 6px 5px;display:flex;flex-direction:column;
+  align-items:center;gap:4px;text-align:center;border-top:3px solid var(--a,var(--line2));
+  position:relative}
+.sysDefRow .sc .si{width:22px;height:22px;border-radius:7px;display:grid;place-items:center;
+  border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--a,var(--mut));
+  font:700 11px/1 ui-monospace,monospace}
+.sysDefRow .sc .si svg{width:14px;height:14px;display:block}
+.sysDefRow .sc .n{font:700 9.5px/1.2 system-ui;color:var(--txt)}
+.sysDefRow .sc .lv{font:700 8px/1 ui-monospace,monospace;color:var(--dim);letter-spacing:.06em;min-height:8px}
+.sysDefRow .sc .e{font:700 9.5px/1.2 ui-monospace,monospace;color:var(--a,var(--gd))}
+.sysDefRow .sc button{width:100%;margin-top:auto;border:1px solid var(--line2);
+  background:rgba(72,226,255,.09);color:var(--cy);border-radius:8px;padding:5px 2px;
+  font:700 9px/1.15 ui-monospace,monospace}
+.sysDefRow .sc .tag{position:absolute;top:-8px;right:5px;font:800 6.8px/1 system-ui;letter-spacing:.08em;
+  padding:2px 4px;border-radius:4px;background:#0b1026;border:1px solid currentColor}
+.sysDefRow .sc .tag.ok{color:var(--gr)}
+
+/* planet "window" for state C, sits above the name row */
+.planetWindow{width:100%;height:116px;display:block;border-radius:11px;margin:0 0 6px;
+  border:1px solid var(--line)}
+</style>
+</head>
+<body>
+<h1>Tap-to-zoom — three looks, compared against today (Koru, held system)</h1>
+
+<div class="row">
+  <div class="cap">TODAY</div>
+  <div class="phone" id="ph0">
+    <div class="notch"></div>
+    <div class="screen">
+      <div class="mapWrap">
+        <canvas class="mapBg" width="720" height="720"></canvas>
+        <svg class="mapLinks" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
+        <div class="mapNodes"></div>
+      </div>
+      <div class="sysSheet" id="sheet0"></div>
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <div class="cap">A — map becomes planet</div>
+  <div class="phone" id="phA">
+    <div class="notch"></div>
+    <div class="screen">
+      <div class="mapWrap">
+        <canvas class="planetWindow" data-planet="hero" style="height:100%;border-radius:0;border:none"></canvas>
+        <div class="planetHud">
+          <button class="planetBack">&lsaquo; MAP</button>
+          <div class="planetTitle">KORU</div>
+        </div>
+      </div>
+      <div class="sysSheet" id="sheetA"></div>
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <div class="cap">B — camera pushes in</div>
+  <div class="phone" id="phB">
+    <div class="notch"></div>
+    <div class="screen">
+      <div class="mapWrap" id="mapWrapB">
+        <div class="mapZoomB" style="position:absolute;inset:0">
+          <canvas class="mapBg" width="720" height="720"></canvas>
+          <svg class="mapLinks" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
+          <div class="mapNodes"></div>
+        </div>
+        <div class="miniPlanetWrap" style="width:40%">
+          <canvas data-planet="mini" style="width:100%;aspect-ratio:1/1;display:block"></canvas>
+          <div class="miniLab">KORU</div>
+        </div>
+      </div>
+      <div class="sysSheet" id="sheetB"></div>
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <div class="cap">C — window in sheet</div>
+  <div class="phone" id="phC">
+    <div class="notch"></div>
+    <div class="screen">
+      <div class="mapWrap">
+        <canvas class="mapBg" width="720" height="720"></canvas>
+        <svg class="mapLinks" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
+        <div class="mapNodes"></div>
+      </div>
+      <div class="sysSheet" id="sheetC"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   SYS / SEC_LANES data for sector 0 ("Core"), copied from SYS/SEC_LANES
+   ============================================================ */
+const SYS0=[
+ {id:"home", n:"Sol Reach", sx:50, sy:54, res:null, home:1, held:true},
+ {id:"kor",  n:"Koru",      sx:22, sy:28, res:"ir",  held:true, sel:true},
+ {id:"dra",  n:"Draskhold", sx:52, sy:14, res:null,  held:true},
+ {id:"vel",  n:"Velis",     sx:80, sy:26, res:"he",  open:true},
+ {id:"tan",  n:"Tannhau",   sx:78, sy:80, res:"ir",  locked:true},
+ {id:"mir",  n:"Mireth",    sx:20, sy:82, res:"he",  locked:true}
+];
+const LANES0=[["home","kor"],["home","dra"],["home","vel"],["home","tan"],["home","mir"]];
+const EXO_COL={ir:"#8fb8ff",he:"#ffd166"};
+const FALLBACK_COL="#5ce6a5";
+
+/* ---------------- MAP_BACKDROPS[0] "Core" backdrop, copied verbatim ---------------- */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
+  t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function mapDrawStars(cx,W,H,rng,n,opts){
+  opts=opts||{};
+  for(let i=0;i<n;i++){
+    const x=rng()*W, y=rng()*H, r=(opts.rmin||0.4)+rng()*(opts.rspread||1.1);
+    const br=(opts.brmin||0.25)+rng()*(opts.brspread||0.55);
+    cx.beginPath();cx.arc(x,y,r,0,7);
+    cx.fillStyle=`rgba(${opts.col||"221,229,255"},${br.toFixed(2)})`;
+    cx.fill();
+  }
+}
+function drawCoreBackdrop(cx,W,H){
+  const rng=mulberry32(1001);
+  const g=cx.createRadialGradient(W*0.5,H*0.5,20,W*0.5,H*0.5,W*0.7);
+  g.addColorStop(0,"rgba(70,60,150,.30)");g.addColorStop(0.5,"rgba(50,30,110,.20)");g.addColorStop(1,"rgba(4,5,13,0)");
+  cx.fillStyle="#080a1c";cx.fillRect(0,0,W,H);
+  cx.fillStyle=g;cx.fillRect(0,0,W,H);
+  for(let i=0;i<4;i++){
+    const bx=rng()*W,by=rng()*H,br=90+rng()*140;
+    const bg=cx.createRadialGradient(bx,by,0,bx,by,br);
+    const hue=i%2?"120,90,220":"70,140,220";
+    bg.addColorStop(0,`rgba(${hue},.16)`);bg.addColorStop(1,"rgba(0,0,0,0)");
+    cx.fillStyle=bg;cx.beginPath();cx.arc(bx,by,br,0,7);cx.fill();
+  }
+  mapDrawStars(cx,W,H,rng,90,{});
+}
+document.querySelectorAll(".mapBg").forEach(cv=>{
+  const ctx=cv.getContext("2d");
+  drawCoreBackdrop(ctx,cv.width,cv.height);
+});
+
+/* ---------------- build the static map nodes + lanes ---------------- */
+function buildMap(root){
+  const svg=root.querySelector(".mapLinks"), host=root.querySelector(".mapNodes");
+  for(const [a,b] of LANES0){
+    const A=SYS0.find(s=>s.id===a), B=SYS0.find(s=>s.id===b);
+    const ln=document.createElementNS("http://www.w3.org/2000/svg","line");
+    ln.setAttribute("x1",A.sx); ln.setAttribute("y1",A.sy);
+    ln.setAttribute("x2",B.sx); ln.setAttribute("y2",B.sy);
+    if(A.held&&B.held)ln.classList.add("held");
+    svg.appendChild(ln);
+  }
+  for(const s of SYS0){
+    const b=document.createElement("button");
+    let cls="mnode";
+    if(s.home)cls+=" home";
+    if(s.held||s.home)cls+=" held";
+    if(s.open)cls+=" open";
+    if(s.locked)cls+=" locked";
+    if(s.sel)cls+=" sel";
+    b.className=cls;
+    b.style.left=s.sx+"%"; b.style.top=s.sy+"%";
+    b.style.setProperty("--a", s.res?EXO_COL[s.res]:FALLBACK_COL);
+    b.innerHTML=`<span class="mdot"></span><span class="mlab">${s.n}</span>`;
+    host.appendChild(b);
+  }
+}
+document.querySelectorAll(".mapWrap").forEach(w=>{ if(w.querySelector(".mapNodes")) buildMap(w); });
+
+/* ============================================================
+   System sheet content — Koru, held, normal state (copied markup
+   shape from #sysInfo/#sysOdds/#sysDefWrap; values hardcoded for
+   a plausible mid-game save)
+   ============================================================ */
+function sheetHTML(withPlanetWindow){
+  return `
+  <div class="sshgrab"></div>
+  <button type="button" class="sshx">&#10005;</button>
+  ${withPlanetWindow?'<canvas class="planetWindow" data-planet="window"></canvas>':''}
+  <div class="sysInfo">
+    <h4 style="color:#8fb8ff">Koru</h4>
+    <div class="sysmeta">RING 1 &middot; YOURS</div>
+    <div class="sysd">A stripped rock orbiting close in. The crust is threaded with iridium.</div>
+    <div class="sysrow"><span>Yields</span><b style="color:#8fb8ff">Iridium</b></div>
+  </div>
+  <div class="sysOdds">
+    <div class="odds"><span>Garrison holds</span><b>62%</b></div>
+    <div class="obar"><i style="width:62%"></i></div>
+    <div class="onote">What your defences manage on their own, if you let them fight it without you.</div>
+  </div>
+  <div class="sysDefWrap">
+    <div class="sysDefHead"><span>Defences</span><span>2 of 3 slots &middot; 8.4K IRIDIUM</span></div>
+    <div class="sysDefRow">
+      <div class="sc" style="--a:#48e2ff">
+        <div class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.5 5.5l2 2M16.5 16.5l2 2M18.5 5.5l-2 2M7.5 16.5l-2 2"/></svg></div>
+        <div class="n">Turret Ring</div><div class="lv">LV 2/3</div>
+        <div class="e">+18%</div>
+        <button type="button">240 &middot; UP</button>
+      </div>
+      <div class="sc" style="--a:#a878ff">
+        <div class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3.2v5.3c0 4.6-3 7.6-7 8.7-4-1.1-7-4.1-7-8.7V6.2z"/></svg></div>
+        <div class="n">Shield Array</div><div class="lv">LV 1/3</div>
+        <div class="e">+9%</div>
+        <button type="button">310 &middot; UP</button>
+      </div>
+      <div class="sc empty">
+        <div class="si">+</div>
+        <div class="n">Empty</div><div class="lv">SLOT 3</div>
+        <div class="e" style="color:var(--dim)">&mdash;</div>
+        <button type="button">BUILD</button>
+      </div>
+    </div>
+  </div>`;
+}
+document.getElementById("sheet0").innerHTML=sheetHTML(false);
+document.getElementById("sheetA").innerHTML=sheetHTML(false);
+document.getElementById("sheetB").innerHTML=sheetHTML(false);
+document.getElementById("sheetC").innerHTML=sheetHTML(true);
+
+/* ============================================================
+   State B: scale + translate the map so Koru (22,28) sits at the
+   wrap's centre, at 2.5x; fade every node/lane not on Koru's own
+   lane. transform-origin 0 0, translate(a%,b%) scale(k):
+   newX = k*fx + a  ->  a = 50 - k*fx  (percent units)
+   ============================================================ */
+(function(){
+  const k=1.8, fx=22, fy=28;   /* spec said ~2.5x, but Koru's real neighbours (SEC_LANES[0])
+    sit far enough away that a true 2.5x leaves nothing but line-stubs on screen - backed off
+    to 1.8x so Home (and a sliver of Draskhold) stay visible, per "other nodes... still visible". */
+  const a=50-k*fx, bb=50-k*fy;
+  const zoom=document.querySelector("#mapWrapB .mapZoomB");
+  zoom.style.transformOrigin="0 0";
+  zoom.style.transform=`translate(${a}%,${bb}%) scale(${k})`;
+  Array.from(zoom.querySelectorAll(".mnode")).forEach(n=>{
+    const isKor = n.querySelector(".mlab").textContent==="Koru";
+    if(isKor){ n.style.visibility="hidden"; } else { n.classList.add("faded"); }
+  });
+  Array.from(zoom.querySelectorAll(".mapLinks line")).forEach(l=>l.classList.add("faded"));
+})();
+
+/* ============================================================
+   Planet-scene drawing — copied from draw()'s system branch
+   (~line 10868-10958) and sprite() (~line 10409), trimmed to what
+   a "rock" system ever uses: no galactic backdrop / wormhole /
+   orbital ring / dyson shell (those key off ore-ladder indices
+   4/6/7/9, which a rock system's own ladder never builds), and the
+   sprite() switch collapsed to its "rock" case only.
+   ============================================================ */
+const CONT=[{x:-.30,y:-.26,rx:.46,ry:.27,a:-.45},{x:.28,y:.10,rx:.40,ry:.22,a:.35},
+            {x:-.10,y:.44,rx:.34,ry:.16,a:.10},{x:.44,y:-.42,rx:.24,ry:.13,a:-.20}];
+const LIGHTS=(()=>{const L=[];let sd=7;const rnd=()=>(sd=(sd*1103515245+12345)&0x7fffffff)/0x7fffffff;
+  let guard=0;
+  while(L.length<52&&guard++<9000){const x=rnd()*2-1,y=rnd()*2-1; if(x*x+y*y>.80)continue;
+    const night=Math.pow(Math.max(0,(x+y+2)/4),2.2);
+    if(rnd()>0.04+0.96*night)continue;
+    L.push({x,y,p:rnd()*6.28,s:.55+rnd()*.75,n:.35+.65*night});}
+  return L})();
+function rgba(hex,a){const n=parseInt(hex.slice(1),16);
+  return "rgba("+((n>>16)&255)+","+((n>>8)&255)+","+(n&255)+","+a+")"}
+const TCOL=["#48e2ff","#5fd6f4","#79c6ef","#93b3f3","#a89df6","#ffb45c","#ffd166","#b07cff","#d76cff","#ff8fd0",
+  "#8fb8ff","#ffd166","#c58fff","#ff6b8a"];
+const KOR_KIND_COL="#c7b299";                 /* --k-rock */
+/* Koru's own kind ladder (LADDERS.rock = GENS indices 14,15,16) and the
+   plausible mid-game build counts this mock hardcodes for it. */
+const ROCK_LADDER=[
+ {gi:14,n:"Regolith Crusher"},
+ {gi:15,n:"Iron Vein Driller"},
+ {gi:16,n:"Bedrock Refinery"}
+];
+const KOR_COUNT={14:5,15:3,16:2};
+function vc(gi){ return KOR_COUNT[gi]||0 }
+
+function sprite(ctx,o,D){
+  const s=o.s, tier=o.pos;
+  ctx.save(); ctx.translate(o.x,o.y);
+  ctx.globalAlpha=.45+.55*(0.5+0.5*Math.sin(o.a));
+  ctx.fillStyle=KOR_KIND_COL; ctx.strokeStyle=KOR_KIND_COL; ctx.lineWidth=Math.max(1,s*0.34);
+  const hexPath=r=>{ ctx.beginPath();
+    for(let k=0;k<6;k++){ const a=k*1.0472+o.a; const px=Math.cos(a)*r, py=Math.sin(a)*r; k?ctx.lineTo(px,py):ctx.moveTo(px,py); }
+    ctx.closePath(); };
+  hexPath(s*1.1); ctx.fill();
+  if(tier===1){ ctx.globalAlpha*=.7; hexPath(s*.55); ctx.stroke(); }
+  else if(tier===2){
+    ctx.globalAlpha*=.55; ctx.beginPath();
+    for(let k=0;k<6;k++){ const a=k*1.0472+o.a+0.524; const px=Math.cos(a)*s*1.1, py=Math.sin(a)*s*1.1; k?ctx.lineTo(px,py):ctx.moveTo(px,py); }
+    ctx.closePath(); ctx.fill();
+  }
+  ctx.restore(); ctx.globalAlpha=1;
+}
+
+function drawPlanetScene(ctx,W,H,t,D,R){
+  ctx.clearRect(0,0,W,H);
+  const cx=W/2, cy=H*0.52, RY=0.55;
+  const ang=t*0.00025;
+
+  const lanes=[];
+  for(let pos=0; pos<ROCK_LADDER.length; pos++){
+    const gi=ROCK_LADDER[pos].gi, n=vc(gi);
+    if(n<1)continue;
+    const rr=R*(1.82+pos*0.20);
+    ctx.strokeStyle=rgba(TCOL[gi%TCOL.length],.10); ctx.lineWidth=D;
+    ctx.beginPath(); ctx.ellipse(cx,cy,rr,rr*RY,0,0,6.2832); ctx.stroke();
+    const nn=Math.min(9,n);
+    for(let k=0;k<nn;k++){
+      const a=ang*(1.5-pos*0.105)+k*(6.2832/nn)+pos*1.13;
+      lanes.push({pos,a,x:cx+Math.cos(a)*rr,y:cy+Math.sin(a)*rr*RY,s:R*(0.09+pos*0.018)});
+    }
+  }
+  for(const o of lanes) if(Math.sin(o.a)<0) sprite(ctx,o,D);
+
+  const g=ctx.createRadialGradient(cx-R*.45,cy-R*.5,R*.08,cx,cy,R*1.05);
+  g.addColorStop(0,"#8ee6ff"); g.addColorStop(.42,KOR_KIND_COL); g.addColorStop(1,"#0a1236");
+  ctx.fillStyle=g; ctx.beginPath(); ctx.arc(cx,cy,R,0,6.2832); ctx.fill();
+
+  ctx.save(); ctx.beginPath(); ctx.arc(cx,cy,R,0,6.2832); ctx.clip();
+  ctx.fillStyle="rgba(26,92,104,.42)";
+  for(const c of CONT){ ctx.beginPath(); ctx.ellipse(cx+c.x*R,cy+c.y*R,c.rx*R,c.ry*R,c.a,0,6.2832); ctx.fill(); }
+  const ng=ctx.createLinearGradient(cx-R*.7,cy-R*.7,cx+R,cy+R);
+  ng.addColorStop(0,"rgba(2,4,14,0)"); ng.addColorStop(.42,"rgba(2,4,14,.1)"); ng.addColorStop(.72,"rgba(2,4,14,.62)"); ng.addColorStop(1,"rgba(1,2,9,.93)");
+  ctx.fillStyle=ng; ctx.fillRect(cx-R,cy-R,R*2,R*2);
+  /* game's own nl uses vc(2)+vc(3) (Crust Borer/Fabricator, ORE-ladder-only
+     indices) which are always 0 for a "rock" system - substituted with
+     Koru's own upper two rock-ladder tiers so the surface actually lights up. */
+  const nl=Math.min(LIGHTS.length, vc(15)+vc(16));
+  for(let k=0;k<nl;k++){ const L=LIGHTS[k];
+    const tw=(.45+.55*Math.abs(Math.sin(t*0.00143+L.p)))*L.n;
+    ctx.globalAlpha=tw; ctx.fillStyle="#ffd9a0";
+    ctx.beginPath(); ctx.arc(cx+L.x*R,cy+L.y*R,L.s*D*.85,0,6.2832); ctx.fill();
+    ctx.globalAlpha=tw*.25;
+    ctx.beginPath(); ctx.arc(cx+L.x*R,cy+L.y*R,L.s*D*2.6,0,6.2832); ctx.fill(); }
+  ctx.globalAlpha=1; ctx.restore();
+  ctx.strokeStyle=rgba(KOR_KIND_COL,.55); ctx.lineWidth=1.2*D; ctx.stroke();
+  ctx.strokeStyle="rgba(110,200,255,.12)"; ctx.lineWidth=4*D;
+  ctx.beginPath(); ctx.arc(cx,cy,R*1.10,0,6.2832); ctx.stroke();
+
+  for(const o of lanes) if(Math.sin(o.a)>=0) sprite(ctx,o,D);
+}
+
+/* ---------------- wire up every planet canvas + shared rAF loop ---------------- */
+const DPR=Math.min(window.devicePixelRatio||1,3);
+const scenes=[];
+function rFor(kind,W,H){
+  if(kind==="hero")return Math.min(W,H)*0.20;
+  if(kind==="mini")return Math.min(W,H)*0.20;
+  return Math.min(H*0.34,W*0.15);              /* "window" */
+}
+document.querySelectorAll("canvas[data-planet]").forEach(cv=>{
+  const kind=cv.dataset.planet;
+  const cssW=cv.clientWidth||Math.round(cv.getBoundingClientRect().width);
+  const cssH=cv.clientHeight||Math.round(cv.getBoundingClientRect().height);
+  const w=Math.max(1,Math.round(cssW*DPR)), h=Math.max(1,Math.round(cssH*DPR));
+  cv.width=w; cv.height=h;
+  scenes.push({ctx:cv.getContext("2d"), W:w, H:h, R:rFor(kind,w,h)});
+});
+function loop(t){
+  for(const sc of scenes) drawPlanetScene(sc.ctx, sc.W, sc.H, t, DPR, sc.R);
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

@@ -1,0 +1,140 @@
+/* ---------- big callout panel ---------- */
+.big{
+  border:1px solid rgba(168,120,255,.5);border-radius:14px;padding:16px;
+  background:linear-gradient(180deg,rgba(70,40,130,.35),rgba(14,10,32,.6));text-align:center
+}
+.big .num{font:700 40px/1 ui-monospace,monospace;color:var(--gd);margin:8px 0}
+.ci.big{width:.82em;height:.82em;vertical-align:-.06em}
+.big button{
+  border:1px solid rgba(255,209,102,.6);background:rgba(255,209,102,.14);color:#ffeec2;
+  border-radius:10px;padding:12px 26px;font:700 12px/1 system-ui;letter-spacing:.2em;cursor:pointer;margin-top:6px
+}
+.big button:disabled{opacity:.35;cursor:not-allowed}
+
+/* ---------- modal ---------- */
+.mask{position:fixed;inset:0;z-index:20;background:rgba(2,3,10,.78);backdrop-filter:blur(5px);
+  display:none;align-items:center;justify-content:center;padding:18px}
+.mask.on{display:flex}
+.modal{
+  width:min(460px,100%);max-height:86vh;overflow:auto;border:1px solid var(--line2);border-radius:16px;
+  padding:18px;background:linear-gradient(180deg,#101637,#080b1e)
+}
+.modal h3{margin:0 0 10px;font:700 14px/1 system-ui;letter-spacing:.16em;text-transform:uppercase;color:var(--cy)}
+.modal p{font-size:12.5px;color:var(--mut)}
+.mhint{font-size:11px;color:var(--dim);margin-top:12px;line-height:1.5}
+.wipebox{margin-top:11px;border:1px solid var(--line);border-radius:10px;padding:8px 11px;
+  background:rgba(255,107,138,.05)}
+.wipebox .wr{display:flex;justify-content:space-between;gap:10px;padding:2.5px 0;font-size:11.5px;color:var(--mut)}
+.wipebox .wr b{color:var(--txt);font-family:ui-monospace,monospace}
+.wnote{margin-top:8px;text-align:center;font:600 10px/1.4 ui-monospace,monospace;
+  color:var(--rd);letter-spacing:.08em}
+textarea{width:100%;height:110px;background:#060915;color:var(--txt);border:1px solid var(--line);
+  border-radius:9px;padding:8px;font:11px/1.4 ui-monospace,monospace;resize:vertical}
+.row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.row button{flex:1;border:1px solid var(--line2);background:rgba(72,226,255,.09);color:var(--txt);
+  border-radius:9px;padding:9px;cursor:pointer;font:600 11px/1 system-ui;letter-spacing:.1em}
+.row button.warn{border-color:rgba(255,107,138,.5);background:rgba(255,107,138,.10)}
+.row button:disabled{opacity:.38;cursor:not-allowed;border-color:var(--line)}
+
+/* ---------- full-screen story scene (intro / turn - patch579) ---------- */
+.scene{position:fixed;inset:0;z-index:52;display:none;flex-direction:column;
+  align-items:center;justify-content:center;background:#03040c;
+  padding:22px 18px;box-sizing:border-box;opacity:1;transition:opacity .35s ease}
+.scene.on{display:flex}
+.scene.closing{opacity:0}
+.sceneskip{position:absolute;top:calc(14px + env(safe-area-inset-top,0px));right:16px;
+  border:1px solid var(--line2);background:rgba(255,255,255,.05);color:var(--mut);
+  border-radius:8px;padding:7px 12px;font:700 10px/1 system-ui;letter-spacing:.14em;cursor:pointer}
+.scenewrap{width:min(440px,100%);display:flex;flex-direction:column;align-items:center;gap:16px}
+.scenecard{width:100%;display:flex;align-items:flex-start;gap:12px;min-height:90px}
+/* patch617: no-speaker lines (VEGA_SVG/rivav both absent, #sceneAv hidden) get
+   this class from sceneRender()'s own existing has=!!n.who flag - centres the
+   body copy to match .scenehint's already-centred "TAP TO CONTINUE" below it.
+   Lines WITH an avatar never get this class, so their layout is untouched. */
+.scenecard.solo{justify-content:center;text-align:center}
+.scenecard.solo .scenebody{text-align:center}
+.sceneav{flex:none;width:44px;height:44px}
+.rivav{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font:700 18px/1 ui-monospace,monospace;color:#04050d;background:var(--a);flex:none}
+.scenebody{flex:1;min-width:0}
+.scenewho{font:700 9px/1 ui-monospace,monospace;letter-spacing:.18em;color:var(--dim);
+  text-transform:uppercase;margin-bottom:6px}
+.scenetxt{font:600 15px/1.5 system-ui;color:var(--txt)}
+.scenehint{font:600 9.5px/1 ui-monospace,monospace;letter-spacing:.14em;color:var(--dim);
+  text-transform:uppercase;opacity:.55}
+.sceneend{display:flex;gap:10px;width:100%}
+.sceneend button{flex:1;border:1px solid var(--line2);background:rgba(72,226,255,.10);color:var(--txt);
+  border-radius:10px;padding:12px;font:700 11px/1 system-ui;letter-spacing:.08em;cursor:pointer}
+.sceneend button.warn{border-color:rgba(255,107,138,.5);background:rgba(255,107,138,.10)}
+/* ---------- the ending screen (patch592) - reuses .scene/.scenewrap/.scenehint/
+   .sceneskip/.wipebox/.wr as-is; only the per-stage content below is new ---------- */
+.endbody{width:100%;min-height:64px;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center}
+.endtitle{font:800 22px/1.35 system-ui;color:var(--txt)}
+.endstrip{font:800 13px/1 ui-monospace,monospace;letter-spacing:.32em;color:var(--cy);
+  animation:endglow 2.6s ease-in-out infinite}
+@keyframes endglow{0%,100%{opacity:.5;text-shadow:0 0 6px rgba(72,226,255,.3)}
+  50%{opacity:1;text-shadow:0 0 22px rgba(72,226,255,.85)}}
+.endlast{font:600 14px/1.6 system-ui;color:var(--dim)}
+.endtbc{font:800 12px/1 ui-monospace,monospace;letter-spacing:.22em;color:var(--mut)}
+.endcontinue{width:100%;border:1px solid var(--line2);background:rgba(72,226,255,.10);
+  color:var(--txt);border-radius:10px;padding:12px;font:700 11px/1 system-ui;
+  letter-spacing:.08em;cursor:pointer}
+
+#toasts{position:fixed;left:50%;transform:translateX(-50%);z-index:30;
+  bottom:calc(16px + env(safe-area-inset-bottom, 0px));
+  display:block;text-align:center;pointer-events:none;width:min(94vw,460px)}
+/* patch628b: a system page's own pinned bottom bar (#sshScanBar/#sysThreatActs)
+   sits where #toasts' own flat 16px offset above would otherwise put a claim
+   toast right on top of it - the coordinator's own review screenshot caught
+   this. Reads the same --sysbarh custom property #view's padding-bottom uses
+   (see :root) so the two cannot drift apart again; +8px is this rule's own
+   clearance beyond the bar's reserved height, not baked into --sysbarh itself
+   since #view's padding and #toasts' offset are answering slightly different
+   questions (room to scroll clear of the bar vs. floating visibly above it). */
+body.syspage #toasts{bottom:calc(var(--sysbarh) + 8px + env(safe-area-inset-bottom,0px))}
+.toast{border:1px solid var(--line2);background:rgba(12,18,42,.95);border-radius:10px;
+  padding:8px 14px;font-size:12px;animation:tin .3s ease-out;box-shadow:0 8px 26px rgba(0,0,0,.5);
+  display:inline-block;margin-top:6px;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.toast.g{border-color:rgba(92,230,165,.6);color:#c9ffe8}
+.toast.y{border-color:rgba(255,209,102,.6);color:#ffeec2}
+@keyframes tin{from{opacity:0;transform:translateY(10px)}}
+
+.float{position:fixed;z-index:25;pointer-events:none;font:700 13px/1 ui-monospace,monospace;
+  color:var(--cy);text-shadow:0 0 10px rgba(72,226,255,.7);animation:fl 1s ease-out forwards}
+@keyframes fl{to{opacity:0;transform:translateY(-46px)}}
+
+@media(max-width:760px){
+  main{flex-direction:column}
+  #right{order:2;flex:1 1 auto;min-height:0}
+  #left{order:3;flex:0 0 auto;min-height:0;overflow:visible;display:grid;
+    grid-template-columns:1fr 1fr;gap:8px;align-items:stretch;
+    border-right:none;border-top:1px solid var(--line);padding:8px 10px}
+  /* patch627 (PLAN-page.md): mobile only - the desktop sidebar (outside this
+     media query) stays. A page already has its own SCAN SECTOR pinned to the
+     viewport bottom; #left's copy underneath was pure dead space once the page
+     itself could be taller than the screen (see patch626's own HANDOVER entry -
+     this is the exact overlap it described as temporary). */
+  body.syspage #left{display:none}
+  #scan{padding:10px 8px;font-size:12px}
+  .mini{padding:6px 8px}
+  .mini h4{display:none}
+  .krow{padding:1px 0;font-size:10.5px}
+  #left .note{display:none}
+  .ricon{flex:0 0 24px;width:24px;height:24px}
+  .rcard{gap:7px;padding:6px 7px}
+  .rcard .sub{font-size:9px}
+  #left #tut{grid-column:1/-1}
+  #left #tut h4{display:block}
+  .krow.hidem{display:none}
+  .grid{grid-template-columns:1fr 1fr}
+}
+@media(max-width:460px){
+  .grid{grid-template-columns:1fr}
+  .g{grid-template-columns:34px 1fr auto;gap:8px}
+  .gi{width:36px;height:36px;padding:4px}
+  .loc{margin-left:0;font-size:7.2px;letter-spacing:.1em;padding:2px 5px 1px;opacity:.7}
+  .gm,.gx{font-size:9.2px;letter-spacing:-.2px}
+  .gb{min-width:92px;padding:6px 8px}
+  .brand h1{font-size:12px;letter-spacing:.2em}
+}

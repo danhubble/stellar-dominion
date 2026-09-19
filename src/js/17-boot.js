@@ -1,0 +1,113 @@
+/* ============================ boot ============================ */
+const had=load();
+if(!had)playOpening();
+$("#btnMute").textContent=S.muted?"♪̸":"♪";
+$("#riOre").innerHTML=RI("ore","");$("#riDm").innerHTML=RI("dm","");
+$("#scanIco").innerHTML=RES_ICON.ore;
+$("#sshScanIco").innerHTML=RES_ICON.ore;
+syncChips();
+syncMktChips();   /* patch636 */
+syncRaidMode();
+renderAll();
+if(had) offlineReport();
+lfSettleMarkOnLoad();   /* STAGE 3: resolve or restore a live fleet across a reload */
+requestAnimationFrame(frame);
+window.__SD={get S(){return S},NEXUS,buyNex,openSite,SITE,siteSlots,
+  save,load,
+  MISSIONS,ACHS,claimMission,claimAllMissions,misDone,misReady,renderMis,checkMissions,render,flag,
+  MISFX,misClaimFx,get misFxUntil(){return misFxUntil},
+  SHIPS,RAIDS,newTarget,fleetDPS,fleetHPMax,fleetCount,buyShip,raidReward,engage,
+  WEAPONS,WEPMAP,parDPS,parHP,parFleet,hardpoints,wepOwned,wepSlots,equipped,buyWeapon,equipWeapon,
+  fleetEvade,repairCost,repairNow,ammoCost,buyAmmo,AMMO_LOT,refDPS,refHP,PAR_BLEND,
+  fightOdds,riskOf,blendPar,
+  PWR_SYS,PWR_MAX,ENG_EV,SHD_T,powerTotal,pwrOf,pwrUsed,pwrFree,setPower,addPower,wepOnline,
+  fireFx,bPwrBar,bWepBar,armWeapon,armedCount,
+  wepDPS,loadoutDPS,
+  RAIDLV,FCAP0,FCAPK,shipPower,fleetCap,capLeft,capMax,shipMax,shipCost,sellShip,get BT(){return BT},nexCost,resourceModal,RESDEF,
+  REFIT,rfl,refitCost,buyRefit,ROLES,RAR,rollCrew,hireCrew,dismissCrew,assignCrew,
+  hitEnemy,bUpdate,bDraw,get bScale(){return bScale},
+  hireCost,dismissValue,bridgeSlots,crewUnlocked,onBridge,crewMul,svReward,EK,EMIX,comboMul,bTapAt,
+  endBattle,rate,cryRate,softCap,clickRaw,clickCap,scanPerkMul,level,earnedLevel,
+  MEAS,HMAX,histTick,histSeries,histAt,histOk,histSample,renderStats,
+  devAction,devToggle,get devOn(){return devOn},devGrantLevels,
+  lastError,get frameErrs(){return frameErrs},
+  EXO,SYS,SYSMAP,SITE_LEN:SITE.length,exo,exoRate,exoUnlocked,exoCostOf,unlocked,
+  XPROG,xlv,xpDef,xpCost,buyXp,xTierMul,offlineCapH,
+  sysHeld,sysOpen,sysExoRate,sysOreRate,
+  enRate,EN_RING3,EN_RING4,EN_COL,
+  nexCur,nexBal,nexOwned,nexLocked,nexReqText,
+  nexLv,startFinale,startFinalBattle,PJ1_MUL,PJ2_MUL,PJ3_MUL,renderNex,offlineEff,
+  mirrorMix,mirrorWeaponFocus,FINAL_WAVE_MULT,FINAL_WAVE_EN,FINAL_BOSS_HP_SHARE,
+  FINAL_BREATHER_S,FINAL_BOSS_BREAK,FINAL_WITHDRAW_T,FINAL_CAP,
+  finalHostileObj,finalSpawnWave,finalBattleTick,finalBossBreakCheck,startFinalWithdraw,
+  endFinalBattle,finaleWon,
+  FINAL_ALLY_ORDER,ALLY_DPS_FRAC,ALLY_IV,finalAllyJoin,finalAlliesTick,allyRowX,allyRowY,
+  sysBonus,claimSystem,heldSystems,
+  SD_C0,SD_CG,SD_AUTOEV,SD_BUILD_BASE,SD_BUILD_PER,DEF_STR,SHD_HULL_PER,DEF_MODULES,
+  dmodSlots,dmodSlot,dmodEnsure,dmodBusy,dmodCost,dmodCostOre,dmodPrice,dmodBuildSecs,dmodComplete,
+  dmodBuild,dmodUpgrade,dmodRearm,dmodSwap,dmodLv,dmodSummary,dmodConsumeMines,
+  renderSysDef,renderSysOdds,defCardPct,defBalanceLabel,defClearSel,get defSel(){return defSel},openDefPicker,
+  DEF_ICON,DEF_COLOR,DEF_GLYPH,defIconHTML,hasSensorMast,defBestPreview,
+  HAN_CAP,HAN_STR_MULT,hanFleet,hanCount,hanLeft,hanDPS,hanHP,hanTotalPower,hanStrength,
+  stationHan,recallHan,recallHanAll,renderSysHan,hanModal,hanModalHTML,
+  defStrength,bestHeldDefStrength,bestHeldDefSys,defRate,defAutoFire,
+  holdOdds,holdLine,holdResolve,thq,thqAt,thqAtSys,thqDrop,thqTick,thqPrune,thqClock,
+  THQ_MAX,THQ_LIFE,SAB_CHANCE,SAB_STEAL,SAB_EN_MIN,
+  RIVALS,RIVALMAP,GARRISON,sysOwner,sysContested,assaultTarget,canAssault,engageTarget,
+  TRIP_BASE,TRIP_PER_RING,TRIP_WAIT_MS,tripSecsFor,tripFor,tripArrived,launchAssault,tripTick,renderTripMarker,
+  drawTerritory,refreshTerritory,sysLost,buildMap,closeBattle,paneNeedsTop,
+  SECTORS,SEC_LANES,SEC_EXIT,secOf,sysInSec,get mapSec(){return mapSec},setMapSec,
+  get mapZoom(){return mapZoom},setMapZoom,drawSysScene,sprite,
+  get mapMode(){return mapMode},syncMapMode,renderMapList,
+  get mapSite(){return mapSite},drawSite,
+  RVACT,RVBEH,RV_MAX,RV_GRACE,RV_MINGAP,RV_EXPAND,RV_FREEMIN,DEFLV,
+  freeSystems,ambientSystems,rivalHeldSystems,rvExpandTarget,rvMaybeExpand,rvExpandAway,
+  RV_AMBMIN,RV_AWAYMAX,rvOf,rvPressure,rvAwake,rvProvoke,rvTick,rvTargetFor,rvMaybeThreat,
+  rvMeet,rvKnown,rvFirstSystem,offlineReport,
+  /* STAGE 2 (2026-09-05): occupation, the frontier rule, the (offline-only) action
+     budget. See HANDOVER "combat build, Stage 2" for the full scope note. */
+  sysOccupied,occupySystem,occWeakMul,sysIsFrontier,frontierSystems,
+  rvFrontierTargetFor,rvMoveAway,
+  RIVAL_MOVE_HOURS,RIVAL_MOVE_CAP,RIVAL_MOVE_SECS,
+  OCC_WEAKEN_SECS,OCC_WEAKEN_MULT,
+  /* STAGE 3 (2026-09-05): telegraphed LIVE fleets - a real on-screen countdown
+     while the tab is active, reached only from frame()/boot. See HANDOVER
+     "telegraphed LIVE fleets, Stage 3" for the full scope note. */
+  get LF(){return LF}, lfCdOf, lfClock, lfMaybeLaunch, lfLaunch,
+  lfCheckExpiry, lfOpenDefence, lfResolveOffline, lfOccupy, lfClear, lfSetDue,
+  lfSettleMarkOnLoad, renderLiveFleet,
+  /* FIX 1 (2026-09-06): the arrival-choice prompt */
+  lfPromptChoice, lfClearPromptTimer, lfPromptTick, get lfPromptLive(){return lfPromptLive},
+  LIVE_FLEET_ETA_MIN, LIVE_FLEET_ETA_MAX, LIVE_FLEET_COOL_HOURS, LIVE_FLEET_COOL_SECS,
+  startDefence,defUpdate,defDraw,defFireAt,endDefence,closeDefence,defShotDmg,defBaseHP,
+  defEnemyXY,renderThreat,renderRivalBars,renderEndCard,get DT(){return DT},
+  DEF_RATE,DEF_SPD,DEF_RING,DEF_LEAK,DKIND,
+  DEF_MINE_RING,DEF_MINE_DMG_MULT,hangarEntriesFor,defHangarFire,defHangarXY,
+  TROUND,INCK,INC_VAR,TEL,cpTotal,cpLeft,ordSpent,volOn,addVolley,addOrder,clearOrders,
+  fireWeapon,wepReady,bTarget,bTapWep,bUpdateWep,renderArmoury,EFIRE,WEP_CAP,
+  SYS_N,SYS_COL,SYS_HP,SYS_REP,sysListFor,sysUp,sysAt,hitSystem,
+  WEP_HP,wepHpMul,WEP_INC,FUSE_S,WEP_BLAST,
+  WAVE_FRAC,WAVE_T,waveTFor,WAVE_ADD,WAVE_HP_MULT,WAVE_DPS_MULT,PRESSURE_IV,PRESSURE_DMG,
+  sfx,SFX,SFX_TRIM,fireCueFor,renderCueOffline,jit,
+  ARCH,mixFor,pickKindFrom,pickKind,
+  CASC_EXP,CORE_ADD_MAX,SHIP_SOFT,shipCountMul,
+  AUTO_MULT,AUTO_YIELD,AUTO_FHP_COST,canAutoResolve,autoResolveTarget,autoEngage,
+  playerY,SHOT_T,
+  forecastSplit,evadeOf,landedPips,isRaw,
+  resolveRound,forecastIncoming,screenCut,telAll,bTapTurn,pendingLevels,takeLevel,lvOffer,lvModal,lvSummary,
+  PERKS,pkl,costMul,perkSummary,xpNeed,grantXp,xpSeed,xpSeedAll,xpOnWins,xpOnDef,xpCrewFull,checkAchs,xpNext,LVXP,LVXP_PTS,lvlMul,UNLOCK,checkLevel,tick,doScan,fmt,GENS,adopt,fresh,clickPow,tot,globalMul,RESH,resCur,resBal,resCost,buyRes,
+  LADDER_KINDS,LADDERS,ladderKindOf,sysLadder,sysTierCount,builtSystems,sysNextGi,tierBuildable,
+  ladderRate,ladderPerUnit,ladderCost,ladderMaxAff,ladderGain,ladderExoId,ladderExoCost,ladderBuy,
+  ladderMarquee,gCount,anyOf,
+  KIND_INFO,empFurthestRing,gotoTab,
+  VEGA,VEGA_NAME,NOTICES,queueNotice,purgeVegaNotices,checkUnlocks,dismissNotice,
+  STORY,playScene,sceneAdvance,sceneFinish,sceneClose,get sceneOn(){return sceneOn},
+  playOpening,
+  RIVAL_MSG,queueRivalNotice,rivalMsgWho,get noticeShownKey(){return noticeShownKey},
+  applyPeace,revertPeace,showEnding,endStats,endStageHTML,endAdvance,endSkip,endClose,
+  get endOn(){return endOn}, get endStage(){return endStage}, END_STAGES,
+  ensureCrewPool,refreshCrewPool,hireCandidate,crewRefreshCost,makeDeckhands,
+  sellRes,mktPrice,mktHeat,mktHeatMul,mktBasePrice,mktAmount,get mktBuy(){return mktBuy},mktBal,mktResLabel,
+  svOrePrice,svCryPrice,svExoPrice,dmOrePrice,renderMarket,openStatsPane,
+  mktSvKinds,exoModal,exoEverBanked,exoEverBankedAny,
+  renderSysBuild};

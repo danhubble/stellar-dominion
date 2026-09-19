@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>STELLAR DOMINION — Idle Space Empire</title>
+<style>
+@@CSS@@
+</style>
+</head>
+<body>
+<canvas id="sky"></canvas><div id="glow"></div>
+
+<div id="devp">
+  <div class="dvh"><span class="dvt">DEV TOOLS</span><button class="dvx" id="devClose">×</button></div>
+  <div class="dvg">
+    <button class="dvb" data-dev="l1">+1 LEVEL</button>
+    <button class="dvb" data-dev="l5">+5</button>
+    <button class="dvb" data-dev="l25">+25</button>
+    <button class="dvb" data-dev="ore">×100 ORE</button>
+    <button class="dvb" data-dev="exo">FILL EXOTICS</button>
+    <button class="dvb" data-dev="sys">CLAIM ALL SYSTEMS</button>
+    <button class="dvb" data-dev="str">1 OF EACH STRUCTURE</button>
+    <button class="dvb" data-dev="mode">COMBAT: TURN</button>
+    <button class="dvb" data-dev="atk">SEND A FLEET</button>
+    <button class="dvb" data-dev="introReplay">REPLAY INTRO</button>
+    <button class="dvb" data-dev="startFinale">START FINALE</button>
+    <button class="dvb" data-dev="giveNodes">GIVE 2000 NODES</button>
+    <button class="dvb" data-dev="holdNyx">HOLD NYX</button>
+    <button class="dvb" data-dev="winFinale">WIN FINALE</button>
+    <button class="dvb" data-dev="showEnding">SHOW ENDING</button>
+    <button class="dvb" data-dev="resetEnding">RESET ENDING</button>
+  </div>
+  <div class="dvvega">
+    <select id="devVegaSel"></select>
+    <button class="dvbv" id="devVegaShow">SHOW</button>
+    <button class="dvbv" id="devVegaNext">NEXT</button>
+    <button class="dvb" data-dev="vega">REPLAY ALL</button>
+  </div>
+  <div class="dvn" id="devInfo"></div>
+</div>
+<div id="app">
+<header>
+  <div class="brand">
+    <h1>STELLAR DOMINION</h1>
+    <button id="runlbl">Level 1</button>
+    <span class="sp"></span>
+    <button class="icnbtn" id="btnSave">SAVE</button>
+    <button class="icnbtn" id="btnMute">♪</button>
+  </div>
+  <div class="res">
+    <button class="rcard c-ore" data-res="ore" title="Ore — tap for detail"><div class="ricon" id="riOre"></div><div><div class="val" id="vOre">0</div><div class="sub" id="vRate">0 /s</div></div></button>
+    <button class="rcard c-dm" data-res="dm" title="Dark Matter — tap for detail"><div class="ricon" id="riDm"></div><div><div class="val" id="vDm">0</div><div class="sub" id="vDmS">for the Nexus</div></div></button>
+    <!-- patch607: the context card. No data-res (see the header note above) — the
+         generic .rcard[data-res] click-wiring skips it; patch630 gives it its own
+         dedicated wiring instead (see exoModal()), gated on exoEverBankedAny(). -->
+    <button class="rcard c-ctx" id="ctxCard" title="Selected system"><div class="ricon"><i class="exdot" id="ctxDot"></i></div><div><div class="val" id="vCtxVal">—</div><div class="ctxnums"><div class="sub" id="vCtxName">—</div><div class="sub" id="vCtxRate"> </div></div></div></button>
+  </div>
+</header>
+
+<main>
+  <aside id="left">
+    <button id="scan" class="scanbtn">SCAN SECTOR<small>free · yields <b id="clickv">+1</b> <svg class="ci ore" viewBox="0 0 48 48" id="scanIco"></svg></small></button>
+    <div id="tut" class="mini" style="border-color:rgba(92,230,165,.45);background:rgba(20,60,45,.35)">
+      <h4 style="color:var(--gr)">Getting started</h4>
+      <!-- PLACEHOLDER: patch618b - #tut removes itself the instant the player
+           builds anything or clicks 25 times (renderCtxCard()'s caller, ~line 5498),
+           so on a real playthrough this box is gone again long before a longer
+           version would ever be scrolled to - trimmed to only what a brand-new
+           player needs right now (see HANDOVER for the full reasoning: the deleted
+           paragraphs' only real effect was height, and height was crushing the map
+           pane at short viewports). Owner rewrites all story/tutorial copy later. -->
+      <div style="font-size:11px;color:var(--mut);line-height:1.5">
+        Scanning is <b style="color:var(--gr)">free</b> — tap it (or press Space) to mine ore by hand.
+        Bank 10 ore and buy your first <b>Mining Drone</b>; drones mine for you forever.
+        <br><br>Tap your homeworld on the map to open it and build.
+      </div>
+    </div>
+    <div class="mini">
+      <h4>Empire</h4>
+      <div class="krow"><span>Structures</span><span id="kStruct">0</span></div>
+      <div class="krow"><span>Global bonus</span><span id="kMult">×1.00</span></div>
+      <div class="krow hidem"><span>All-time ore</span><span id="kAll">0</span></div>
+      <div class="krow"><span>Dark Matter</span><span id="kDm">0</span></div>
+    </div>
+    <div class="mini note" style="font-size:10px;color:var(--dim);line-height:1.5">
+      No real money, ever. Every currency here — including Dark Matter — is earned by playing.
+    </div>
+  </aside>
+
+  <section id="right">
+    <nav>
+      <button class="tab on" data-p="p-map">Empire<i class="dot"></i></button>
+      <button class="tab" data-p="p-mis">Missions<i class="dot"></i></button>
+      <button class="tab" data-p="p-res">Research<i class="dot"></i></button>
+      <button class="tab" data-p="p-raid">Raids<i class="dot"></i></button>
+      <button class="tab" data-p="p-nex">Nexus<i class="dot"></i></button>
+      <button class="tab" data-p="p-mkt">Market<i class="dot"></i></button>
+    </nav>
+    <div id="view">
+      <div class="pane" id="p-res">
+        <div id="resCryStrip"></div>
+        <div id="resMode" class="rmode">
+          <button class="rmbtn on" data-rm="tree">TECH TREE</button>
+          <button class="rmbtn" data-rm="prog">PROGRAMMES</button>
+        </div>
+        <div id="resTreePane">
+          <div id="resTabs"></div>
+          <div id="rinfo"></div>
+          <div id="tree"><svg id="treeLines" aria-hidden="true"></svg><div id="treeGrid"></div></div>
+        </div>
+        <div id="resProgPane" hidden>
+          <div id="progList"></div>
+        </div>
+      </div>
+      <div class="pane" id="p-raid">
+        <div id="endCard"></div>
+        <div id="thrCard"></div>
+        <div id="raidTop">
+          <div id="raidMode" class="rmode">
+            <button class="rmbtn on" data-rd="targets">TARGETS<i class="dot"></i></button>
+            <button class="rmbtn" data-rd="fleet">FLEET<i class="dot"></i></button>
+            <button class="rmbtn" data-rd="loadout">LOADOUT<i class="dot"></i></button>
+            <button class="rmbtn" data-rd="crew">CREW<i class="dot"></i></button>
+          </div>
+          <div id="flStrip">
+            <div class="fl-h"><span class="fl-t">FLEET</span>
+              <span class="fl-st" id="flStat"></span>
+              <button class="svchip" id="svChip" title="Salvage — tap for detail"></button></div>
+            <div class="fl-hp"><i id="flHp"></i><span id="flHpT"></span></div>
+            <button id="flFix">REPAIR</button>
+          </div>
+        </div>
+        <div id="rpTargets">
+          <div class="sechead">Available targets</div>
+          <p class="hint" id="raidHint">Raiding is hands-on: your fleet fires on its own, but tapping a hostile lands a manual volley. Kill them faster and you take less damage.</p>
+          <div class="grid" id="tgts"></div>
+          <div id="rvPressureWrap">
+            <div class="sechead">Rival pressure <span class="shsub">they answer what you do</span></div>
+            <div id="rvBars"></div>
+          </div>
+        </div>
+        <div id="rpFleet" hidden>
+          <div id="flWarn"></div>
+          <div class="buybar" style="margin:9px 0 2px">
+            <span style="font-size:10px;letter-spacing:.16em;color:var(--dim)">BUY</span>
+            <button class="chip" data-b="1">×1</button>
+            <button class="chip" data-b="10">×10</button>
+            <button class="chip" data-b="100">×100</button>
+            <button class="chip" data-b="max">MAX</button>
+            <button class="chip scrapc">SCRAP</button>
+          </div>
+          <div id="flShips"></div>
+        </div>
+        <div id="rpLoadout" hidden>
+          <div class="sechead">Armoury <span class="shsub">weapons · bought with salvage</span></div>
+          <div id="ammoBar"></div>
+          <div class="slotbar" id="wepSlots"></div>
+          <div id="armoury"></div>
+          <div class="sechead">Refits <span class="shsub">permanent · bought with salvage</span></div>
+          <div class="grid" id="refits"></div>
+        </div>
+        <div id="rpCrew" hidden>
+          <div class="sechead" id="crewHead">Crew <span class="shsub" id="crewSub"></span></div>
+          <div id="crewWrap">
+            <div id="bridge"></div>
+            <div id="roster"></div>
+            <div class="sechead2" id="candHead">Candidates</div>
+            <div id="candPool"></div>
+            <div class="hirebar"><button id="btnRefreshCrew">REFRESH</button>
+              <span class="hirenote" id="hireNote"></span></div>
+          </div>
+        </div>
+      </div>
+      <div class="pane" id="p-mis">
+        <p class="hint">Sequential contracts from the Colonial Authority. Complete one to reveal the next.</p>
+        <div class="grid" id="mis"></div>
+      </div>
+      <div class="pane on" id="p-map">
+        <!-- patch613b: rehomed verbatim from the old #p-emp (deleted by patch612) -
+             same id, same renderLiveFleet(), no rewrite - it is an alert, usually
+             absent, wants to be nearest the top. Not inside #mapWrap, so patch603's
+             own .zoomed class (scoped to #mapWrap's children) never hides it -
+             stays on screen while zoomed, which is the point: a live fleet inbound
+             matters even mid-zoom. patch630: #exoStrip, which used to sit right
+             after this, is gone - the header's context card (#ctxCard) is tappable
+             now instead, see exoModal(). -->
+        <div id="lfBanner"></div>
+        <div id="mapChips"></div>
+        <!-- patch614: session-only MAP | LIST sub-toggle, same .rmode/.rmbtn
+             pattern as #resMode/#raidMode - see mapMode/syncMapMode(). -->
+        <div id="mapMode" class="rmode">
+          <button class="rmbtn on" data-mm="map">MAP</button>
+          <button class="rmbtn" data-mm="list">LIST</button>
+        </div>
+        <div id="mapWrap"><canvas id="mapBg" width="600" height="600"></canvas><svg id="mapLinks" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
+          <div id="mapNodes"></div><div id="mapEdge"></div><canvas id="mapZoom"></canvas>
+          <div id="mapZoomBar"><button type="button" id="mapZoomBack">&lsaquo; MAP</button><div id="mapZoomName"></div></div></div>
+        <div id="mapList" hidden></div>
+        <div id="sysSheet">
+          <div id="sysThreat" hidden></div>
+          <div id="sysInfo"></div>
+          <div id="sysAct"></div>
+          <div id="sysBuild" hidden>
+            <div id="sysBuildHead"><span>Buildings</span><span id="sysBuildCount"></span></div>
+            <div class="buybar">
+              <button class="chip on" data-b="1">×1</button>
+              <button class="chip" data-b="10">×10</button>
+              <button class="chip" data-b="100">×100</button>
+              <button class="chip" data-b="max">MAX</button>
+            </div>
+            <div id="sysBuildRows"></div>
+          </div>
+          <div id="sysOdds" hidden></div>
+          <div id="sysDefWrap" hidden>
+            <div id="sysDefHead"></div>
+            <div id="sysDefRow"></div>
+            <div id="sysDefDetail" hidden></div>
+          </div>
+          <div id="sysHanWrap" class="row" hidden></div>
+          <div id="sysThreatActs" class="row" hidden></div>
+          <!-- patch624: created ONCE here, never rebuilt - tchurn2.js sweeps every
+               on-pane button for DOM-identity churn. #sshScanBar (this wrapper) is
+               what renderSysSheet() hides while #sysThreatActs is showing (both are
+               position:fixed;bottom:0 - mutually exclusive, never both visible).
+               #sshScan wires to the exact same doScan(e) #scan does; #sshScanIco/
+               #sshScanV fill/update the same way #scanIco/#clickv already do.
+               Starts VISIBLE (no `hidden` here), not hidden - renderSysSheet()'s own
+               `if(s.home||!act){...;return}` returns before ever reaching the block
+               that would otherwise show/hide this against #sysThreatActs, so the
+               home system never runs that logic at all (pre-existing, unrelated to
+               this patch - home's sheet has never shown #sysThreatActs either).
+               Defaulting to visible is what keeps the button present for home, same
+               as every other system's resting state once no threat is queued. -->
+          <div class="sshscanbot" id="sshScanBar">
+            <button type="button" id="sshScan" class="scanbtn" aria-label="Scan for ore">SCAN SECTOR<small>free · yields <b id="sshScanV">+1</b> <svg class="ci ore" viewBox="0 0 48 48" id="sshScanIco"></svg></small></button>
+          </div>
+        </div>
+      </div>
+      <div class="pane" id="p-nex">
+        <p class="hint">Permanent upgrades bought with Dark Matter. Nothing here costs money — DM comes from missions and from claiming new systems.</p>
+        <div class="grid" id="nex"></div>
+      </div>
+      <div class="pane" id="p-mkt">
+        <p class="hint">Sell surplus ore, crystal or exotics. Prices track your own
+          economy so they stay relevant — and each sale nudges that price up for a while.</p>
+        <div class="buybar">
+          <span style="font-size:10px;letter-spacing:.16em;color:var(--dim)">AMOUNT</span>
+          <button class="chip on" data-mb="1">×1</button>
+          <button class="chip" data-mb="10">×10</button>
+          <button class="chip" data-mb="100">×100</button>
+          <button class="chip" data-mb="1000">×1K</button>
+          <button class="chip" data-mb="10000">×10K</button>
+          <button class="chip" data-mb="max">MAX</button>
+        </div>
+        <div class="sechead2">SALVAGE</div>
+        <div class="grid" id="mktSv"></div>
+        <div class="sechead2">DARK MATTER</div>
+        <div class="grid" id="mktDm"></div>
+        <div class="row" style="margin-top:14px">
+          <button class="ghost" id="mktStatsLink">Records &amp; graphs</button>
+        </div>
+      </div>
+      <div class="pane" id="p-ach">
+        <div id="kpis"></div>
+        <div id="mchips"></div>
+        <div id="chartBox">
+          <div id="chartHead"><span id="chartTtl">Production</span>
+            <span id="chartScale"></span></div>
+          <svg id="chart" viewBox="0 0 300 150" preserveAspectRatio="none"
+            role="img" aria-label="History chart"></svg>
+          <div id="chartEmpty"></div>
+          <div id="chartTip"></div>
+        </div>
+        <div class="sechead2">RECORDS</div>
+        <p class="hint">Each record grants a permanent global production bonus.</p>
+        <div class="grid" id="ach"></div>
+      </div>
+    </div>
+  </section>
+</main>
+</div>
+
+<div class="mask" id="mask"><div class="modal" id="modal"></div></div>
+<!-- patch629: moved out of #app - see the CSS comment on .noticebar for why. Same
+     ids inside, unchanged: renderNotice()/dismissNotice() never had to change. -->
+<div id="notice" class="noticebar">
+  <div class="noticepanel">
+    <div class="noticebody">
+      <div id="noticeAv" hidden></div>
+      <div class="noticecontent">
+        <div class="noticewho" id="noticeWho" hidden></div>
+        <div class="noticetxt" id="noticeTxt"></div>
+      </div>
+    </div>
+    <div class="noticebtns">
+      <button id="noticeGo">TAKE ME THERE</button>
+      <button id="noticeX" title="Dismiss">✕</button>
+    </div>
+  </div>
+</div>
+<div id="scene" class="scene"></div>
+<div id="endScene" class="scene"></div>
+<div id="defence">
+  <canvas id="dcv"></canvas>
+  <div class="dh-top">
+    <div class="dh-x"><div class="dh-n" id="dName">—</div><div class="dh-m" id="dMeta">—</div></div>
+    <button id="dQuit">ABANDON</button>
+  </div>
+  <div class="dh-bot">
+    <div class="dtl"><i id="dTmF"></i><span id="dTmT"></span></div>
+    <div class="dhp"><i id="dHpF"></i><span id="dHpT"></span></div>
+    <div class="dtip" id="dTip">Tap <b>ahead</b> of a ship — your shots take time to arrive</div>
+  </div>
+  <div id="dRes"></div>
+</div>
+<div id="battle">
+  <canvas id="bcv"></canvas>
+  <div id="bCombo"></div>
+  <div class="bh-top">
+    <div class="bh-x"><div class="bh-n" id="bName">—</div><div class="bh-m" id="bMeta">—</div><div class="bh-esc" id="bEsc"></div></div>
+    <button id="bRetreat">RETREAT</button>
+  </div>
+  <div class="bh-bot">
+    <div class="bhp"><i id="bHpF"></i><span id="bHpT"></span></div>
+    <div class="bab">
+      <button id="abFocus"><b>FOCUS FIRE</b><i>×2.5 damage · 5s</i><u id="cdFocus"></u></button>
+      <button id="abFlak"><b>FLAK SCREEN</b><i>−65% incoming · 5s</i><u id="cdFlak"></u></button>
+    </div>
+    <div class="btip" id="bTip">Tap the glowing seam for a critical · chain hits to build the multiplier</div>
+    <div id="bPwr"></div>
+    <button id="bPause">PAUSE</button>
+    <div id="bWep"></div>
+    <div id="bTurn">
+      <div class="tr-h"><span class="tr-r" id="trRound">ROUND 1</span>
+        <span class="tr-inc" id="trInc"></span>
+        <span class="tr-cp" id="trCp">0</span><span class="tr-pips" id="trPips"></span></div>
+      <div class="tr-g">
+        <button class="tr-b scr" id="trScr"><span>SHIELDS</span><b>0</b><small>−28% incoming</small></button>
+        <button class="tr-b rep" id="trRep"><span>REPAIR</span><b>0</b><small>+7% hull each</small></button>
+      </div>
+      <div class="tr-go"><button id="bResolve">RESOLVE</button><button id="bClear">CLEAR</button></div>
+    </div>
+  </div>
+  <div id="bRes"></div>
+</div>
+<div id="toasts"></div>
+
+<script>
+@@JS@@
+</script>
+</body>
+</html>

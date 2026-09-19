@@ -1,0 +1,88 @@
+/* ---------- cards ---------- */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(228px,1fr));gap:8px}
+.card{
+  border:1px solid var(--line);border-radius:11px;padding:10px;background:var(--panel);
+  display:flex;flex-direction:column;gap:6px
+}
+.card.ok{border-color:rgba(92,230,165,.45)}
+.card.done{border-color:rgba(168,120,255,.45);background:rgba(60,40,110,.28)}
+.card.locked{opacity:.5;filter:grayscale(.4)}
+.card.seized{opacity:.5;filter:grayscale(.6);border-color:rgba(255,107,138,.35)}   /* patch589 */
+.card.rdy{border-color:rgba(255,209,102,.55);background:rgba(255,209,102,.07)}
+.card.rdy h5{color:var(--gd)}
+.card.rdy button.misclaim,.misall{
+  border:1px solid rgba(255,209,102,.6);background:rgba(255,209,102,.14);color:var(--gd);
+  border-radius:9px;padding:10px;cursor:pointer;font:800 12px/1 system-ui;letter-spacing:.16em}
+.misall{width:100%;margin-bottom:8px}
+.card.rdy button.misclaim:hover,.misall:hover{background:rgba(255,209,102,.24)}
+
+/* ---------- claiming a contract ---------- */
+/* A ready contract is gold; a claimed one resolves to green, the colour this game already
+   uses for good news. The card is positioned so the sweep has something to sit inside. */
+.card.rdy{position:relative;overflow:hidden;
+  transition:border-color .22s ease-out,background .22s ease-out,box-shadow .22s ease-out}
+.card.rdy.claimed{border-color:rgba(92,230,165,.75);background:rgba(92,230,165,.10);
+  box-shadow:0 0 0 1px rgba(92,230,165,.22),0 0 30px -8px rgba(92,230,165,.6)}
+.card.rdy.claimed h5{color:var(--gr)}
+.card.rdy.claimed .eff{color:var(--gr)}
+/* one pass of light across the card - the acknowledgement of the tap */
+.card.rdy.claimed:before{content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(105deg,transparent 34%,rgba(92,230,165,.22) 50%,transparent 66%);
+  background-size:300% 100%;animation:missweep .6s ease-out forwards}
+@keyframes missweep{from{background-position:130% 0}to{background-position:-70% 0}}
+/* the button confirms rather than vanishing */
+.card.rdy button.misclaim.done{border-color:rgba(92,230,165,.75);
+  background:rgba(92,230,165,.20);color:#c9ffe8;cursor:default;
+  animation:misstamp .4s cubic-bezier(.2,1.5,.4,1)}
+@keyframes misstamp{0%{transform:scale(1)}34%{transform:scale(1.055)}100%{transform:scale(1)}}
+/* and then gets out of the way */
+.card.rdy.gone{max-height:0;opacity:0;padding-top:0;padding-bottom:0;border-width:0;
+  transition:max-height .3s ease-in,opacity .24s ease-in,padding .3s ease-in,
+             border-width .3s ease-in}
+
+/* the reward itself, in flight from the card to the resource it lands in */
+/* Sized to be READ, not noticed. At 13px on a starfield this was a detail; the beat
+   only works if the reward is the loudest thing on screen while it is crossing it. */
+.rwfly{position:fixed;z-index:60;pointer-events:none;white-space:nowrap;
+  display:flex;align-items:center;gap:5px;opacity:0;
+  font:900 16px/1 ui-monospace,monospace;color:#d6ffec;
+  padding:5px 10px;border-radius:999px;
+  border:1px solid rgba(92,230,165,.65);background:rgba(10,38,28,.82);
+  box-shadow:0 0 20px -2px rgba(92,230,165,.75),0 6px 18px rgba(0,0,0,.5);
+  text-shadow:0 0 10px rgba(92,230,165,.9);
+  animation:rwfly .62s cubic-bezier(.42,.02,.3,1) forwards}
+.rwfly svg{width:16px;height:16px}
+@keyframes rwfly{
+  0%{opacity:0;transform:translate(-50%,-50%) scale(.72)}
+  14%{opacity:1;transform:translate(-50%,-50%) scale(1.16)}
+  30%{transform:translate(-50%,-50%) scale(1)}
+  /* lags horizontally and lifts early, so the path bows rather than sliding on a rail */
+  58%{opacity:1;transform:translate(calc(-50% + var(--dx,0px)*.42),
+                                    calc(-50% + var(--dy,0px)*.20 - 16px)) scale(.94)}
+  100%{opacity:0;transform:translate(calc(-50% + var(--dx,0px)),
+                                     calc(-50% + var(--dy,0px))) scale(.5)}}
+/* the resource card acknowledges the arrival, so the reward lands somewhere visible */
+.rcard.land{animation:rcland .44s ease-out}
+@keyframes rcland{
+  0%{box-shadow:0 0 0 0 rgba(92,230,165,.6)}
+  45%{box-shadow:0 0 0 7px rgba(92,230,165,0);transform:translateY(-2px)}
+  100%{box-shadow:0 0 0 0 rgba(92,230,165,0);transform:translateY(0)}}
+
+@media(prefers-reduced-motion:reduce){
+  .card.rdy.claimed:before{animation:none;background:none}
+  .card.rdy button.misclaim.done{animation:none}
+  .rcard.land{animation:none}
+  .rwfly{display:none}
+  .card.rdy.gone{transition:opacity .12s linear}
+  .noticebar,.noticepanel{transition:none}   /* patch629: no slide, just show */
+}
+.card h5{margin:0;font:600 12px/1.25 system-ui}
+.card p{margin:0;font-size:11px;color:var(--mut);flex:1}
+.card .eff{font-size:11px;color:var(--gd);font-family:ui-monospace,monospace}
+.card button{
+  border:1px solid var(--line2);background:rgba(72,226,255,.09);color:var(--txt);
+  border-radius:8px;padding:7px;cursor:pointer;font:600 11px/1 ui-monospace,monospace
+}
+.card button:disabled{cursor:not-allowed;color:var(--dim2);border-color:var(--line);background:rgba(255,255,255,.03)}
+.lv{font-size:10px;color:var(--dim);font-family:ui-monospace,monospace}
+

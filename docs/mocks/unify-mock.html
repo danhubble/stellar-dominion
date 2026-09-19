@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Unify mock — Map/Empire restructure</title>
+<style>
+/* ============================================================
+   Tokens copied verbatim from stellar-dominion-empire2.html :root
+   ============================================================ */
+:root{
+  --bg:#04050d; --bg2:#080b1c;
+  --panel:rgba(14,19,42,.72); --panel2:rgba(20,26,54,.85);
+  --line:rgba(96,142,255,.20); --line2:rgba(96,142,255,.38);
+  --txt:#dde5ff; --mut:#8390bd; --dim:#5a6693; --dim2:#7683ad;
+  --cy:#48e2ff; --vi:#a878ff; --gd:#ffd166; --gr:#5ce6a5; --rd:#ff6b8a; --sv:#a9bcd4;
+  --k-ore:#ffb45c; --k-rock:#c7b299; --k-gas:#ffd166; --k-belt:#8fb8ff;
+  --k-ice:#79c6ef; --k-void:#a878ff; --k-home:#5ce6a5; --k-void-text:#b58cff;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:#000; color:var(--txt);
+  font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  padding:32px 16px 90px;
+}
+h1{color:var(--txt);font:700 18px/1.3 system-ui;text-align:center;margin:0 0 6px}
+h1 small{display:block;font:600 11.5px/1.5 system-ui;color:var(--dim);letter-spacing:0;margin-top:8px;max-width:640px;margin-left:auto;margin-right:auto}
+.row{display:flex;flex-direction:column;align-items:center;gap:10px;margin:0 0 60px}
+.cap{font:800 12px/1 system-ui;letter-spacing:.14em;color:var(--cy);text-transform:uppercase;
+  background:rgba(72,226,255,.10);border:1px solid rgba(72,226,255,.35);padding:6px 14px;border-radius:20px}
+.cap.today{color:var(--mut);background:rgba(131,144,189,.08);border-color:rgba(131,144,189,.3)}
+.subcap{font:600 11px/1.4 system-ui;color:var(--dim);text-align:center;max-width:390px}
+
+/* ---------------- phone frame ---------------- */
+.phone{width:390px;height:844px;max-width:100%;position:relative;overflow:hidden;
+  background:var(--bg);border:1px solid rgba(120,150,255,.28);border-radius:38px;
+  box-shadow:0 30px 60px -20px rgba(0,0,0,.8), 0 0 0 6px #0a0c18;
+}
+.notch{position:absolute;top:10px;left:50%;transform:translateX(-50%);width:120px;height:22px;
+  background:#000;border-radius:12px;z-index:30}
+.screen{position:absolute;inset:0;display:flex;flex-direction:column;overflow:hidden}
+
+/* ============================================================
+   Header (copied from <header>/.brand/.res/.rcard, ~line 99-142)
+   ============================================================ */
+header{flex:0 0 auto;padding:26px 14px 6px;border-bottom:1px solid var(--line);
+  background:linear-gradient(180deg,rgba(6,9,24,.94),rgba(6,9,24,.62))}
+.brand{display:flex;align-items:center;gap:8px}
+.brand h1{margin:0;font-size:12.5px;letter-spacing:.26em;font-weight:700;text-align:left;
+  background:linear-gradient(90deg,var(--cy),var(--vi) 60%,var(--gd));
+  -webkit-background-clip:text;background-clip:text;color:transparent;white-space:nowrap}
+.lvlbtn{border:1px solid var(--line);color:var(--dim);
+  background:rgba(255,255,255,.05);border-radius:8px;padding:4px 8px;font:700 9px/1 system-ui;
+  letter-spacing:.16em;text-transform:uppercase;white-space:nowrap}
+.brand .sp{flex:1}
+.icnbtn{background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--mut);
+  border-radius:8px;padding:4px 7px;font-size:10px}
+.res{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px}
+.rcard{border:1px solid var(--line);border-radius:10px;padding:6px 8px;
+  background:linear-gradient(180deg,rgba(30,40,80,.45),rgba(12,16,36,.45));
+  display:flex;align-items:center;gap:7px;min-width:0;position:relative}
+.rcard:after{content:"";position:absolute;top:5px;right:6px;width:3px;height:3px;border-radius:50%;
+  background:currentColor;opacity:.30}
+.c-ore:after{color:var(--cy)} .c-dm:after{color:var(--gd)} .c-cry:after{color:var(--vi)} .c-ctx:after{color:var(--a,var(--mut))}
+.ricon{flex:0 0 26px;width:26px;height:26px}
+.ricon svg{width:100%;height:100%;display:block}
+.c-ore .ricon{color:var(--cy)} .c-dm .ricon{color:var(--gd)} .c-cry .ricon{color:var(--vi)} .c-ctx .ricon{color:var(--a,var(--dim))}
+.rcard .val{font:600 14px/1.15 ui-monospace,SFMono-Regular,Menlo,monospace;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rcard .sub{font-size:9px;color:var(--mut);font-family:ui-monospace,monospace;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:.04em}
+.c-cry .val{color:var(--vi)}
+.c-ore .val{color:var(--cy)} .c-dm .val{color:var(--gd)} .c-ctx .val{color:var(--a,var(--txt))}
+.c-ctx .sub{color:var(--a,var(--mut));opacity:.85}
+
+/* ---------------- nav / tabs ---------------- */
+nav{flex:0 0 auto;display:flex;gap:4px;padding:8px 10px 0;overflow-x:auto;border-bottom:1px solid var(--line)}
+.tab{border:1px solid transparent;border-bottom:none;background:none;color:var(--mut);
+  padding:6px 10px;border-radius:8px 8px 0 0;white-space:nowrap;
+  font:600 10.5px/1 system-ui;letter-spacing:.08em;text-transform:uppercase}
+.tab.on{color:var(--txt);border-color:var(--line);background:var(--panel);box-shadow:0 -2px 0 var(--cy) inset}
+
+.view{flex:1 1 auto;position:relative;overflow:hidden}
+.view.list{overflow-y:auto;padding:10px 12px 16px}
+.hint{font-size:10.5px;color:var(--dim);line-height:1.5;margin:0 0 9px}
+
+/* ============================================================
+   Map (planet-zoom state, copied from zoom-mock.html state A —
+   #mapWrap/.planetHud/.planetBack/.planetTitle/#mapZoom)
+   ============================================================ */
+.mapWrap{position:relative;width:100%;height:100%;
+  background:radial-gradient(circle at 50% 50%,rgba(60,90,190,.18),rgba(6,9,22,.85) 68%)}
+.planetHud{position:absolute;left:0;right:0;top:0;display:flex;align-items:center;gap:7px;
+  padding:8px 8px;z-index:5;background:linear-gradient(180deg,rgba(4,6,16,.85),rgba(4,6,16,0))}
+.planetBack{border:1px solid var(--line2);background:rgba(8,12,30,.8);
+  color:var(--mut);border-radius:6px;padding:5px 9px;cursor:pointer;
+  font:700 11px/1 system-ui;letter-spacing:.12em;flex:none}
+.planetTitle{flex:1;text-align:center;font:700 11px/1 system-ui;letter-spacing:.14em;color:var(--txt);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-right:34px}
+.planetCv{position:absolute;inset:0;width:100%;height:100%;display:block}
+
+/* ============================================================
+   Bottom sheet (copied from #sysSheet ~1060-1170)
+   ============================================================ */
+.sysSheet{position:absolute;left:0;right:0;bottom:0;z-index:15;
+  border-radius:16px 16px 0 0;border:1px solid var(--line2);border-bottom:none;
+  background:linear-gradient(180deg,#101637,#0a0e24);box-shadow:0 -14px 34px -6px rgba(0,0,0,.6);
+  padding:6px 14px 14px;max-height:58%;overflow-y:auto}
+.sshgrab{width:38px;height:4px;border-radius:2px;background:rgba(255,255,255,.22);margin:2px auto 8px}
+.sshx{position:absolute;top:10px;right:12px;border:1px solid var(--line);border-radius:8px;
+  width:26px;height:26px;background:rgba(255,255,255,.05);color:var(--mut);
+  font:700 12px/1 system-ui;display:grid;place-items:center}
+#sysInfo h4{margin:0;font:700 15px/1.2 system-ui}
+.sysmeta{font:600 9.5px/1 system-ui;letter-spacing:.14em;color:var(--dim);margin-top:4px}
+
+/* ---- Buildings section header (new) ---- */
+.sechd{font:600 9.5px/1 system-ui;letter-spacing:.18em;color:var(--dim);text-transform:uppercase;
+  margin:12px 0 6px;display:flex;justify-content:space-between;gap:8px}
+
+/* ---- ladder buy rows: .g/.gi/.gb copied verbatim, ~line 253-300 ---- */
+.g{display:grid;grid-template-columns:38px 1fr auto;gap:9px;align-items:center;
+  border:1px solid var(--line);border-radius:11px;padding:8px 9px;margin-bottom:6px;
+  background:var(--panel);position:relative;overflow:hidden}
+.g::after{content:"";position:absolute;left:0;bottom:0;height:2px;width:var(--p,0%);
+  background:linear-gradient(90deg,var(--cy),var(--vi));opacity:.55}
+.g.ok{border-color:rgba(92,230,165,.42)}
+.g.next{border-style:dashed;border-color:var(--line2)}
+.g.next .gn{color:var(--dim2)}
+.g.next .gx{color:var(--dim)}
+.g.locked{opacity:.4;filter:grayscale(.5)}
+.gi{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;padding:5px;
+  border:1px solid var(--line);background:linear-gradient(180deg,rgba(120,170,255,.10),rgba(10,14,34,.6))}
+.gi svg{width:100%;height:100%;display:block;color:var(--a,#48e2ff)}
+.gtxt{min-width:0}
+.gn{font:600 12px/1.3 system-ui;display:flex;align-items:center;gap:6px}
+.gm{font-size:10.5px;color:var(--gr);font-weight:700;font-family:ui-monospace,monospace}
+.g.locked .gm{color:var(--mut);font-weight:600}
+.gx{font-size:9.5px;color:var(--dim);font-family:ui-monospace,monospace}
+.gside{display:flex;align-items:center;gap:8px}
+.gcount{font:700 14px/1 ui-monospace,monospace;text-align:right;color:var(--txt);min-width:20px}
+.gb{border:1px solid var(--line2);border-radius:9px;padding:6px 9px;min-width:92px;text-align:right;
+  background:rgba(72,226,255,.07);color:var(--txt)}
+.gb:disabled,.gb.dis{opacity:.4}
+.gb b{display:block;font:700 10.5px/1.1 ui-monospace,monospace;color:var(--cy)}
+.gb i{display:block;font:400 8.5px/1.3 system-ui;font-style:normal;color:var(--dim);letter-spacing:.08em}
+.ci{width:1.05em;height:1.05em;vertical-align:-.18em;display:inline-block;flex:none;color:var(--cy)}
+.gb .gexo{display:block;font:700 9px/1.3 ui-monospace,monospace;font-style:normal;color:var(--a,#8fb8ff)}
+.lockrow{display:flex;align-items:center;gap:9px;border:1px dashed var(--line);border-radius:11px;
+  padding:7px 9px;margin-bottom:6px;opacity:.5;font:600 10px/1.3 system-ui;color:var(--dim)}
+.lockrow .li{width:26px;height:26px;border-radius:8px;border:1px solid var(--line);display:grid;place-items:center;flex:none;font-size:11px}
+
+/* ---- defences section: #sysDefRow copied verbatim, ~line 1127-1154 ---- */
+#sysDefWrap{margin-top:2px}
+.sysDefHead{font:600 9.5px/1 system-ui;letter-spacing:.18em;color:var(--dim);text-transform:uppercase;
+  margin:14px 0 7px;display:flex;justify-content:space-between;gap:8px}
+.sysDefRow{display:flex;gap:7px}
+.sysDefRow .sc{flex:1 1 0;min-width:0;border:1px solid var(--line);border-radius:11px;
+  background:rgba(255,255,255,.02);padding:9px 6px 8px;display:flex;flex-direction:column;
+  align-items:center;gap:5px;text-align:center;border-top:3px solid var(--a,var(--line2));position:relative}
+.sysDefRow .sc .si{width:26px;height:26px;border-radius:8px;display:grid;place-items:center;
+  border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--a,var(--mut));font:700 11px/1 ui-monospace,monospace}
+.sysDefRow .sc .si svg{width:16px;height:16px;display:block}
+.sysDefRow .sc .n{font:700 9.5px/1.2 system-ui;color:var(--txt)}
+.sysDefRow .sc .lv{font:700 8px/1 ui-monospace,monospace;color:var(--dim);letter-spacing:.06em;min-height:8px}
+.sysDefRow .sc .e{font:700 9.5px/1.2 ui-monospace,monospace;color:var(--a,var(--gd))}
+.sysDefRow .sc button{width:100%;margin-top:auto;border:1px solid var(--line2);
+  background:rgba(72,226,255,.09);color:var(--cy);border-radius:8px;padding:6px 2px;
+  font:700 9px/1.15 ui-monospace,monospace}
+.sysDefRow .sc.empty{border-style:dashed;border-top-style:solid;border-top-color:var(--line);background:rgba(255,255,255,.015)}
+.sysDefRow .sc.empty .n{color:var(--dim2)}
+.sysDefRow .sc .tag{position:absolute;top:-8px;right:5px;font:800 6.8px/1 system-ui;letter-spacing:.08em;
+  padding:2px 4px;border-radius:4px;background:#0b1026;border:1px solid currentColor}
+.sysDefRow .sc .tag.ok{color:var(--gr)}
+
+/* ============================================================
+   Empire ledger (new, proposed) — reuses .sysrow2/.kindbadge from
+   ~265-350, drops .sysbody expansion entirely
+   ============================================================ */
+.exoStrip{display:flex;gap:9px;margin-bottom:10px;flex-wrap:nowrap;overflow:hidden;align-items:center}
+.exi{display:flex;align-items:center;gap:5px;overflow:hidden;flex:1 1 0;min-width:0}
+.exi .exdot{width:9px;height:9px;border-radius:50%;background:var(--a);flex:none}
+.exi:not(.held){opacity:.4}
+.exi:not(.held) .exdot{opacity:.35}
+.exi .exnums{display:flex;flex-direction:column;min-width:0;overflow:hidden}
+.exi b{font:700 12px/1.15 ui-monospace,monospace;color:var(--txt);white-space:nowrap}
+.exi span{font:600 9px/1.15 ui-monospace,monospace;color:var(--dim);white-space:nowrap}
+
+.sysrow2{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;
+  border:1px solid var(--line);border-radius:11px;padding:10px 12px;margin-bottom:7px;background:var(--panel)}
+.sysrow2.claimable{box-shadow:inset 3px 0 0 var(--gr)}
+.sysrow2.locked{opacity:.5}
+.sysrow2.held.kindtint{background:linear-gradient(var(--a-wash),var(--a-wash)),var(--panel);
+  border-color:var(--a-border);box-shadow:inset 3px 0 0 var(--a)}
+.sysrow2.held.kindtint .sysrow2-stats{color:var(--a-text)}
+.sysrow2-main{display:flex;align-items:center;gap:8px;min-width:0}
+.sysname{font:600 13px/1.2 system-ui;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lockicon{opacity:.75;font-size:12px}
+.kindbadge{font:700 8.5px/1 system-ui;letter-spacing:.1em;text-transform:uppercase;padding:3px 6px 2px;
+  border-radius:5px;background:rgba(255,255,255,.08);color:var(--a,var(--mut));border:1px solid currentColor;opacity:.85}
+.sysrow2-stats{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;
+  font:600 10.5px/1 ui-monospace,monospace;color:var(--mut)}
+.sysrow2-stats b{color:var(--txt);font-weight:700}
+.readybadge{display:inline-flex;align-items:center;gap:4px;font:800 8px/1 system-ui;letter-spacing:.06em;
+  color:var(--gr);background:rgba(92,230,165,.12);border:1px solid rgba(92,230,165,.5);
+  border-radius:20px;padding:3px 7px 2px;white-space:nowrap}
+.readybadge i{width:5px;height:5px;border-radius:50%;background:var(--gr);flex:none}
+.ringhead{margin:14px 0 7px;font:700 10px/1 system-ui;letter-spacing:.2em;color:var(--dim);text-transform:uppercase}
+.pinhead{font:700 9px/1 system-ui;letter-spacing:.2em;color:var(--dim);text-transform:uppercase;margin:2px 0 7px}
+
+/* ---------------- Empire TODAY (comparison): #core widget, buybar, accordion ---------------- */
+#coreToday{position:relative;flex:0 0 auto;height:118px;margin:8px 10px 0;border-radius:14px;
+  border:1px solid var(--line);overflow:hidden;
+  background:radial-gradient(circle at 50% 55%,rgba(40,60,140,.35),rgba(4,6,16,.9) 70%)}
+#coreToday canvas{position:absolute;inset:0;width:100%;height:100%}
+.orbBadge{position:absolute;left:7px;top:7px;z-index:2;display:flex;align-items:center;gap:5px;
+  font:700 9px/1 ui-monospace,monospace;color:#8fb8ff;background:rgba(6,9,22,.6);border-radius:20px;
+  padding:4px 8px 3px;border:1px solid rgba(143,184,255,.4)}
+.orbBadge i{width:7px;height:7px;border-radius:50%;background:currentColor}
+.buybar{display:flex;gap:6px;align-items:center;margin:10px 0 9px;flex-wrap:wrap}
+.buybar .lbl{font-size:9.5px;letter-spacing:.16em;color:var(--dim)}
+.chip{border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--mut);
+  border-radius:7px;padding:5px 9px;font:600 10.5px/1 system-ui}
+.chip.on{border-color:var(--cy);color:var(--cy);background:rgba(72,226,255,.10)}
+.sysbody{margin:2px 0 12px 0;padding:8px 8px 1px 10px;border-radius:0 10px 10px 0;
+  background:linear-gradient(var(--a-wash-body),var(--a-wash-body)),var(--panel);
+  box-shadow:inset 3px 0 0 var(--a)}
+.expandmark{font-size:9px;color:var(--dim);letter-spacing:.1em}
+</style>
+</head>
+<body>
+<h1>Unify mock — restructuring Map &amp; Empire
+<small>Four static 390&times;844 phone screens. Screens 1&ndash;3 are the proposal (map tab manages a system; empire tab becomes a plain ledger; crystal card removed from the header). Screen 4 is today&rsquo;s Empire tab, for comparison. All CSS/canvas reused from stellar-dominion-empire2.html and zoom-mock.html — see &lt;style&gt; comments for exact line references.</small>
+</h1>
+
+<!-- ================= SCREEN 1 — MAP · KORU (proposed) ================= -->
+<div class="row">
+  <div class="cap">1 — MAP · KORU (proposed)</div>
+  <div class="phone" id="ph1">
+    <div class="notch"></div>
+    <div class="screen">
+      <header>
+        <div class="brand"><h1>STELLAR DOMINION</h1><span class="sp"></span>
+          <button class="lvlbtn">LEVEL 14</button></div>
+        <div class="res">
+          <button class="rcard c-ore"><div class="ricon" data-icon="ore"></div><div><div class="val">128.4K</div><div class="sub">+842/s</div></div></button>
+          <button class="rcard c-dm"><div class="ricon" data-icon="dm"></div><div><div class="val">312</div><div class="sub">for the Nexus</div></div></button>
+          <button class="rcard c-ctx" id="ctx1" style="--a:#8fb8ff"><div class="ricon" data-icon="exo"></div><div><div class="val">8.4K</div><div class="sub">IRIDIUM</div></div></button>
+        </div>
+      </header>
+      <nav>
+        <button class="tab">Empire</button><button class="tab">Research</button>
+        <button class="tab on">Map</button><button class="tab">Raids</button>
+        <button class="tab">Nexus</button><button class="tab">Market</button>
+      </nav>
+      <div class="view">
+        <div class="mapWrap">
+          <canvas class="planetCv" data-planet="kor"></canvas>
+          <div class="planetHud"><button class="planetBack">&lsaquo; MAP</button><div class="planetTitle">KORU</div></div>
+        </div>
+        <div class="sysSheet" id="sheet1"></div>
+      </div>
+    </div>
+  </div>
+  <div class="subcap">Tap Koru on the map &rarr; zoom to its planet. Sheet opens straight to the BUILDINGS ladder for this system, defences below.</div>
+</div>
+
+<!-- ================= SCREEN 2 — MAP · SOL REACH (proposed) ================= -->
+<div class="row">
+  <div class="cap">2 — MAP · SOL REACH (proposed)</div>
+  <div class="phone" id="ph2">
+    <div class="notch"></div>
+    <div class="screen">
+      <header>
+        <div class="brand"><h1>STELLAR DOMINION</h1><span class="sp"></span>
+          <button class="lvlbtn">LEVEL 14</button></div>
+        <div class="res">
+          <button class="rcard c-ore"><div class="ricon" data-icon="ore"></div><div><div class="val">128.4K</div><div class="sub">+842/s</div></div></button>
+          <button class="rcard c-dm"><div class="ricon" data-icon="dm"></div><div><div class="val">312</div><div class="sub">for the Nexus</div></div></button>
+          <button class="rcard c-ctx" id="ctx2" style="--a:#5a6693"><div class="ricon" data-icon="dash"></div><div><div class="val">&mdash;</div><div class="sub">NO EXOTIC HERE</div></div></button>
+        </div>
+      </header>
+      <nav>
+        <button class="tab">Empire</button><button class="tab">Research</button>
+        <button class="tab on">Map</button><button class="tab">Raids</button>
+        <button class="tab">Nexus</button><button class="tab">Market</button>
+      </nav>
+      <div class="view">
+        <div class="mapWrap">
+          <canvas class="planetCv" data-planet="home"></canvas>
+          <div class="planetHud"><button class="planetBack">&lsaquo; MAP</button><div class="planetTitle">SOL REACH</div></div>
+        </div>
+        <div class="sysSheet" id="sheet2"></div>
+      </div>
+    </div>
+  </div>
+  <div class="subcap">Home has no exotic, so the third header card reads &ldquo;&mdash; / NO EXOTIC HERE&rdquo; (chosen over hiding the card, which would make the header wobble between 2 and 3 cards tab to tab). Home's ladder is 14 tiers — this is the screen that shows the sheet-length problem, unhidden.</div>
+</div>
+
+<!-- ================= SCREEN 3 — EMPIRE (proposed ledger) ================= -->
+<div class="row">
+  <div class="cap">3 — EMPIRE (proposed ledger)</div>
+  <div class="phone" id="ph3">
+    <div class="notch"></div>
+    <div class="screen">
+      <header>
+        <div class="brand"><h1>STELLAR DOMINION</h1><span class="sp"></span>
+          <button class="lvlbtn">LEVEL 14</button></div>
+        <div class="res">
+          <button class="rcard c-ore"><div class="ricon" data-icon="ore"></div><div><div class="val">128.4K</div><div class="sub">+842/s</div></div></button>
+          <button class="rcard c-dm"><div class="ricon" data-icon="dm"></div><div><div class="val">312</div><div class="sub">for the Nexus</div></div></button>
+          <button class="rcard c-ctx" style="--a:#5a6693"><div class="ricon" data-icon="dash"></div><div><div class="val">&mdash;</div><div class="sub">MAP ONLY</div></div></button>
+        </div>
+      </header>
+      <nav>
+        <button class="tab on">Empire</button><button class="tab">Research</button>
+        <button class="tab">Map</button><button class="tab">Raids</button>
+        <button class="tab">Nexus</button><button class="tab">Market</button>
+      </nav>
+      <div class="view list" id="view3"></div>
+    </div>
+  </div>
+  <div class="subcap">No planet widget, no BUY chips, nothing expands. One row per held system; tapping any row jumps to the map, zoomed on that system.</div>
+</div>
+
+<!-- ================= SCREEN 4 — EMPIRE (today, for comparison) ================= -->
+<div class="row">
+  <div class="cap today">4 — EMPIRE (today)</div>
+  <div class="phone" id="ph4">
+    <div class="notch"></div>
+    <div class="screen">
+      <header>
+        <div class="brand"><h1>STELLAR DOMINION</h1><span class="sp"></span>
+          <button class="lvlbtn">LEVEL 14</button></div>
+        <div class="res">
+          <button class="rcard c-ore"><div class="ricon" data-icon="ore"></div><div><div class="val">128.4K</div><div class="sub">+842/s</div></div></button>
+          <button class="rcard c-cry" style="--a:#a878ff"><div class="ricon" data-icon="cry"></div><div><div class="val">4.1K</div><div class="sub">+12/s</div></div></button>
+          <button class="rcard c-dm"><div class="ricon" data-icon="dm"></div><div><div class="val">312</div><div class="sub">for the Nexus</div></div></button>
+        </div>
+      </header>
+      <div id="coreToday">
+        <canvas data-planet="home2"></canvas>
+      </div>
+      <nav>
+        <button class="tab on">Empire</button><button class="tab">Research</button>
+        <button class="tab">Map</button><button class="tab">Raids</button>
+        <button class="tab">Nexus</button><button class="tab">Market</button>
+      </nav>
+      <div class="view list" id="view4"></div>
+    </div>
+  </div>
+  <div class="subcap">Today: the planet widget and BUY chips sit above every tab (not just Map), and each held system expands in place — Sol Reach shown open here, 4 of its 14 tiers visible before its own inner scroll.</div>
+</div>
+
+<script>
+/* ============================================================
+   Shared icon markup — copied verbatim from RES_ICON (~2137-2158)
+   ============================================================ */
+const RES_ICON={
+ ore:`<g stroke="currentColor" stroke-width="2.5" stroke-linejoin="round" fill="currentColor" fill-opacity=".16">
+   <path d="M21 3l13 3 6 12-7 11H20l-7-11z"/>
+   <path d="M8 26l10 3 3 9-8 7-8-4z"/>
+   <path d="M32 27l11 4 1 9-9 5-6-7z"/></g>
+  <path d="M21 3l5 12 14 3M26 15l7 14M26 15l-13 3" fill="none" stroke="currentColor" stroke-width="1.7" opacity=".55" stroke-linejoin="round"/>`,
+ cry:`<path d="M24 3l11 15-6 26h-10L13 18z" fill="currentColor" opacity=".2"/>
+  <path d="M24 3l11 15-6 26h-10L13 18z" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round"/>
+  <path d="M13 18h22M24 3v41" fill="none" stroke="currentColor" stroke-width="1.9" opacity=".6"/>
+  <path d="M7 27l4 6-3 11-4-6z" fill="currentColor" opacity=".5"/>`,
+ dm:`<path d="M24 3l17 9.6v20.8L24 43 7 33.4V12.6z" fill="currentColor" opacity=".14"/>
+  <path d="M24 3l17 9.6v20.8L24 43 7 33.4V12.6z" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round"/>
+  <path d="M24 12.6a11.4 11.4 0 1 1-10.6 15.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/>
+  <circle cx="24" cy="12.6" r="2.7" fill="currentColor"/>`
+};
+function RI(k){return '<svg class="ci" viewBox="0 0 48 48" aria-hidden="true">'+RES_ICON[k]+'</svg>'}
+const ICON_EXO='<svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="13" fill="currentColor" opacity=".18"/><circle cx="24" cy="24" r="13" fill="none" stroke="currentColor" stroke-width="2.6"/><circle cx="24" cy="24" r="5" fill="currentColor"/></svg>';
+const ICON_DASH='<svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-dasharray="4 5" opacity=".7"/></svg>';
+
+/* fill in the header icon placeholders (static markup uses data-icon="..." so
+   this never touches document.body.innerHTML wholesale) */
+document.querySelectorAll('[data-icon]').forEach(el=>{
+  const k=el.dataset.icon;
+  el.innerHTML = k==='exo' ? ICON_EXO : k==='dash' ? ICON_DASH : RI(k);
+});
+
+/* ============================================================
+   fmt() — copied verbatim from ~line 1632
+   ============================================================ */
+const SUF=["","K","M","B","T","q","Q","s","S"];
+function fmt(n){
+  if(!isFinite(n))return "∞"; if(n<0)return "-"+fmt(-n);
+  if(n<1000){ if(n===0)return "0"; if(n<10)return (Math.round(n*100)/100).toString(); if(n<100)return (Math.round(n*10)/10).toString(); return Math.floor(n).toString(); }
+  let t=Math.floor(Math.log10(n)/3); if(t>=SUF.length){return n.toExponential(2)}
+  const v=n/Math.pow(1000,t);
+  return (v<10?v.toFixed(2):v<100?v.toFixed(1):v.toFixed(0))+SUF[t];
+}
+
+/* ============================================================
+   Structure icons — copied verbatim from ICONS[0..13], ~2035-2135
+   (the 14 icons the home ore ladder uses 1:1; Koru's rock ladder
+   reuses ICONS[gi%14] exactly as iconFor()/patch-1's comment says)
+   ============================================================ */
+const ICONS=[
+/* 0 Mining Drone */
+`<g fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M17 15h14l4 7.5-4 7.5H17l-4-7.5z" fill="currentColor" fill-opacity=".14"/>
+  <path d="M13 22.5H8M35 22.5h5"/>
+  <ellipse cx="6" cy="22.5" rx="4.5" ry="1.7"/><ellipse cx="42" cy="22.5" rx="4.5" ry="1.7"/>
+  <path d="M19.5 30h9l-4.5 10z" fill="currentColor" fill-opacity=".55"/></g>
+ <circle cx="24" cy="22.5" r="3.3" fill="currentColor" opacity=".75"/>`,
+/* 1 Smelter Pod */
+`<g fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+  <rect x="6" y="19" width="15" height="21" rx="3" fill="currentColor" fill-opacity=".13"/>
+  <path d="M6 25.5h15"/><path d="M27.5 40V14h9.5v26" fill="currentColor" fill-opacity=".1"/>
+  <path d="M21 34h6.5M5 40h38"/></g>
+ <path d="M32.2 13.2c0-3.4 2.6-4.5 1.8-7.2 2.9 1.7 3.9 5.2 2.1 7.2z" fill="currentColor"/>
+ <circle cx="13.5" cy="33" r="2.6" fill="currentColor" opacity=".5"/>`,
+/* 2 Crust Borer */
+`<g fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M13 8h22v9H13z" fill="currentColor" fill-opacity=".14"/>
+  <path d="M17 8V5M31 8V5M24 17v6"/><path d="M4 29h40" opacity=".5"/>
+  <path d="M18 23h12l-1.6 6h-8.8z" fill="currentColor" fill-opacity=".22"/></g>
+ <path d="M19.6 29h8.8L24 43z" fill="currentColor"/>
+ <g stroke="currentColor" stroke-width="1.8" stroke-linecap="round" opacity=".38">
+  <path d="M8 34h6M34 34h6M11 40h5M32 40h5"/></g>`,
+/* 3 Fabricator */
+`<rect x="8" y="8" width="32" height="9.5" rx="2" fill="currentColor" opacity=".16"/>
+ <g fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+  <rect x="8" y="8" width="32" height="9.5" rx="2"/><path d="M24 17.5v5.5"/><path d="M6 40h36"/>
+  <path d="M14.5 40L18 28h12l3.5 12" fill="currentColor" fill-opacity=".12"/><path d="M17 33.5h14"/></g>
+ <circle cx="24" cy="25" r="2" fill="currentColor"/>`,
+/* 4 Orbital Harvester (ring) */
+`<circle cx="24" cy="24" r="9.5" fill="currentColor" opacity=".22"/>
+ <g fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round">
+  <circle cx="24" cy="24" r="9.5"/><path d="M15.4 20h17.2M16.5 28.6h15" opacity=".45"/>
+  <ellipse cx="24" cy="24" rx="20" ry="7.5" transform="rotate(-18 24 24)"/></g>
+ <circle cx="43" cy="17.8" r="2.3" fill="currentColor"/><circle cx="5" cy="30.2" r="2.3" fill="currentColor"/>`,
+/* 5 Fusion Forge */
+`<circle cx="24" cy="24" r="7.5" fill="currentColor" opacity=".9"/>
+ <circle cx="24" cy="24" r="11" fill="currentColor" opacity=".12"/>
+ <g fill="none" stroke="currentColor" stroke-width="2" opacity=".9">
+  <ellipse cx="24" cy="24" rx="18" ry="7"/>
+  <ellipse cx="24" cy="24" rx="18" ry="7" transform="rotate(60 24 24)"/>
+  <ellipse cx="24" cy="24" rx="18" ry="7" transform="rotate(120 24 24)"/></g>`,
+/* 6 Dyson Swarm */
+`<circle cx="24" cy="24" r="10" fill="currentColor" opacity=".14"/>
+ <circle cx="24" cy="24" r="6.5" fill="currentColor"/>
+ <g fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round">
+  <circle cx="24" cy="24" r="12" stroke-dasharray="5.5 4.2"/>
+  <circle cx="24" cy="24" r="16.5" stroke-dasharray="5 6.5"/>
+  <circle cx="24" cy="24" r="21" stroke-dasharray="4 9" opacity=".65"/></g>`,
+/* 7 Wormhole Array */
+`<ellipse cx="24" cy="24" rx="10.5" ry="15.5" fill="currentColor" opacity=".13"/>
+ <g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M6 7v34M42 7v34"/><path d="M6 7h5M6 41h5M37 7h5M37 41h5"/>
+  <ellipse cx="24" cy="24" rx="10.5" ry="15.5"/><ellipse cx="24" cy="24" rx="5.6" ry="8.6" opacity=".65"/></g>
+ <circle cx="24" cy="24" r="2.8" fill="currentColor"/>`,
+/* 8 Singularity Core */
+`<circle cx="24" cy="24" r="18" fill="currentColor" opacity=".07"/>
+ <g fill="none" stroke="currentColor" stroke-linecap="round">
+  <path d="M24 6.2A17.8 17.8 0 0 1 41.8 24" stroke-width="2.1" opacity=".9"/>
+  <path d="M24 41.8A17.8 17.8 0 0 1 6.2 24" stroke-width="2.1" opacity=".9"/>
+  <path d="M24 10.5A13.5 13.5 0 0 0 10.5 24" stroke-width="1.9" opacity=".55"/>
+  <path d="M24 37.5A13.5 13.5 0 0 0 37.5 24" stroke-width="1.9" opacity=".55"/></g>
+ <circle cx="24" cy="24" r="9.6" fill="#04050d"/>
+ <circle cx="24" cy="24" r="9.6" fill="none" stroke="currentColor" stroke-width="2.8"/>`,
+/* 9 Galactic Nexus */
+`<circle cx="24" cy="24" r="15" fill="currentColor" opacity=".08"/>
+ <g fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round">
+  <path d="M24 18.6c6.4-1 11.6 3.2 11 9.4-.6 6.4-8 10.6-15.4 7.8C12.1 33 8.4 22.6 13.7 12.6"/>
+  <path d="M24 29.4c-6.4 1-11.6-3.2-11-9.4.6-6.4 8-10.6 15.4-7.8C35.9 15 39.6 25.4 34.3 35.4"/></g>
+ <circle cx="24" cy="24" r="3.8" fill="currentColor"/>`,
+/* 10 Iridium Foundry */
+`<g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round">
+  <path d="M10 40V22l14-9 14 9v18z" fill="currentColor" fill-opacity=".14"/>
+  <path d="M17 40V29h6v11M27 40V29h6v11"/></g>
+ <circle cx="24" cy="19" r="3.2" fill="currentColor"/>`,
+/* 11 Helium Spindle */
+`<g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
+  <ellipse cx="24" cy="24" rx="7" ry="17"/><ellipse cx="24" cy="24" rx="17" ry="7"/></g>
+ <circle cx="24" cy="24" r="4" fill="currentColor"/>`,
+/* 12 Xenon Array */
+`<g fill="none" stroke="currentColor" stroke-width="2.3" stroke-linejoin="round">
+  <path d="M24 6l8 6v12l-8 6-8-6V12z" fill="currentColor" fill-opacity=".16"/>
+  <path d="M8 42v-8l8-5M40 42v-8l-8-5"/></g>
+ <circle cx="24" cy="18" r="2.8" fill="currentColor"/>`,
+/* 13 Antimatter Loom */
+`<g fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round">
+  <circle cx="24" cy="24" r="15"/><path d="M9 24h30M24 9v30"/></g>
+ <circle cx="24" cy="24" r="6" fill="currentColor" opacity=".22"/>
+ <circle cx="24" cy="24" r="3.4" fill="currentColor"/>`
+];
+function iconFor(i){return '<svg viewBox="0 0 48 48" aria-hidden="true">'+ICONS[i%ICONS.length]+'</svg>'}
+
+/* defence-card icons — copied verbatim from zoom-mock.html sheetHTML() */
+const DEF_ICON_TURRET='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.5 5.5l2 2M16.5 16.5l2 2M18.5 5.5l-2 2M7.5 16.5l-2 2"/></svg>';
+const DEF_ICON_SHIELD='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3.2v5.3c0 4.6-3 7.6-7 8.7-4-1.1-7-4.1-7-8.7V6.2z"/></svg>';
+const DEF_ICON_MINE='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="6"/><path d="M12 3v2.4M12 18.6V21M3 12h2.4M18.6 12H21M5.6 5.6l1.7 1.7M16.7 16.7l1.7 1.7M18.4 5.6l-1.7 1.7M7.3 16.7l-1.7 1.7"/></svg>';
+
+/* ============================================================
+   Exotics — copied verbatim from EXO, ~2241-2246
+   ============================================================ */
+const EXO={ir:{n:"Iridium",col:"#8fb8ff"},he:{n:"Helium-3",col:"#ffd166"},xe:{n:"Xenon",col:"#c58fff"},am:{n:"Antimatter",col:"#ff6b8a"}};
+const TCOL=["#48e2ff","#5fd6f4","#79c6ef","#93b3f3","#a89df6","#ffb45c","#ffd166","#b07cff","#d76cff","#ff8fd0","#8fb8ff","#ffd166","#c58fff","#ff6b8a"];
+const KIND_INFO={
+  ore:{n:"ORE",col:"#ffb45c"}, rock:{n:"ROCK",col:"#c7b299"}, gas:{n:"GAS",col:"#ffd166"},
+  belt:{n:"BELT",col:"#8fb8ff"}, ice:{n:"ICE",col:"#79c6ef"}, void:{n:"VOID",col:"#a878ff"},
+  mixed:{n:"HOME",col:"#5ce6a5"}
+};
+function hexToRgb(hex){const n=parseInt(hex.replace("#",""),16);return ((n>>16)&255)+","+((n>>8)&255)+","+(n&255)}
+
+/* ============================================================
+   Ladder buy row — markup shape copied from ladderTierRow(), ~5368-5394
+   ============================================================ */
+function ladderRow(gi,name,count,rate,perUnit,total,costTxt,exoTxt,exoCol,isNext){
+  const col=TCOL[gi%TCOL.length];
+  return `<div class="g${isNext?" next":""}" style="--a:${col}">
+    <div class="gi" style="--a:${col}">${iconFor(gi)}</div>
+    <div class="gtxt">
+      <div class="gn">${name}</div>
+      <div class="gm">+${rate} /s</div>
+      <div class="gx">${perUnit} each &middot; ${total} total</div>
+    </div>
+    <div class="gside">
+      <div class="gcount">${count}</div>
+      <button class="gb"><b>${costTxt} ${RI('ore')}</b><i>BUY &times;1</i>${exoTxt?`<i class="gexo" style="--a:${exoCol}">+ ${exoTxt}</i>`:""}</button>
+    </div>
+  </div>`;
+}
+function lockedRow(gi,name){
+  const col=TCOL[gi%TCOL.length];
+  return `<div class="lockrow"><div class="li" style="border-color:${col};color:${col}">${iconFor(gi)}</div>
+    <span>${name} &mdash; reach the tier above first</span></div>`;
+}
+
+/* ============================================================
+   Defence card — markup copied from zoom-mock's sysDefRow, itself
+   copied from #sysDefRow, ~1132-1154
+   ============================================================ */
+function defCard(col,icon,name,lv,eff,btn,tagOk){
+  return `<div class="sc" style="--a:${col}">
+    <div class="si">${icon}</div>
+    <div class="n">${name}</div><div class="lv">${lv}</div>
+    <div class="e">${eff}</div>
+    <button type="button">${btn}</button>
+    ${tagOk?'<div class="tag ok">READY</div>':''}
+  </div>`;
+}
+
+/* ============================================================
+   SCREEN 1 — Koru sheet: name row, BUILDINGS (3 rows), DEFENCES
+   ============================================================ */
+document.getElementById('sheet1').innerHTML = `
+  <div class="sshgrab"></div>
+  <button type="button" class="sshx">&#10005;</button>
+  <div id="sysInfo">
+    <h4 style="color:#8fb8ff">Koru</h4>
+    <div class="sysmeta">RING 1 &middot; YOURS</div>
+  </div>
+  <div class="sechd"><span>Buildings</span><span>2 of 3 tiers</span></div>
+  ${ladderRow(14,"Regolith Crusher","5","0.06","0.012","0.06","6.8K")}
+  ${ladderRow(15,"Iron Vein Driller","3","0.15","0.05","0.15","410K")}
+  ${ladderRow(16,"Bedrock Refinery","0","0.16","0.16","0","2.4M","2 Iridium","#8fb8ff",true)}
+  <div class="sechd" style="margin-top:16px"><span>Defences</span><span>2 of 3 slots &middot; 8.4K IRIDIUM</span></div>
+  <div class="sysDefRow">
+    ${defCard("#48e2ff",DEF_ICON_TURRET,"Turret Ring","LV 2/3","+18%","240 &middot; UP")}
+    ${defCard("#a878ff",DEF_ICON_SHIELD,"Shield Array","LV 1/3","+9%","310 &middot; UP")}
+    ${defCard("var(--line2)","+","Empty","SLOT 3","&mdash;","BUILD")}
+  </div>`;
+
+/* ============================================================
+   SCREEN 2 — Sol Reach sheet: 14 ore-ladder rows (owned + next +
+   locked-beyond), scrollable, first ~5 visible before scroll.
+   INVENTED beyond spec: today's real accordion only ever shows
+   owned-tiers + one greyed "next" row then stops (empSysRow's
+   loop breaks after the first unowned tier, ~5498-5506) — it
+   never lists tiers further out. Showing every tier as a row
+   (locked ones dimmed via .g.locked, no live price) is this
+   mock's own invention, needed to make the sheet-length problem
+   visible per the brief ("don't hide the problem").
+   ============================================================ */
+(function(){
+  const owned=[
+    [0,"Mining Drone",42,"8.4","0.2","8.4","602"],
+    [1,"Smelter Pod",26,"41.6","1.6","41.6","19.2K"],
+    [2,"Crust Borer",15,"195","13","195","412K"],
+    [3,"Fabricator",9,"990","110","990","6.1M"],
+    [4,"Orbital Harvester",3,"3.0K","1000","3.0K","82M","1 Iridium","#8fb8ff"]
+  ];
+  let html=`<div class="sshgrab"></div><button type="button" class="sshx">&#10005;</button>
+    <div id="sysInfo"><h4 style="color:#5ce6a5">Sol Reach</h4><div class="sysmeta">HOME &middot; YOURS</div></div>
+    <div class="sechd"><span>Buildings</span><span>5 of 14 tiers</span></div>`;
+  owned.forEach(r=>html+=ladderRow(r[0],r[1],r[2],r[3],r[4],r[5],r[6],r[7],r[8]));
+  html+=ladderRow(5,"Fusion Forge",0,"9.8K","9800","0","1.4B","1 Helium-3","#ffd166",true);
+  for(let gi=6; gi<=13; gi++){
+    const names={6:"Dyson Swarm",7:"Wormhole Crucible",8:"Singularity Well",9:"Galactic Nexus",
+      10:"Iridium Foundry",11:"Helium Spindle",12:"Xenon Array",13:"Antimatter Loom"};
+    html+=lockedRow(gi,names[gi]);
+  }
+  html+=`<div class="sechd" style="margin-top:16px"><span>Defences</span><span>1 of 3 slots &middot; 128K ORE</span></div>
+    <div class="sysDefRow">
+      ${defCard("#48e2ff",DEF_ICON_TURRET,"Turret Ring","LV 3/3","+27%","MAXED")}
+      ${defCard("var(--line2)","+","Empty","SLOT 2","&mdash;","BUILD")}
+      ${defCard("var(--line2)","+","Empty","SLOT 3","&mdash;","BUILD")}
+    </div>`;
+  document.getElementById('sheet2').innerHTML=html;
+})();
+
+/* ============================================================
+   SCREEN 3 — Empire ledger (proposed): sysrow2, no expansion
+   ============================================================ */
+(function(){
+  const host=document.getElementById('view3');
+  function row(kind,name,exo,tiers,tot,ore,exoRate,ready){
+    const k=KIND_INFO[kind], rgb=hexToRgb(k.col);
+    return `<div class="sysrow2 held kindtint" style="--a:${k.col};--a-wash:rgba(${rgb},.12);--a-border:rgba(${rgb},.55);--a-text:${k.col}">
+      <div class="sysrow2-main"><span class="sysname">${name}</span>
+        <span class="kindbadge" style="--a:${k.col}">${k.n}</span>
+        ${ready?'<span class="readybadge"><i></i>NEXT TIER READY</span>':''}</div>
+      <div class="sysrow2-stats">
+        <span>${exo?exo.toUpperCase():"&mdash;"}</span>
+        <span><b>${tiers}/${tot}</b> TIERS</span>
+        <span><b>${fmt(ore)}</b> ORE/S</span>
+        ${exoRate?`<span><b>${exoRate}</b> /S</span>`:""}
+      </div></div>`;
+  }
+  function claim(name,lvl,cost){
+    return `<div class="sysrow2 claimable"><div class="sysrow2-main"><span class="sysname">${name}</span>
+      <span class="kindbadge" style="--a:var(--gr)">CLAIM READY</span></div>
+      <div class="sysrow2-stats"><span>LEVEL ${lvl}</span><span><b>${fmt(cost)}</b> ORE</span></div></div>`;
+  }
+  function locked(name,lvl,cost){
+    return `<div class="sysrow2 locked"><div class="sysrow2-main"><span class="lockicon">&#128274;</span>
+      <span class="sysname">${name}</span></div>
+      <div class="sysrow2-stats"><span>LEVEL ${lvl}</span><span>${fmt(cost)} ORE</span></div></div>`;
+  }
+  host.innerHTML = `
+    <p class="hint">Tap a system to manage it on the map.</p>
+    <div class="pinhead">Sol Reach</div>
+    ${row('mixed',"Sol Reach",null,5,14,990,null,false)}
+    <div class="ringhead">Ring 1</div>
+    ${row('rock',"Koru","Iridium",2,3,0,"0.15",true)}
+    ${row('void',"Draskhold","Antimatter",3,3,0,"0.02",false)}
+    ${row('gas',"Velis","Helium-3",1,3,0,"0.01",true)}
+    ${row('belt',"Tannhau","Iridium",1,3,0,"0.008",false)}
+    <div class="ringhead">Ring 2</div>
+    ${claim("Nyx",16,42000)}
+    ${locked("Mireth",19,118000)}`;
+})();
+
+/* ============================================================
+   SCREEN 4 — Empire, today: #core widget + BUY chips + exoStrip,
+   Sol Reach expanded (accordion), Ring 1 collapsed rows below
+   ============================================================ */
+(function(){
+  const host=document.getElementById('view4');
+  const owned=[
+    [0,"Mining Drone",42,"8.4","0.2","8.4","602"],
+    [1,"Smelter Pod",26,"41.6","1.6","41.6","19.2K"],
+    [2,"Crust Borer",15,"195","13","195","412K"],
+    [3,"Fabricator",9,"990","110","990","6.1M"]
+  ];
+  let body='';
+  owned.forEach(r=>body+=ladderRow(r[0],r[1],r[2],r[3],r[4],r[5],r[6]));
+  body+=ladderRow(4,"Orbital Harvester",0,"1.0K","1000","0","82M","1 Iridium","#8fb8ff",true);
+
+  function collapsedRow(kind,name,exo,tiers,tot,ore,exoRate){
+    const k=KIND_INFO[kind], rgb=hexToRgb(k.col);
+    return `<div class="sysrow2 held kindtint" style="--a:${k.col};--a-wash:rgba(${rgb},.12);--a-border:rgba(${rgb},.55);--a-text:${k.col}">
+      <div class="sysrow2-main"><span class="sysname">${name}</span>
+        <span class="kindbadge" style="--a:${k.col}">${k.n}</span></div>
+      <div class="sysrow2-stats"><span>${exo?exo.toUpperCase():"&mdash;"}</span>
+        <span><b>${tiers}/${tot}</b> TIERS</span><span><b>${fmt(ore)}</b> ORE/S</span>
+        ${exoRate?`<span><b>${exoRate}</b> /S</span>`:""}</div></div>`;
+  }
+
+  host.innerHTML = `
+    <div class="buybar"><span class="lbl">BUY</span>
+      <button class="chip on">&times;1</button><button class="chip">&times;10</button>
+      <button class="chip">&times;100</button><button class="chip">MAX</button></div>
+    <div class="exoStrip">
+      <div class="exi held" style="--a:#8fb8ff"><i class="exdot"></i><div class="exnums"><b>8.4K</b><span>+0.15/s</span></div></div>
+      <div class="exi held" style="--a:#ffd166"><i class="exdot"></i><div class="exnums"><b>1.2K</b><span>+0.01/s</span></div></div>
+      <div class="exi" style="--a:#c58fff"><i class="exdot"></i></div>
+      <div class="exi" style="--a:#ff6b8a"><i class="exdot"></i></div>
+    </div>
+    <div class="sysrow2 held kindtint expanded" style="--a:#5ce6a5;--a-wash:rgba(92,230,165,.12);--a-border:rgba(92,230,165,.55);--a-text:#5ce6a5;border-radius:11px 11px 0 0;margin-bottom:0">
+      <div class="sysrow2-main"><span class="sysname">Sol Reach</span><span class="kindbadge" style="--a:#5ce6a5">HOME</span></div>
+      <div class="sysrow2-stats"><span>&mdash;</span><span><b>4/14</b> TIERS</span><span><b>990</b> ORE/S</span></div>
+    </div>
+    <div class="sysbody kindtint" style="--a:#5ce6a5;--a-wash-body:rgba(92,230,165,.06);margin-top:0">
+      ${body}
+      <div class="expandmark">&hellip; 9 more tiers below, own inner scroll</div>
+    </div>
+    <div class="ringhead">Ring 1</div>
+    ${collapsedRow('rock',"Koru","Iridium",2,3,0,"0.15")}
+    ${collapsedRow('void',"Draskhold","Antimatter",3,3,0,"0.02")}
+    ${collapsedRow('gas',"Velis","Helium-3",1,3,0,"0.01")}`;
+})();
+
+/* ============================================================
+   Planet-zoom canvas — copied/adapted from zoom-mock.html's
+   drawPlanetScene()/sprite(), itself adapted from draw()'s system
+   branch (~10942-11020) and sprite() (~10493-10578). "home" uses
+   the real per-tier ore sprite() switch (~10559-10577) and the
+   real R-capping formula for a 14-tier ladder (~10963-10972);
+   "kor"/"home2" reuse the same generic hex "rock"/tint shapes
+   zoom-mock already used for Koru.
+   ============================================================ */
+const CONT=[{x:-.30,y:-.26,rx:.46,ry:.27,a:-.45},{x:.28,y:.10,rx:.40,ry:.22,a:.35},
+            {x:-.10,y:.44,rx:.34,ry:.16,a:.10},{x:.44,y:-.42,rx:.24,ry:.13,a:-.20}];
+const LIGHTS=(()=>{const L=[];let sd=7;const rnd=()=>(sd=(sd*1103515245+12345)&0x7fffffff)/0x7fffffff;
+  let guard=0;
+  while(L.length<52&&guard++<9000){const x=rnd()*2-1,y=rnd()*2-1; if(x*x+y*y>.80)continue;
+    const night=Math.pow(Math.max(0,(x+y+2)/4),2.2);
+    if(rnd()>0.04+0.96*night)continue;
+    L.push({x,y,p:rnd()*6.28,s:.55+rnd()*.75,n:.35+.65*night});}
+  return L})();
+function rgba(hex,a){const n=parseInt(hex.slice(1),16);
+  return "rgba("+((n>>16)&255)+","+((n>>8)&255)+","+(n&255)+","+a+")"}
+
+/* Koru: rock ladder, 3 tiers, generic hex sprite (copied from zoom-mock) */
+const KOR_COL="#c7b299";
+const ROCK_LADDER=[{gi:14},{gi:15},{gi:16}];
+const KOR_COUNT={14:5,15:3,16:0};
+function hexSprite(ctx,o,D,col){
+  const s=o.s, tier=o.pos;
+  ctx.save(); ctx.translate(o.x,o.y);
+  ctx.globalAlpha=.45+.55*(0.5+0.5*Math.sin(o.a));
+  ctx.fillStyle=col; ctx.strokeStyle=col; ctx.lineWidth=Math.max(1,s*0.34);
+  const hexPath=r=>{ ctx.beginPath();
+    for(let k=0;k<6;k++){ const a=k*1.0472+o.a; const px=Math.cos(a)*r, py=Math.sin(a)*r; k?ctx.lineTo(px,py):ctx.moveTo(px,py); }
+    ctx.closePath(); };
+  hexPath(s*1.1); ctx.fill();
+  if(tier===1){ ctx.globalAlpha*=.7; hexPath(s*.55); ctx.stroke(); }
+  else if(tier===2){
+    ctx.globalAlpha*=.55; ctx.beginPath();
+    for(let k=0;k<6;k++){ const a=k*1.0472+o.a+0.524; const px=Math.cos(a)*s*1.1, py=Math.sin(a)*s*1.1; k?ctx.lineTo(px,py):ctx.moveTo(px,py); }
+    ctx.closePath(); ctx.fill();
+  }
+  ctx.restore(); ctx.globalAlpha=1;
+}
+function drawRockPlanet(ctx,W,H,t,D,compose){
+  ctx.clearRect(0,0,W,H);
+  const bandH=compose.bandH, cy=compose.cy, RY=0.55, cx=W/2;
+  let R=Math.min(W*0.125,bandH*0.215);
+  const maxRingMul=1.82+(ROCK_LADDER.length-1)*0.20;
+  const hHalf=(W/2)*0.94, vHalf=Math.min(cy,bandH-cy)*0.94;
+  R=Math.min(R, Math.min(hHalf,vHalf/RY)/maxRingMul);
+  const ang=t*0.00025;
+  const lanes=[];
+  for(let pos=0; pos<ROCK_LADDER.length; pos++){
+    const gi=ROCK_LADDER[pos].gi, n=KOR_COUNT[gi];
+    if(n<1)continue;
+    const rr=R*(1.82+pos*0.20);
+    ctx.strokeStyle=rgba(TCOL[gi%TCOL.length],.10); ctx.lineWidth=D;
+    ctx.beginPath(); ctx.ellipse(cx,cy,rr,rr*RY,0,0,6.2832); ctx.stroke();
+    const nn=Math.min(9,n);
+    for(let k=0;k<nn;k++){
+      const a=ang*(1.5-pos*0.105)+k*(6.2832/nn)+pos*1.13;
+      lanes.push({pos,a,x:cx+Math.cos(a)*rr,y:cy+Math.sin(a)*rr*RY,s:R*(0.09+pos*0.018)});
+    }
+  }
+  for(const o of lanes) if(Math.sin(o.a)<0) hexSprite(ctx,o,D,KOR_COL);
+  const g=ctx.createRadialGradient(cx-R*.45,cy-R*.5,R*.08,cx,cy,R*1.05);
+  g.addColorStop(0,"#8ee6ff"); g.addColorStop(.42,KOR_COL); g.addColorStop(1,"#0a1236");
+  ctx.fillStyle=g; ctx.beginPath(); ctx.arc(cx,cy,R,0,6.2832); ctx.fill();
+  ctx.save(); ctx.beginPath(); ctx.arc(cx,cy,R,0,6.2832); ctx.clip();
+  ctx.fillStyle="rgba(26,92,104,.42)";
+  for(const c of CONT){ ctx.beginPath(); ctx.ellipse(cx+c.x*R,cy+c.y*R,c.rx*R,c.ry*R,c.a,0,6.2832); ctx.fill(); }
+  const ng=ctx.createLinearGradient(cx-R*.7,cy-R*.7,cx+R,cy+R);
+  ng.addColorStop(0,"rgba(2,4,14,0)"); ng.addColorStop(.42,"rgba(2,4,14,.1)"); ng.addColorStop(.72,"rgba(2,4,14,.62)"); ng.addColorStop(1,"rgba(1,2,9,.93)");
+  ctx.fillStyle=ng; ctx.fillRect(cx-R,cy-R,R*2,R*2);
+  const nl=Math.min(LIGHTS.length, KOR_COUNT[15]+KOR_COUNT[16]);
+  for(let k=0;k<nl;k++){ const L=LIGHTS[k];
+    const tw=(.45+.55*Math.abs(Math.sin(t*0.00143+L.p)))*L.n;
+    ctx.globalAlpha=tw; ctx.fillStyle="#ffd9a0";
+    ctx.beginPath(); ctx.arc(cx+L.x*R,cy+L.y*R,L.s*D*.85,0,6.2832); ctx.fill();
+    ctx.globalAlpha=tw*.25;
+    ctx.beginPath(); ctx.arc(cx+L.x*R,cy+L.y*R,L.s*D*2.6,0,6.2832); ctx.fill(); }
+  ctx.globalAlpha=1; ctx.restore();
+  ctx.strokeStyle=rgba(KOR_COL,.55); ctx.lineWidth=1.2*D; ctx.stroke();
+  ctx.strokeStyle="rgba(110,200,255,.12)"; ctx.lineWidth=4*D;
+  ctx.beginPath(); ctx.arc(cx,cy,R*1.10,0,6.2832); ctx.stroke();
+  for(const o of lanes) if(Math.sin(o.a)>=0) hexSprite(ctx,o,D,KOR_COL);
+}
+
+/* Sol Reach (home): 14-tier ore ladder, real per-tier sprite() switch
+   copied verbatim from ~10559-10577, real R-capping from ~10963-10972 */
+const HOME_COL="#5ce6a5";
+const HOME_COUNT={0:42,1:26,2:15,3:9,4:3,5:0};
+function oreSprite(ctx,o,D){
+  const i=o.gi, s=o.s, c=TCOL[i%TCOL.length];
+  ctx.save(); ctx.translate(o.x,o.y);
+  ctx.globalAlpha=.45+.55*(0.5+0.5*Math.sin(o.a));
+  ctx.fillStyle=c; ctx.strokeStyle=c; ctx.lineWidth=Math.max(1,s*0.34);
+  switch(i){
+    case 0: ctx.rotate(o.a+1.57); ctx.beginPath(); ctx.moveTo(0,-s*1.3); ctx.lineTo(s*.85,s*.8); ctx.lineTo(-s*.85,s*.8); ctx.closePath(); ctx.fill(); break;
+    case 1: ctx.rotate(o.a+1.57); ctx.beginPath(); ctx.roundRect?ctx.roundRect(-s*.7,-s*1.5,s*1.4,s*3,s*.5):ctx.rect(-s*.7,-s*1.5,s*1.4,s*3); ctx.fill(); break;
+    case 2: ctx.fillRect(-s*.9,-s*.9,s*1.8,s*1.8); break;
+    case 3: ctx.beginPath(); ctx.moveTo(0,-s*1.2); ctx.lineTo(s*1.2,0); ctx.lineTo(0,s*1.2); ctx.lineTo(-s*1.2,0); ctx.closePath(); ctx.fill(); break;
+    case 4: ctx.beginPath(); ctx.arc(0,0,s*1.05,0,6.2832); ctx.stroke(); break;
+    default:{ ctx.beginPath();
+      for(let k=0;k<5;k++){ const a1=o.a+k*1.2566, a2=a1+0.6283;
+        ctx.lineTo(Math.cos(a1)*s*1.5,Math.sin(a1)*s*1.5); ctx.lineTo(Math.cos(a2)*s*.6,Math.sin(a2)*s*.6); }
+      ctx.closePath(); ctx.fill(); }
+  }
+  ctx.restore(); ctx.globalAlpha=1;
+}
+function drawHomePlanet(ctx,W,H,t,D,compose){
+  ctx.clearRect(0,0,W,H);
+  const cx=W/2, RY=0.55;
+  const bandH=compose?compose.bandH:H, cy=compose?compose.cy:H*0.52;
+  const ang=t*0.00025;
+  const ladder=Object.keys(HOME_COUNT).map(Number);
+  let R=Math.min(W*0.125,bandH*0.215);
+  if(compose && ladder.length>1){
+    const maxRingMul=1.82+(ladder.length-1)*0.20;
+    const hHalf=(W/2)*0.94, vHalf=Math.min(cy,bandH-cy)*0.94;
+    R=Math.min(R, Math.min(hHalf,vHalf/RY)/maxRingMul);
+  }
+  const lanes=[];
+  for(let pos=0; pos<ladder.length; pos++){
+    const gi=ladder[pos], n=HOME_COUNT[gi];
+    if(n<1)continue;
+    const rr=R*(1.82+pos*0.20);
+    ctx.strokeStyle=rgba(TCOL[gi%TCOL.length],.10); ctx.lineWidth=D;
+    ctx.beginPath(); ctx.ellipse(cx,cy,rr,rr*RY,0,0,6.2832); ctx.stroke();
+    const nn=Math.min(9,n);
+    for(let k=0;k<nn;k++){
+      const a=ang*(1.5-pos*0.105)+k*(6.2832/nn)+pos*1.13;
+      lanes.push({gi,pos,a,x:cx+Math.cos(a)*rr,y:cy+Math.sin(a)*rr*RY,s:R*(0.09+pos*0.018)});
+    }
+  }
+  for(const o of lanes) if(Math.sin(o.a)<0) oreSprite(ctx,o,D);
+  const g=ctx.createRadialGradient(cx-R*.45,cy-R*.5,R*.08,cx,cy,R*1.05);
+  g.addColorStop(0,"#a6ffe0"); g.addColorStop(.42,HOME_COL); g.addColorStop(1,"#0a1236");
+  ctx.fillStyle=g; ctx.beginPath(); ctx.arc(cx,cy,R,0,6.2832); ctx.fill();
+  ctx.save(); ctx.beginPath(); ctx.arc(cx,cy,R,0,6.2832); ctx.clip();
+  ctx.fillStyle="rgba(26,92,104,.42)";
+  for(const c of CONT){ ctx.beginPath(); ctx.ellipse(cx+c.x*R,cy+c.y*R,c.rx*R,c.ry*R,c.a,0,6.2832); ctx.fill(); }
+  const ng=ctx.createLinearGradient(cx-R*.7,cy-R*.7,cx+R,cy+R);
+  ng.addColorStop(0,"rgba(2,4,14,0)"); ng.addColorStop(.42,"rgba(2,4,14,.1)"); ng.addColorStop(.72,"rgba(2,4,14,.62)"); ng.addColorStop(1,"rgba(1,2,9,.93)");
+  ctx.fillStyle=ng; ctx.fillRect(cx-R,cy-R,R*2,R*2);
+  const nl=Math.min(LIGHTS.length, HOME_COUNT[2]+HOME_COUNT[3]);
+  for(let k=0;k<nl;k++){ const L=LIGHTS[k];
+    const tw=(.45+.55*Math.abs(Math.sin(t*0.00143+L.p)))*L.n;
+    ctx.globalAlpha=tw; ctx.fillStyle="#ffd9a0";
+    ctx.beginPath(); ctx.arc(cx+L.x*R,cy+L.y*R,L.s*D*.85,0,6.2832); ctx.fill();
+    ctx.globalAlpha=tw*.25;
+    ctx.beginPath(); ctx.arc(cx+L.x*R,cy+L.y*R,L.s*D*2.6,0,6.2832); ctx.fill(); }
+  ctx.globalAlpha=1; ctx.restore();
+  ctx.strokeStyle=rgba(HOME_COL,.55); ctx.lineWidth=1.2*D; ctx.stroke();
+  ctx.strokeStyle="rgba(110,200,255,.12)"; ctx.lineWidth=4*D;
+  ctx.beginPath(); ctx.arc(cx,cy,R*1.10,0,6.2832); ctx.stroke();
+  for(const o of lanes) if(Math.sin(o.a)>=0) oreSprite(ctx,o,D);
+}
+
+/* ---------------- wire up every planet canvas + shared rAF loop ----------------
+   mzVisFrac / compose{cy,bandH} copied from mapZoomMeasure() (~6219-6228) and
+   draw()'s own call site (~11100-11101): the planet only gets the slice of the
+   square that is NOT covered by the open sheet, so it renders inside the visible
+   band instead of centering itself half-hidden underneath the sheet. */
+const DPR=Math.min(window.devicePixelRatio||1,3);
+const scenes=[];
+document.querySelectorAll("canvas[data-planet]").forEach(cv=>{
+  const kind=cv.dataset.planet;
+  const cssW=cv.clientWidth||Math.round(cv.getBoundingClientRect().width);
+  const cssH=cv.clientHeight||Math.round(cv.getBoundingClientRect().height);
+  const w=Math.max(1,Math.round(cssW*DPR)), h=Math.max(1,Math.round(cssH*DPR));
+  cv.width=w; cv.height=h;
+  let compose=null;
+  if(kind==="kor"||kind==="home"){
+    const wrap=cv.closest(".mapWrap"), sheet=wrap.parentElement.querySelector(".sysSheet");
+    const wrapRect=wrap.getBoundingClientRect(), sheetRect=sheet.getBoundingClientRect();
+    const localTop=sheetRect.top-wrapRect.top;
+    const mzVisFrac=Math.max(0.34,Math.min(1,localTop/wrapRect.height));
+    const bandH=h*mzVisFrac;
+    compose={cy:bandH*0.5,bandH};
+  }
+  scenes.push({ctx:cv.getContext("2d"), W:w, H:h, kind, compose});
+});
+function loop(t){
+  for(const sc of scenes){
+    if(sc.kind==="kor") drawRockPlanet(sc.ctx,sc.W,sc.H,t,DPR,sc.compose);
+    else drawHomePlanet(sc.ctx,sc.W,sc.H,t,DPR,sc.compose);
+  }
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

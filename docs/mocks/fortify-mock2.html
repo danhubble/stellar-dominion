@@ -1,0 +1,274 @@
+<!doctype html><html><head><meta charset="utf-8">
+<title>Fortify sheet mock — row of cards</title>
+<style>
+:root{
+  --bg:#04050d; --panel:rgba(14,19,42,.72);
+  --line:rgba(96,142,255,.20); --line2:rgba(96,142,255,.38);
+  --txt:#dde5ff; --mut:#8390bd; --dim:#5a6693; --dim2:#7683ad;
+  --cy:#48e2ff; --vi:#a878ff; --gd:#ffd166; --gr:#5ce6a5; --rd:#ff6b8a;
+  --ice:#79c6ef;
+}
+*{box-sizing:border-box}
+body{margin:0;background:#06070f;color:var(--txt);
+  font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  display:flex;gap:26px;padding:26px;align-items:flex-start;flex-wrap:wrap}
+.frame{width:390px;height:844px;position:relative;overflow:hidden;border-radius:18px;
+  border:1px solid var(--line);background:var(--bg);flex:none}
+.cap{position:absolute;top:-22px;left:2px;font:700 11px/1 system-ui;letter-spacing:.16em;color:var(--dim)}
+.wrap{position:relative;margin-top:26px}
+.map{position:absolute;inset:0;padding:12px}
+.hd{display:flex;align-items:center;gap:10px;padding:6px 2px 10px;border-bottom:1px solid var(--line)}
+.hd h1{margin:0;font:700 13px/1 system-ui;letter-spacing:.28em;
+  background:linear-gradient(90deg,var(--cy),var(--vi) 60%,var(--gd));
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.chiprow{display:flex;gap:5px;margin:10px 0}
+.chip{flex:1;text-align:center;padding:6px 1px;border-radius:9px;border:1px solid var(--line);
+  font:800 7.1px/1 system-ui;color:var(--dim)}
+.chip.on{border-color:var(--cy);background:rgba(72,226,255,.12);color:var(--txt)}
+.mapbox{position:relative;height:330px;border:1px solid rgba(120,150,255,.22);border-radius:14px;
+  background:radial-gradient(circle at 50% 50%,rgba(60,90,190,.18),rgba(6,9,22,.85) 68%);overflow:hidden}
+.node{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:3px}
+.dot{width:15px;height:15px;border-radius:50%;border:2px solid var(--gr);background:var(--gr);box-shadow:0 0 9px -1px var(--gr)}
+.node.sel .dot{transform:scale(1.35);border-color:var(--ice);background:var(--ice);box-shadow:0 0 14px 1px var(--ice)}
+.node.foe .dot{background:rgba(6,9,22,.9);border-color:var(--rd);border-style:double;border-width:4px}
+.lab{font:700 8.5px/1 system-ui;letter-spacing:.08em;color:var(--mut);white-space:nowrap}
+.scrim{position:absolute;inset:0;background:rgba(2,3,10,.55)}
+
+.sheet{position:absolute;left:0;right:0;bottom:0;border-radius:18px 18px 0 0;
+  border:1px solid var(--line2);border-bottom:none;background:linear-gradient(180deg,#101637,#080b1e);
+  box-shadow:0 -12px 40px rgba(0,0,0,.6);padding:8px 14px 16px}
+.grab{width:38px;height:4px;border-radius:2px;background:rgba(255,255,255,.20);margin:2px auto 10px}
+.sh-top{display:flex;align-items:flex-start;gap:9px}
+.sh-top h4{margin:0;font:700 16px/1.15 system-ui;color:var(--ice)}
+.meta{font:600 9px/1.35 system-ui;letter-spacing:.14em;color:var(--dim);text-transform:uppercase;margin-top:3px}
+.kind{font:700 8.5px/1 system-ui;letter-spacing:.1em;text-transform:uppercase;padding:3px 6px 2px;
+  border-radius:5px;background:rgba(255,255,255,.06);color:var(--ice);border:1px solid currentColor;opacity:.9}
+.x{margin-left:auto;border:1px solid var(--line);border-radius:8px;width:26px;height:26px;flex:none;
+  background:rgba(255,255,255,.04);color:var(--mut);font:700 12px/1 system-ui}
+.odds{margin:11px 0 3px;display:flex;justify-content:space-between;align-items:baseline;
+  font:600 10px/1 system-ui;letter-spacing:.14em;color:var(--dim);text-transform:uppercase}
+.odds b{font:700 13px/1 ui-monospace,monospace;color:var(--gr);letter-spacing:0}
+.obar{height:7px;border-radius:4px;background:rgba(255,255,255,.07);overflow:hidden}
+.obar i{display:block;height:100%;background:linear-gradient(90deg,#3fbf8a,#5ce6a5)}
+.onote{font-size:10.5px;color:var(--dim);margin-top:5px;line-height:1.45}
+.sechead{font:600 9.5px/1 system-ui;letter-spacing:.2em;color:var(--dim);text-transform:uppercase;margin:15px 0 8px;
+  display:flex;justify-content:space-between}
+
+/* ---- the row ---- */
+.row{display:flex;gap:7px}
+.sc{flex:1 1 0;min-width:0;border:1px solid var(--line);border-radius:11px;background:var(--panel);
+  padding:9px 7px 8px;display:flex;flex-direction:column;align-items:center;gap:5px;text-align:center;
+  border-top:3px solid var(--a,var(--line2));position:relative}
+.sc .si{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;
+  border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--a,var(--mut))}
+.sc .si svg{width:18px;height:18px;display:block}
+.sc .n{font:700 10.5px/1.2 system-ui;color:var(--txt)}
+.sc .lv{font:700 8.5px/1 ui-monospace,monospace;color:var(--dim);letter-spacing:.08em}
+.sc .e{font:700 10px/1.2 ui-monospace,monospace;color:var(--a,var(--gd))}
+.sc button{width:100%;margin-top:auto;border:1px solid var(--line2);background:rgba(72,226,255,.08);
+  color:var(--cy);border-radius:8px;padding:7px 2px;font:700 9.5px/1.15 ui-monospace,monospace}
+.sc button.warn{border-color:rgba(255,180,92,.55);background:rgba(255,180,92,.12);color:#ffb45c}
+.sc.empty{border-style:dashed;border-top-style:solid;border-top-color:var(--line);background:rgba(255,255,255,.02)}
+.sc.empty .n{color:var(--dim2)}
+.sc.empty .si{color:var(--dim)}
+.sc.sel{border-color:var(--a);box-shadow:0 0 0 1px var(--a) inset,0 0 16px -6px var(--a)}
+.sc .tag{position:absolute;top:-9px;right:6px;font:800 7.5px/1 system-ui;letter-spacing:.1em;
+  padding:3px 5px;border-radius:4px;background:#0b1026;border:1px solid currentColor}
+.sc .tag.ok{color:var(--gr)} .sc .tag.bad{color:var(--rd)}
+
+.detail{margin-top:9px;border:1px solid var(--line);border-left:3px solid var(--a);border-radius:10px;
+  padding:9px 11px;background:rgba(255,255,255,.03)}
+.detail .dn{font:700 12px/1.2 system-ui;display:flex;justify-content:space-between;gap:8px}
+.detail .dn span{font:700 10px/1.2 ui-monospace,monospace;color:var(--ice)}
+.detail .de{font:600 10.5px/1.35 ui-monospace,monospace;color:var(--a);margin-top:4px}
+.detail p{margin:4px 0 0;font-size:10.5px;color:var(--dim);line-height:1.45}
+.acts{display:flex;gap:8px;margin-top:12px}
+.acts button{flex:1;border-radius:9px;padding:11px;font:800 11px/1 system-ui;letter-spacing:.14em;
+  border:1px solid rgba(92,230,165,.55);background:rgba(92,230,165,.13);color:var(--gr)}
+.acts button.ghost{border-color:var(--line);background:rgba(255,255,255,.04);color:var(--mut);letter-spacing:.1em}
+.acts button.foe{border-color:rgba(255,107,138,.7);background:rgba(255,107,138,.18);color:#ffe4ea}
+.thr{border:1px solid rgba(255,107,138,.55);background:rgba(255,107,138,.10);border-radius:11px;
+  padding:10px 11px;margin:11px 0 2px}
+.thr h5{margin:0 0 3px;font:800 11px/1.2 system-ui;letter-spacing:.1em;color:#ffd0da;
+  display:flex;justify-content:space-between;gap:8px}
+.thr .t{font:700 10px/1 ui-monospace,monospace;color:#ffd0da}
+.thr p{margin:0;font-size:10.5px;color:var(--mut);line-height:1.45}
+.thr .rec{margin-top:6px;font:600 10.5px/1.4 system-ui;color:#ffe9b8}
+</style></head><body>
+
+<!-- ============ D: row of three, nothing selected ============ -->
+<div class="wrap"><div class="cap">D · ROW OF CARDS</div>
+<div class="frame">
+  <div class="map">
+    <div class="hd"><h1>STELLAR DOMINION</h1></div>
+    <div class="chiprow"><div class="chip">CORE</div><div class="chip">INNER REACH</div>
+      <div class="chip on">FRONTIER</div><div class="chip">THE DEEP</div><div class="chip">BEYOND</div></div>
+    <div class="mapbox">
+      <div class="node" style="left:24%;top:22%"><span class="dot"></span><span class="lab">Thule</span></div>
+      <div class="node sel" style="left:16%;top:64%"><span class="dot"></span><span class="lab">Wraithe</span></div>
+      <div class="node foe" style="left:46%;top:86%"><span class="dot"></span><span class="lab">Caldera</span></div>
+      <div class="node" style="left:78%;top:34%"><span class="dot"></span><span class="lab">Anvilreach</span></div>
+    </div>
+  </div>
+  <div class="scrim"></div>
+  <div class="sheet">
+    <div class="grab"></div>
+    <div class="sh-top">
+      <div style="min-width:0"><h4>Wraithe</h4>
+        <div class="meta">Ring 3 · Yours · Xenon 4.1/s</div></div>
+      <span class="kind">Ice</span><button class="x">✕</button>
+    </div>
+    <div class="odds"><span>Garrison holds</span><b>58%</b></div>
+    <div class="obar"><i style="width:58%"></i></div>
+    <div class="onote">What your defences manage on their own, if you let them fight it without you.</div>
+
+    <div class="sechead"><span>Defences</span><span>2 of 3 slots · 214 XE</span></div>
+    <div class="row">
+      <div class="sc" style="--a:#48e2ff">
+        <div class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.5 5.5l2 2M16.5 16.5l2 2M18.5 5.5l-2 2M7.5 16.5l-2 2"/></svg></div>
+        <div class="n">Turret Ring</div><div class="lv">LV 2/3</div>
+        <div class="e">+18%</div>
+        <button>48 · UP</button>
+      </div>
+      <div class="sc" style="--a:#ffb45c">
+        <span class="tag ok">ARMED</span>
+        <div class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="2.5"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M19.1 4.9l-2.8 2.8M7.7 16.3l-2.8 2.8"/></svg></div>
+        <div class="n">Minefield</div><div class="lv">ONE USE</div>
+        <div class="e">+22%</div>
+        <button class="warn">30 · REARM</button>
+      </div>
+      <div class="sc empty">
+        <div class="si">+</div>
+        <div class="n">Empty</div><div class="lv">SLOT 3</div>
+        <div class="e" style="color:var(--dim)">—</div>
+        <button>BUILD</button>
+      </div>
+    </div>
+
+    <div class="acts">
+      <button class="ghost">STATION FLEET</button>
+      <button class="ghost">CLOSE</button>
+    </div>
+  </div>
+</div></div>
+
+<!-- ============ E: row with one card tapped ============ -->
+<div class="wrap"><div class="cap">E · CARD TAPPED → DETAIL</div>
+<div class="frame">
+  <div class="map">
+    <div class="hd"><h1>STELLAR DOMINION</h1></div>
+    <div class="chiprow"><div class="chip">CORE</div><div class="chip">INNER REACH</div>
+      <div class="chip on">FRONTIER</div><div class="chip">THE DEEP</div><div class="chip">BEYOND</div></div>
+    <div class="mapbox">
+      <div class="node sel" style="left:16%;top:64%"><span class="dot"></span><span class="lab">Wraithe</span></div>
+      <div class="node foe" style="left:46%;top:86%"><span class="dot"></span><span class="lab">Caldera</span></div>
+    </div>
+  </div>
+  <div class="scrim"></div>
+  <div class="sheet">
+    <div class="grab"></div>
+    <div class="sh-top">
+      <div style="min-width:0"><h4>Wraithe</h4>
+        <div class="meta">Ring 3 · Yours · Xenon 4.1/s</div></div>
+      <span class="kind">Ice</span><button class="x">✕</button>
+    </div>
+    <div class="odds"><span>Garrison holds</span><b>58%</b></div>
+    <div class="obar"><i style="width:58%"></i></div>
+
+    <div class="sechead"><span>Defences</span><span>2 of 3 slots · 214 XE</span></div>
+    <div class="row">
+      <div class="sc" style="--a:#48e2ff">
+        <div class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.5 5.5l2 2M16.5 16.5l2 2M18.5 5.5l-2 2M7.5 16.5l-2 2"/></svg></div>
+        <div class="n">Turret Ring</div><div class="lv">LV 2/3</div>
+        <div class="e">+18%</div>
+        <button>48 · UP</button>
+      </div>
+      <div class="sc sel" style="--a:#ffb45c">
+        <span class="tag ok">ARMED</span>
+        <div class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="2.5"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M19.1 4.9l-2.8 2.8M7.7 16.3l-2.8 2.8"/></svg></div>
+        <div class="n">Minefield</div><div class="lv">ONE USE</div>
+        <div class="e">+22%</div>
+        <button class="warn">30 · REARM</button>
+      </div>
+      <div class="sc empty">
+        <div class="si">+</div>
+        <div class="n">Empty</div><div class="lv">SLOT 3</div>
+        <div class="e" style="color:var(--dim)">—</div>
+        <button>BUILD</button>
+      </div>
+    </div>
+
+    <div class="detail" style="--a:#ffb45c">
+      <div class="dn">Minefield<span>30 XE · 40s</span></div>
+      <div class="de">Breaks the first wave · +22% hold</div>
+      <p>One use. Spent when they arrive, whether it fires or not. Strongest against
+        Helion, who come in numbers.</p>
+    </div>
+
+    <div class="acts">
+      <button class="ghost">SWAP MODULE</button>
+      <button class="ghost">CLOSE</button>
+    </div>
+  </div>
+</div></div>
+
+<!-- ============ F: row under attack ============ -->
+<div class="wrap"><div class="cap">F · ROW, FLEET INBOUND</div>
+<div class="frame">
+  <div class="map">
+    <div class="hd"><h1>STELLAR DOMINION</h1></div>
+    <div class="chiprow"><div class="chip">CORE</div><div class="chip">INNER REACH</div>
+      <div class="chip on">FRONTIER</div><div class="chip">THE DEEP</div><div class="chip">BEYOND</div></div>
+    <div class="mapbox">
+      <div class="node sel" style="left:16%;top:64%"><span class="dot" style="border-color:var(--rd);background:var(--rd);box-shadow:0 0 16px 3px rgba(255,107,138,.7)"></span><span class="lab" style="color:#ffd0da">Wraithe</span></div>
+    </div>
+  </div>
+  <div class="scrim"></div>
+  <div class="sheet">
+    <div class="grab"></div>
+    <div class="sh-top">
+      <div style="min-width:0"><h4 style="color:#ffd0da">Wraithe</h4>
+        <div class="meta">Ring 3 · Yours · under attack</div></div>
+      <span class="kind">Ice</span><button class="x">✕</button>
+    </div>
+
+    <div class="thr">
+      <h5>INCOMING — HELION REACH<span class="t">5h 12m</span></h5>
+      <p>Swarm doctrine — many light hulls, fast.</p>
+      <div class="rec">Mines and turrets answer this. Rearming lifts you to 71%.</div>
+    </div>
+
+    <div class="odds"><span>Garrison holds</span><b>58%</b></div>
+    <div class="obar"><i style="width:58%"></i></div>
+
+    <div class="sechead"><span>Defences</span><span>2 of 3 slots · 340 XE</span></div>
+    <div class="row">
+      <div class="sc" style="--a:#48e2ff">
+        <div class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.5 5.5l2 2M16.5 16.5l2 2M18.5 5.5l-2 2M7.5 16.5l-2 2"/></svg></div>
+        <div class="n">Turret Ring</div><div class="lv">LV 2/3</div>
+        <div class="e">+18%</div>
+        <button>48 · UP</button>
+      </div>
+      <div class="sc" style="--a:#ffb45c">
+        <span class="tag bad">SPENT</span>
+        <div class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="2.5"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg></div>
+        <div class="n">Minefield</div><div class="lv">EMPTY</div>
+        <div class="e" style="color:var(--rd)">+0%</div>
+        <button class="warn">30 · REARM</button>
+      </div>
+      <div class="sc empty">
+        <div class="si">+</div>
+        <div class="n">Empty</div><div class="lv">SLOT 3</div>
+        <div class="e" style="color:var(--dim)">—</div>
+        <button>BUILD</button>
+      </div>
+    </div>
+
+    <div class="acts">
+      <button class="foe">DEFEND IT</button>
+      <button class="ghost">LET THEM HOLD · 58%</button>
+    </div>
+  </div>
+</div></div>
+
+</body></html>
