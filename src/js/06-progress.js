@@ -46,9 +46,11 @@ function checkLevel(){
 function lvModal(){
   if(pendingLevels()<1)return;
   const offer=lvOffer(), nextL=level()+1, pend=pendingLevels();
-  const un=UNLOCK.find(u=>u.lv===nextL);
+  /* PLAN-pacing: Research and Map now tie at lv 5 - UNLOCK can carry more than one
+     entry for the same lv, so this must list all of them, not just the first find(). */
+  const opens=UNLOCK.filter(u=>u.lv===nextL);
   showModal(`<h3 class="lvup">Level ${nextL}</h3>
-    ${un?`<p class="lvun">This one also opens <b class="lvup">${un.n}</b> \u2014 ${un.d}</p>`:""}
+    ${opens.map(un=>`<p class="lvun">This one also opens <b class="lvup">${un.n}</b> \u2014 ${un.d}</p>`).join("")}
     <p>Choose one. It is permanent.</p>
     <div id="lvPicks">${offer.map(id=>{
       const p=PERKS.find(x=>x.id===id), have=pkl(id);

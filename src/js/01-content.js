@@ -283,11 +283,14 @@ const PERKS=[
 const UNLOCK=[
  {lv:3,  p:"p-mis",  n:"Missions", d:"Objectives that pay crystal and Dark Matter."},
  {lv:5,  p:"p-res",  n:"Research", d:"Spend crystal on a tech tree of lasting upgrades."},
+ {lv:5,  p:"p-map",  n:"Map",      d:"Claim other systems for Dark Matter and exotic resources."},
  {lv:6,  p:"p-mkt",  n:"Market",  d:"Sell surplus ore, crystal and exotics for Salvage or Dark Matter."},
- {lv:8,  p:"p-map",  n:"Map",      d:"Claim other systems for Dark Matter and exotic resources."},
- {lv:12, p:"p-raid", n:"Raids",    d:"Build a fleet and raid convoys for loot and salvage."},
+ {lv:9,  p:"p-raid", n:"Raids",    d:"Build a fleet and raid convoys for loot and salvage."},
  {lv:20, p:"p-nex",  n:"Nexus",    d:"Permanent upgrades bought with Dark Matter."}
 ];
+/* PLAN-pacing: single place every map-reveal literal reads instead of a bare 8/12 -
+   grep for unlockLv("p-map")/unlockLv("p-raid") to find every site this batch touched. */
+function unlockLv(p){ const u=UNLOCK.find(x=>x.p===p); return u?u.lv:Infinity; }
 const MILE=[10,25,50,100,150,200,300,400,500];
 /* ---------------- exotic resources, one per system type ---------------- */
 const EXO=[

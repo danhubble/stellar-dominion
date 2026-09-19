@@ -369,12 +369,13 @@ function adopt(o){
     }
     S.han[k]=arr;
   }
-  /* patch609: an old save can carry S.msel naming a system that sysInSec() no longer
-     draws a node for below level 8 (the map used to show every system in a sector
-     regardless of level) - left alone, renderMap() would still find it in SYSMAP and
-     open its sheet on a node that isn't there. Placed after S=f, like the S.han
-     sanitiser just above, because it needs level() to read this save's OWN S.lvl. */
-  if(S.msel && S.msel!=="home" && level()<8) S.msel=null;
+  /* patch609 (PLAN-pacing: level moved to unlockLv("p-map")): an old save can carry
+     S.msel naming a system that sysInSec() no longer draws a node for below the map
+     unlock level (the map used to show every system in a sector regardless of level)
+     - left alone, renderMap() would still find it in SYSMAP and open its sheet on a
+     node that isn't there. Placed after S=f, like the S.han sanitiser just above,
+     because it needs level() to read this save's OWN S.lvl. */
+  if(S.msel && S.msel!=="home" && level()<unlockLv("p-map")) S.msel=null;
   if(S.__seedXp){ delete S.__seedXp; xpSeedAll() }
   /* one-time unlock notices: back-fill "already seen" for whatever this save already
      satisfies, so loading an existing game never queues a flood of "just unlocked"

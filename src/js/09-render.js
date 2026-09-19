@@ -215,10 +215,11 @@ function render(){
 }
 let mapBuilt=false, mapSec=null, mapSecBuilt=-1, mapChipsBuilt=false, mapRevealBuilt=null;
 function secOf(id){ const s=SYSMAP[id]; return s?s.sec:0 }
-/* patch609: before level 8 the map shows only Sol Reach - every draw/lookup path
-   (buildMap, renderMap, the map churn sweep) already goes through this one function,
-   so gating it here is the whole reveal. */
-function sysInSec(sec){ return SYS.filter(s=>s.sec===sec && (level()>=8||s.home)) }
+/* patch609 (PLAN-pacing: level moved to unlockLv("p-map")): before the map unlock
+   level the map shows only Sol Reach - every draw/lookup path (buildMap, renderMap,
+   the map churn sweep) already goes through this one function, so gating it here is
+   the whole reveal. */
+function sysInSec(sec){ return SYS.filter(s=>s.sec===sec && (level()>=unlockLv("p-map")||s.home)) }
 function initMapSec(){ if(mapSec==null) mapSec=secOf(S.msel||"home") }
 function setMapSec(n){
   n=Math.max(0,Math.min(SECTORS.length-1,n));
@@ -237,12 +238,13 @@ function buildMapChips(){
   host.querySelectorAll(".chip").forEach(c=>c.onclick=()=>setMapSec(+c.dataset.i));
   mapChipsBuilt=true;
 }
-/* patch609: nothing to switch sectors to before level 8 (sysInSec() shows only home
-   everywhere), so the chip row hides with it rather than sitting there empty/inert. */
+/* patch609 (PLAN-pacing: level moved to unlockLv("p-map")): nothing to switch sectors
+   to before the map unlock level (sysInSec() shows only home everywhere), so the chip
+   row hides with it rather than sitting there empty/inert. */
 function renderMapChips(){
   const host=$("#mapChips");
   buildMapChips();
-  if(host)host.hidden = level()<8;
+  if(host)host.hidden = level()<unlockLv("p-map");
   $$("#mapChips .chip").forEach(c=>c.classList.toggle("on", +c.dataset.i===mapSec));
 }
 /* ---- per-sector canvas backdrop: seeded, cheap, drawn once per sector switch (not
@@ -337,11 +339,12 @@ function drawMapBg(sec){
 }
 /* exit lane out to the next sector (or the end-of-map flag on the last one).
    patch568 adds the rival-fleet/trip warnings into this same #mapEdge host. */
-/* patch609: the exit arrow (and every fleet/threat warning pill this same host draws)
-   only ever points at another sector - there is nothing to point at before level 8. */
+/* patch609 (PLAN-pacing: level moved to unlockLv("p-map")): the exit arrow (and every
+   fleet/threat warning pill this same host draws) only ever points at another sector -
+   there is nothing to point at before the map unlock level. */
 function renderMapEdge(){
   const host=$("#mapEdge"); if(!host)return;
-  if(level()<8){ host.hidden=true; host.innerHTML=""; return; }
+  if(level()<unlockLv("p-map")){ host.hidden=true; host.innerHTML=""; return; }
   host.hidden=false;
   const exit=SEC_EXIT[mapSec];
   let html = exit
@@ -422,7 +425,7 @@ function buildMap(){
     host.appendChild(b);
   }
   renderMapEdge();
-  mapBuilt=true; mapSecBuilt=mapSec; mapRevealBuilt=level()>=8;
+  mapBuilt=true; mapSecBuilt=mapSec; mapRevealBuilt=level()>=unlockLv("p-map");
 }
 /* patch607 - the header context card. Reads S.msel -> SYSMAP[..].res -> exoDef, same
    chain empSysRow()/updateOrbBadge() already read for the same purpose. Runs every
@@ -1107,12 +1110,13 @@ function renderMap(){
   initMapSec();
   /* patch618: class toggle only, on the one persistent #mapWrap element - never
      a rebuild (tchurn2.js sweeps every on-pane button for DOM-identity churn).
-     level()<8 is the exact condition sysInSec() already filters home-only on. */
-  { const w=$("#mapWrap"); if(w)w.classList.toggle("homeonly",level()<8); }
-  /* patch609b: a level-8 crossing changes what sysInSec() returns for the SAME
-     sector, which the mapSecBuilt check alone can't see - force the same rebuild a
-     sector change already gets. */
-  if(!mapBuilt||mapSecBuilt!==mapSec||mapRevealBuilt!==(level()>=8))buildMap();
+     level()<unlockLv("p-map") is the exact condition sysInSec() already filters
+     home-only on. */
+  { const w=$("#mapWrap"); if(w)w.classList.toggle("homeonly",level()<unlockLv("p-map")); }
+  /* patch609b: a map-unlock-level crossing changes what sysInSec() returns for the
+     SAME sector, which the mapSecBuilt check alone can't see - force the same rebuild
+     a sector change already gets. */
+  if(!mapBuilt||mapSecBuilt!==mapSec||mapRevealBuilt!==(level()>=unlockLv("p-map")))buildMap();
   renderMapChips();
   renderMapList();
   for(const s of sysInSec(mapSec)){
@@ -1349,10 +1353,11 @@ function renderLevel(){
   rl.style.setProperty("--p", (pend>0?100:Math.round(lvProgress()*100))+"%");
   rl.title = pend>0 ? "Level up ready — tap to choose a perk"
            : Math.round(lvProgress()*100)+"% to level "+(earnedLevel()+1);
-  /* patch609: the UNLOCK entry for p-map still carries lv:8 (checkUnlocks() still
-     queues vega:map off it, unchanged) but no longer hides the tab itself - patch608
-     made it the default tab, so hiding it below level 8 would take the whole bar down
-     to nothing for a brand-new player. sysInSec()'s own gate is the real reveal now. */
+  /* patch609: the UNLOCK entry for p-map still carries its own lv (checkUnlocks()
+     still queues vega:map off it, unchanged) but no longer hides the tab itself -
+     patch608 made it the default tab, so hiding it below the map unlock level would
+     take the whole bar down to nothing for a brand-new player. sysInSec()'s own gate
+     is the real reveal now. */
   for(const u of UNLOCK){
     if(u.p==="p-map")continue;
     const t=$$(".tab").find(x=>x.dataset.p===u.p);
