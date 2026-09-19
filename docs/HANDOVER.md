@@ -11690,3 +11690,59 @@ and `tools/mkartifact2.py` on it is byte-identical to `sd-empire2-artifact.html`
 - Rules from here: README.md "Workflow". Commit message = the old per-patch entry;
   this file stays for narrative.
 - Not done (bridge down): copy of the repo into sd-bundle, GitHub push, Pages (step 6).
+
+## pacing (BUILD 638) — PLAN-pacing.md, four commits: the first change under the new repo rules
+
+19 Sep 2026. First change made src-then-build-then-commit, no patch scripts. Four
+commits, one lever each: (1) `UNLOCK` map lv 8→5, raids lv 12→9, every literal
+`level()<8`/`>=8` map-reveal check moved to a new `unlockLv("p-map")` helper; found and
+fixed a real bug the new Research/Map lv-5 tie exposed (`lvModal()`'s "this also opens
+X" line used `UNLOCK.find()`, which only shows the first match at a level - changed to
+`UNLOCK.filter()` so a level-5 player is told about both). (2) `EN_RING3` 1→4,
+`EN_RING4` 3→12 - the only change. (3) THE PROJECT header now states where Nodes
+come from, built from the constants and `SECTORS`, never hard-coded; each card gets
+"you make R/h · ~T to go" (guarded render - the `<p>` is created once, its text
+refreshed every frame by `updateEmpBars()`'s new `projEls` pass, same idiom as
+`empSlotEls`/`resProgEls`/`mapListEls` - no button churn, `tchurn2` stayed 0/5 on
+Nexus); the `vega:project` beat now fires on the first ring-3+ CLAIM (new
+`hasRing3Held()`), not on the first Node landing. (4) `tests/tpacing2.js` added (7
+assertions); `tunify2`/`topen2` updated for the 8→5 reveal boundary;
+`tlockstates2`'s comment corrected (its own `lvl:8` fixture already satisfies the new
+lv-5 gate, no functional change needed); `ttaborder2`/`tlvsummary2` needed no change
+(neither hard-codes 8 or 12 for these unlocks - `tlvsummary2`'s own summary already
+lists every UNLOCK row via `.map()`, unaffected by the tie).
+
+**Sim, before vs after (all four commits) - `csim4.js` output is byte-identical
+start to finish, `docs/sim/csim-baseline.txt` unchanged:**
+
+| row | before | after |
+|---|---|---|
+| time to level 5 | 10m | 10m |
+| time to level 8 | 16m | 16m |
+| time to level 12 | 23m | 23m |
+| first raid | csim cannot tell you - it never simulates a raid (its own header comment says so; the level≥12 XP grant every 30 active minutes is a stand-in for raid-win XP, not a raid) | same |
+| first Node | csim cannot tell you - it never reads or prints `S.en`/`enRate()` at all | same |
+| Resonance Array (pj1, 60 Nodes) | csim cannot tell you, same reason | same |
+
+None of the four commits moved a single printed row, and that is expected rather than
+a red flag: commit 1 only changes pane-visibility/reveal levels, and csim's own claim
+eligibility check reads each system's `SYSMAP` `lvl` directly (`G.level()>=s.lvl`),
+never the `UNLOCK`/pane level - so moving Map or Raids in the tab bar cannot move
+anything csim measures. Commit 2 changes `EN_RING3`/`EN_RING4`, which feed `S.en` -
+but csim never touches `S.en`. Commits 3-4 were required to leave the sim alone
+regardless, and did.
+
+Worked by hand, from the constants and the sim's own real claim time for anv (the
+cheapest unowned ring-3 system, lvl 31, claimed at active minute 298 both before and
+after, since that lvl is untouched): held alone, `anv` produces `EN_RING3`=4 Nodes/h;
+the Resonance Array's 60-Node cost is therefore affordable 15h (900m) after the claim
+- around simulated minute 1198 (≈20h elapsed) in this run, or the ~4h PLAN-pacing.md
+describes once all four Frontier systems are held together, or minutes once The Deep
+(ring 3 and 4 both) is held. This is the plan's own estimate confirmed by hand, not a
+csim measurement - csim has no Node/Resonance-Array row to check it against.
+
+Deviation from the brief, with reason: found (not listed in the brief's "known sites")
+and fixed `06-progress.js`'s `lvModal()` `UNLOCK.find()` tie bug in commit 1, because
+the brief's own commit-1 instruction says to "confirm nothing assumes distinct
+levels" and this genuinely did - a level-5 player would otherwise never be told Map
+also opened. No other deviations.

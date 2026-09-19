@@ -81,18 +81,20 @@ const URL=GAME_URL;
  });
  ok('a fresh save (level 1, msel:null) boots with the page closed',
     bootState.sheetDisplay==='none' && !bootState.bodySyspage && bootState.msel===null, bootState);
- ok('#mapWrap carries .homeonly below level 8', bootState.wrapHomeonly && bootState.level<8, bootState);
+ ok('#mapWrap carries .homeonly below level 5 (PLAN-pacing: map unlock moved 8->5)',
+    bootState.wrapHomeonly && bootState.level<5, bootState);
  ok('#tut tells the player to tap their homeworld to build', bootState.tutMentionsHomeworld, bootState);
 
- // .homeonly drops once the map reveals past level 8 (patch609's own level()<8 gate,
- // reused - not recomputed - by patch619)
+ // .homeonly drops once the map reveals past the map unlock level (patch609's own
+ // level()<unlockLv("p-map") gate, reused - not recomputed - by patch619; PLAN-pacing
+ // moved the level itself 8->5, not the gate's shape)
  const revealedState=await p.evaluate(()=>{
    const G=window.__SD;
-   G.S.lvl=8; G.S.lvSeen=8; G.dirty=true; G.render();
+   G.S.lvl=5; G.S.lvSeen=5; G.dirty=true; G.render();
    const wrap=document.getElementById('mapWrap');
    return { wrapHomeonly: wrap.classList.contains('homeonly'), level: G.level() };
  });
- ok('#mapWrap drops .homeonly once level()>=8', !revealedState.wrapHomeonly && revealedState.level>=8, revealedState);
+ ok('#mapWrap drops .homeonly once level()>=5', !revealedState.wrapHomeonly && revealedState.level>=5, revealedState);
 
  // ================================================================== 626/627/628
  // (PLAN-page.md): "a system is a page, not a sheet". One fact (S.msel + the active

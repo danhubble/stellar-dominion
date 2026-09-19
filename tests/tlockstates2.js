@@ -27,7 +27,9 @@ const { chromium } = require('playwright-core');
  const out=[]; const ok=(n,c,x)=>out.push((c?'PASS ':'FAIL ')+n+(x!==undefined?'  '+JSON.stringify(x):''));
 
  // kor.lvl===9. Start below it (locked, and level 8+ so the map itself is revealed -
- // see PLAN-unify.md item 5 - otherwise kor would not even have a node to read yet).
+ // see PLAN-unify.md item 5; PLAN-pacing moved the map's own reveal level to 5, so 8
+ // still satisfies it with room to spare - otherwise kor would not even have a node
+ // to read yet).
  const setup=await p.evaluate(()=>{
    const G=window.__SD;
    G.adopt({ore:1e9, all:0, cry:0, dm:0, exo:{}, sys:{home:{home:true,b:{}}},

@@ -19,7 +19,7 @@ const { chromium } = require('playwright-core');
  await p.waitForFunction(()=>{ const el=document.getElementById('scene'); return !el||getComputedStyle(el).display==='none'; });
  const out=[]; const ok=(n,c,x)=>out.push((c?'PASS ':'FAIL ')+n+(x!==undefined?'  '+JSON.stringify(x):''));
 
- // a mid-game save: level 15 (past the level-8 reveal, and past Velis's own lvl:14),
+ // a mid-game save: level 15 (past the level-5 reveal, and past Velis's own lvl:14),
  // home built up a bit, Koru (rock, exotic "ir") held with one tier, Draskhold (ore,
  // no exotic) held with two tiers so a NEXT TIER READY badge has something to be
  // true/false about. Left unclaimed in the same sector: Velis (lvl 14 <= 15, so
@@ -58,18 +58,21 @@ const { chromium } = require('playwright-core');
  ok('context card on home (no exotic) reads NO EXOTIC / HERE',
     ctxHome.name==='NO EXOTIC' && ctxHome.rate==='HERE' && ctxHome.val==='—', ctxHome);
 
- // ---------- level-8 reveal: sysInSec() gates every sector but home's own below it ----------
+ // ---------- level-5 reveal: sysInSec() gates every sector but home's own below it ----------
+ // (PLAN-pacing: map unlock moved 8->5 - see unlockLv("p-map") - own dedicated
+ // coverage of the reveal boundary itself now lives in tpacing2.js; this file keeps
+ // just enough to exercise sysInSec() the way this run's other scenarios need it.)
  const reveal=await p.evaluate(()=>{
    const G=window.__SD;
    G.adopt({ore:0, all:0, cry:0, dm:0, exo:{}, sys:{home:{home:true,b:{}}},
      lvl:1, lvSeen:1, rs:{}, nx:{}, ab:[], buy:1, msel:null});
    const below=G.sysInSec(0).map(s=>s.id);
-   G.S.lvl=8;
+   G.S.lvl=5;
    const above=G.sysInSec(0).map(s=>s.id);
    return {below, above};
  });
- ok('below level 8, a sector page shows only home', reveal.below.length===1 && reveal.below[0]==='home', reveal.below);
- ok('at level 8, the same sector page shows every system in it', reveal.above.length>1 && reveal.above.includes('home'), reveal.above);
+ ok('below level 5, a sector page shows only home', reveal.below.length===1 && reveal.below[0]==='home', reveal.below);
+ ok('at level 5, the same sector page shows every system in it', reveal.above.length>1 && reveal.above.includes('home'), reveal.above);
 
  // ---------- buildings rendered in the sheet + buying from the sheet + scroll memory ----------
  const sheet=await p.evaluate((save)=>{
