@@ -516,6 +516,10 @@ function sysExoRate(id){
    from here already and needs no changes at all. */
 function exoRate(id){ let r=0; for(const s of SYS) if(s.res===id) r+=sysExoRate(s.id); return r }
 function heldSystems(){ return SYS.filter(s=>!s.home&&sysHeld(s.id)) }
+/* PLAN-pacing: the vega:project beat fires on the first ring-3-or-higher CLAIM, not
+   the first Node landing (S.en>0) - a player claiming a Frontier system should be
+   told what it produces before the first tick of it shows up. */
+function hasRing3Held(){ return heldSystems().some(s=>s.ring>=3) }
 /* ---------------- Exotic Nodes (patch582) ----------------
    Owner decision 3: no new verb - Nodes just trickle from held ring-3/4 systems,
    regardless of what they mine. Kept OUT of the EXO/S.exo machinery on purpose

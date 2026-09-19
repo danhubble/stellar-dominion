@@ -274,6 +274,8 @@ body.syspage #view{padding-bottom:calc(var(--sysbarh) + env(safe-area-inset-bott
 .tab.legacyhide,.pane.legacyhide{display:none!important}
 .hint{color:var(--mut);font-size:12px;margin:0 0 10px}
 .sechead{font:600 10px/1 system-ui;letter-spacing:.2em;color:var(--dim);text-transform:uppercase;margin:16px 0 8px}
+.pjexpl{color:var(--mut);font-size:11.5px;margin:0 0 8px}
+.card .pjeta{margin-top:4px;font-size:10.5px;color:var(--gd);font-family:ui-monospace,monospace;flex:none}
 
 .chip.scrapc.on{border-color:var(--rd);color:var(--rd);background:rgba(255,107,138,.10)}
 .g.sellmode .gb{border-color:rgba(255,107,138,.5);background:rgba(255,107,138,.08)}

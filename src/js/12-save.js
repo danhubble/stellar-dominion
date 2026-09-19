@@ -405,7 +405,7 @@ function adopt(o){
   if(level()>=55)S.seen["vega:drift55"]=true;
   if(level()>=60)S.seen["rival:rv60"]=true;
   if(level()>=65)S.seen["vega:drift65"]=true;
-  if((S.en||0)>0)S.seen["vega:project"]=true;   /* inert until Batch B adds S.en */
+  if(hasRing3Held())S.seen["vega:project"]=true;   /* PLAN-pacing: first ring-3+ claim, not first Node */
   /* the beats below have no "unlockedAt" equivalent - back-filled off the closest
      thing this save already tracks, so an old save never gets a first-time beat for
      something it did long ago. threat/firstLoss are best-effort (thqSeq/S.occ do not

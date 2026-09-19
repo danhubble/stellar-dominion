@@ -19,7 +19,7 @@ function checkUnlocks(){
   if(level()>=55)queueNotice("vega:drift55");
   if(level()>=60)queueRivalNotice("rv60");
   if(level()>=65)queueNotice("vega:drift65");
-  if((S.en||0)>0)queueNotice("vega:project");   /* inert until Batch B adds S.en */
+  if(hasRing3Held())queueNotice("vega:project");   /* PLAN-pacing: first ring-3+ claim, not first Node */
   /* "what earns a level" - Dan's first playtest note. Fires once, after the
      player's first couple of grants, and never while a perk pick is already
      pending (that modal wins - showing "here's how" under it would be noise). */
@@ -132,6 +132,11 @@ function ladderTierRow(sysId,gi,isNext){
    game's GENS.forEach in render() did. This array is what that pass walks; it is
    rebuilt every time renderSysBuild() rebuilds the sheet's own rows (patch610/611). */
 let empSlotEls=[];
+/* PLAN-pacing: Project cards' "you make R/h · ~T to go" line - S.en ticks every
+   frame outside of dirty (same reason resProgEls/mapListEls exist below), so the
+   text refreshes here on an unconditional per-frame pass instead of waiting for
+   renderNex()'s own dataset-free full rebuild. Rebuilt every time renderNex() runs. */
+let projEls=[];
 function updateEmpBars(){
   for(const {el,sysId,gi} of empSlotEls){
     if(!el.isConnected)continue;
@@ -167,6 +172,12 @@ function updateEmpBars(){
         b.disabled = exo(r.x) < xpCost(r);
       });
     }
+  }
+  for(const q of projEls){
+    if(!q.el.isConnected)continue;
+    const enR=enRate(), have=S.en||0, r=(enR*3600).toFixed(1);
+    q.el.textContent = have>=q.cost ? `you make ${r} Nodes/h · ready`
+      : `you make ${r} Nodes/h · ~${fmtT(Math.max(0,(q.cost-have)/Math.max(enR,1e-9)))} to go`;
   }
 }
 function render(){
@@ -1778,10 +1789,18 @@ function renderNex(){
      "ever produced/held" test the strip uses, so it can never go hidden again once
      shown (spending the bank to 0 does not stop a held ring-3/4 system producing). */
   const proj=NEXUS.filter(r=>r.cur==="en");
+  projEls=[];
   if(proj.length && ((S.en||0)>0 || enRate()>0)){
     const head=document.createElement("div");
     head.className="sechead pjhead"; head.textContent="THE PROJECT";
     host.appendChild(head);
+    /* PLAN-pacing: "nothing tells you where they come from" - one line, built from
+       the rate constants and the sector names, never hard-coded numbers. */
+    const secName=k=>{ const sec=SECTORS.find(x=>x.key===k); return sec?sec.n:k; };
+    const expl=document.createElement("p"); expl.className="pjexpl";
+    expl.textContent=`Nodes come from held systems in ${secName("frontier")} `
+      +`(${EN_RING3}/h each), ${secName("deep")} and ${secName("beyond")} (${EN_RING4}/h).`;
+    host.appendChild(expl);
     proj.forEach(r=>{
       /* patch592: the game is won - pjx stops reading as just another MAXED card
          and offers its way back into the ending screen instead. */
@@ -1807,6 +1826,14 @@ function renderNex(){
           :`<div class="eff">${r.d(l)}${max?"":" → "+r.d(l+1)}</div>
             ${max?'<button disabled>MAXED</button>':`<button data-cost="${c}" data-cur="en">${fmt(c)} Nodes</button>`}`}`;
       if(!max&&!locked&&!seized)d.querySelector("button").onclick=()=>buyNex(r);
+      /* PLAN-pacing: "you make R/h · ~T to go" - only where it means anything
+         (producing, buyable, not already maxed/locked/seized). Text itself is
+         refreshed every frame by updateEmpBars() (projEls), not rebuilt here. */
+      if(enRate()>0 && !max && !locked && !seized){
+        const eta=document.createElement("p"); eta.className="pjeta";
+        d.appendChild(eta);
+        projEls.push({el:eta, cost:c});
+      }
       host.appendChild(d);
     });
   }
