@@ -292,6 +292,8 @@ body.syspage #view{padding-bottom:calc(var(--sysbarh) + env(safe-area-inset-bott
 .tab.legacyhide,.pane.legacyhide{display:none!important}
 .hint{color:var(--mut);font-size:12px;margin:0 0 10px}
 .sechead{font:600 10px/1 system-ui;letter-spacing:.2em;color:var(--dim);text-transform:uppercase;margin:16px 0 8px}
+.pjexpl{color:var(--mut);font-size:11.5px;margin:0 0 8px}
+.card .pjeta{margin-top:4px;font-size:10.5px;color:var(--gd);font-family:ui-monospace,monospace;flex:none}
 
 .chip.scrapc.on{border-color:var(--rd);color:var(--rd);background:rgba(255,107,138,.10)}
 .g.sellmode .gb{border-color:rgba(255,107,138,.5);background:rgba(255,107,138,.08)}
@@ -1832,7 +1834,7 @@ body.syspage #toasts{bottom:calc(var(--sysbarh) + 8px + env(safe-area-inset-bott
 "use strict";
 /* bumped by hand, one per patch that ships - shown in the dev panel so the owner
    can tell which build a report/screenshot came from. */
-const BUILD=638;
+const BUILD=639;
 /* ============================ storage (safe) ============================ */
 const Store=(()=>{let mem={},ok=false;
   try{const k="__sd";window.localStorage.setItem(k,"1");window.localStorage.removeItem(k);ok=true}catch(e){ok=false}
@@ -2448,11 +2450,14 @@ const PERKS=[
 const UNLOCK=[
  {lv:3,  p:"p-mis",  n:"Missions", d:"Objectives that pay crystal and Dark Matter."},
  {lv:5,  p:"p-res",  n:"Research", d:"Spend crystal on a tech tree of lasting upgrades."},
+ {lv:5,  p:"p-map",  n:"Map",      d:"Claim other systems for Dark Matter and exotic resources."},
  {lv:6,  p:"p-mkt",  n:"Market",  d:"Sell surplus ore, crystal and exotics for Salvage or Dark Matter."},
- {lv:8,  p:"p-map",  n:"Map",      d:"Claim other systems for Dark Matter and exotic resources."},
- {lv:12, p:"p-raid", n:"Raids",    d:"Build a fleet and raid convoys for loot and salvage."},
+ {lv:9,  p:"p-raid", n:"Raids",    d:"Build a fleet and raid convoys for loot and salvage."},
  {lv:20, p:"p-nex",  n:"Nexus",    d:"Permanent upgrades bought with Dark Matter."}
 ];
+/* PLAN-pacing: single place every map-reveal literal reads instead of a bare 8/12 -
+   grep for unlockLv("p-map")/unlockLv("p-raid") to find every site this batch touched. */
+function unlockLv(p){ const u=UNLOCK.find(x=>x.p===p); return u?u.lv:Infinity; }
 const MILE=[10,25,50,100,150,200,300,400,500];
 /* ---------------- exotic resources, one per system type ---------------- */
 const EXO=[
@@ -4223,11 +4228,15 @@ function sysExoRate(id){
    from here already and needs no changes at all. */
 function exoRate(id){ let r=0; for(const s of SYS) if(s.res===id) r+=sysExoRate(s.id); return r }
 function heldSystems(){ return SYS.filter(s=>!s.home&&sysHeld(s.id)) }
+/* PLAN-pacing: the vega:project beat fires on the first ring-3-or-higher CLAIM, not
+   the first Node landing (S.en>0) - a player claiming a Frontier system should be
+   told what it produces before the first tick of it shows up. */
+function hasRing3Held(){ return heldSystems().some(s=>s.ring>=3) }
 /* ---------------- Exotic Nodes (patch582) ----------------
    Owner decision 3: no new verb - Nodes just trickle from held ring-3/4 systems,
    regardless of what they mine. Kept OUT of the EXO/S.exo machinery on purpose
    (see the patch header) so Market can never list them without extra guarding. */
-const EN_RING3=1, EN_RING4=3;   /* TUNING-PENDING: Nodes/hour per held system, by ring */
+const EN_RING3=4, EN_RING4=12;   /* TUNING-PENDING: Nodes/hour per held system, by ring */
 const EN_COL="#5affc2";         /* TUNING-PENDING: own colour, distinct from all 4 EXO cols */
 function enRate(){
   let r3=0,r4=0;
@@ -5077,9 +5086,11 @@ function checkLevel(){
 function lvModal(){
   if(pendingLevels()<1)return;
   const offer=lvOffer(), nextL=level()+1, pend=pendingLevels();
-  const un=UNLOCK.find(u=>u.lv===nextL);
+  /* PLAN-pacing: Research and Map now tie at lv 5 - UNLOCK can carry more than one
+     entry for the same lv, so this must list all of them, not just the first find(). */
+  const opens=UNLOCK.filter(u=>u.lv===nextL);
   showModal(`<h3 class="lvup">Level ${nextL}</h3>
-    ${un?`<p class="lvun">This one also opens <b class="lvup">${un.n}</b> \u2014 ${un.d}</p>`:""}
+    ${opens.map(un=>`<p class="lvun">This one also opens <b class="lvup">${un.n}</b> \u2014 ${un.d}</p>`).join("")}
     <p>Choose one. It is permanent.</p>
     <div id="lvPicks">${offer.map(id=>{
       const p=PERKS.find(x=>x.id===id), have=pkl(id);
@@ -5513,7 +5524,7 @@ function checkUnlocks(){
   if(level()>=55)queueNotice("vega:drift55");
   if(level()>=60)queueRivalNotice("rv60");
   if(level()>=65)queueNotice("vega:drift65");
-  if((S.en||0)>0)queueNotice("vega:project");   /* inert until Batch B adds S.en */
+  if(hasRing3Held())queueNotice("vega:project");   /* PLAN-pacing: first ring-3+ claim, not first Node */
   /* "what earns a level" - Dan's first playtest note. Fires once, after the
      player's first couple of grants, and never while a perk pick is already
      pending (that modal wins - showing "here's how" under it would be noise). */
@@ -5626,6 +5637,11 @@ function ladderTierRow(sysId,gi,isNext){
    game's GENS.forEach in render() did. This array is what that pass walks; it is
    rebuilt every time renderSysBuild() rebuilds the sheet's own rows (patch610/611). */
 let empSlotEls=[];
+/* PLAN-pacing: Project cards' "you make R/h · ~T to go" line - S.en ticks every
+   frame outside of dirty (same reason resProgEls/mapListEls exist below), so the
+   text refreshes here on an unconditional per-frame pass instead of waiting for
+   renderNex()'s own dataset-free full rebuild. Rebuilt every time renderNex() runs. */
+let projEls=[];
 function updateEmpBars(){
   for(const {el,sysId,gi} of empSlotEls){
     if(!el.isConnected)continue;
@@ -5661,6 +5677,12 @@ function updateEmpBars(){
         b.disabled = exo(r.x) < xpCost(r);
       });
     }
+  }
+  for(const q of projEls){
+    if(!q.el.isConnected)continue;
+    const enR=enRate(), have=S.en||0, r=(enR*3600).toFixed(1);
+    q.el.textContent = have>=q.cost ? `you make ${r} Nodes/h · ready`
+      : `you make ${r} Nodes/h · ~${fmtT(Math.max(0,(q.cost-have)/Math.max(enR,1e-9)))} to go`;
   }
 }
 function render(){
@@ -5709,10 +5731,11 @@ function render(){
 }
 let mapBuilt=false, mapSec=null, mapSecBuilt=-1, mapChipsBuilt=false, mapRevealBuilt=null;
 function secOf(id){ const s=SYSMAP[id]; return s?s.sec:0 }
-/* patch609: before level 8 the map shows only Sol Reach - every draw/lookup path
-   (buildMap, renderMap, the map churn sweep) already goes through this one function,
-   so gating it here is the whole reveal. */
-function sysInSec(sec){ return SYS.filter(s=>s.sec===sec && (level()>=8||s.home)) }
+/* patch609 (PLAN-pacing: level moved to unlockLv("p-map")): before the map unlock
+   level the map shows only Sol Reach - every draw/lookup path (buildMap, renderMap,
+   the map churn sweep) already goes through this one function, so gating it here is
+   the whole reveal. */
+function sysInSec(sec){ return SYS.filter(s=>s.sec===sec && (level()>=unlockLv("p-map")||s.home)) }
 function initMapSec(){ if(mapSec==null) mapSec=secOf(S.msel||"home") }
 function setMapSec(n){
   n=Math.max(0,Math.min(SECTORS.length-1,n));
@@ -5731,12 +5754,13 @@ function buildMapChips(){
   host.querySelectorAll(".chip").forEach(c=>c.onclick=()=>setMapSec(+c.dataset.i));
   mapChipsBuilt=true;
 }
-/* patch609: nothing to switch sectors to before level 8 (sysInSec() shows only home
-   everywhere), so the chip row hides with it rather than sitting there empty/inert. */
+/* patch609 (PLAN-pacing: level moved to unlockLv("p-map")): nothing to switch sectors
+   to before the map unlock level (sysInSec() shows only home everywhere), so the chip
+   row hides with it rather than sitting there empty/inert. */
 function renderMapChips(){
   const host=$("#mapChips");
   buildMapChips();
-  if(host)host.hidden = level()<8;
+  if(host)host.hidden = level()<unlockLv("p-map");
   $$("#mapChips .chip").forEach(c=>c.classList.toggle("on", +c.dataset.i===mapSec));
 }
 /* ---- per-sector canvas backdrop: seeded, cheap, drawn once per sector switch (not
@@ -5831,11 +5855,12 @@ function drawMapBg(sec){
 }
 /* exit lane out to the next sector (or the end-of-map flag on the last one).
    patch568 adds the rival-fleet/trip warnings into this same #mapEdge host. */
-/* patch609: the exit arrow (and every fleet/threat warning pill this same host draws)
-   only ever points at another sector - there is nothing to point at before level 8. */
+/* patch609 (PLAN-pacing: level moved to unlockLv("p-map")): the exit arrow (and every
+   fleet/threat warning pill this same host draws) only ever points at another sector -
+   there is nothing to point at before the map unlock level. */
 function renderMapEdge(){
   const host=$("#mapEdge"); if(!host)return;
-  if(level()<8){ host.hidden=true; host.innerHTML=""; return; }
+  if(level()<unlockLv("p-map")){ host.hidden=true; host.innerHTML=""; return; }
   host.hidden=false;
   const exit=SEC_EXIT[mapSec];
   let html = exit
@@ -5916,7 +5941,7 @@ function buildMap(){
     host.appendChild(b);
   }
   renderMapEdge();
-  mapBuilt=true; mapSecBuilt=mapSec; mapRevealBuilt=level()>=8;
+  mapBuilt=true; mapSecBuilt=mapSec; mapRevealBuilt=level()>=unlockLv("p-map");
 }
 /* patch607 - the header context card. Reads S.msel -> SYSMAP[..].res -> exoDef, same
    chain empSysRow()/updateOrbBadge() already read for the same purpose. Runs every
@@ -6601,12 +6626,13 @@ function renderMap(){
   initMapSec();
   /* patch618: class toggle only, on the one persistent #mapWrap element - never
      a rebuild (tchurn2.js sweeps every on-pane button for DOM-identity churn).
-     level()<8 is the exact condition sysInSec() already filters home-only on. */
-  { const w=$("#mapWrap"); if(w)w.classList.toggle("homeonly",level()<8); }
-  /* patch609b: a level-8 crossing changes what sysInSec() returns for the SAME
-     sector, which the mapSecBuilt check alone can't see - force the same rebuild a
-     sector change already gets. */
-  if(!mapBuilt||mapSecBuilt!==mapSec||mapRevealBuilt!==(level()>=8))buildMap();
+     level()<unlockLv("p-map") is the exact condition sysInSec() already filters
+     home-only on. */
+  { const w=$("#mapWrap"); if(w)w.classList.toggle("homeonly",level()<unlockLv("p-map")); }
+  /* patch609b: a map-unlock-level crossing changes what sysInSec() returns for the
+     SAME sector, which the mapSecBuilt check alone can't see - force the same rebuild
+     a sector change already gets. */
+  if(!mapBuilt||mapSecBuilt!==mapSec||mapRevealBuilt!==(level()>=unlockLv("p-map")))buildMap();
   renderMapChips();
   renderMapList();
   for(const s of sysInSec(mapSec)){
@@ -6843,10 +6869,11 @@ function renderLevel(){
   rl.style.setProperty("--p", (pend>0?100:Math.round(lvProgress()*100))+"%");
   rl.title = pend>0 ? "Level up ready — tap to choose a perk"
            : Math.round(lvProgress()*100)+"% to level "+(earnedLevel()+1);
-  /* patch609: the UNLOCK entry for p-map still carries lv:8 (checkUnlocks() still
-     queues vega:map off it, unchanged) but no longer hides the tab itself - patch608
-     made it the default tab, so hiding it below level 8 would take the whole bar down
-     to nothing for a brand-new player. sysInSec()'s own gate is the real reveal now. */
+  /* patch609: the UNLOCK entry for p-map still carries its own lv (checkUnlocks()
+     still queues vega:map off it, unchanged) but no longer hides the tab itself -
+     patch608 made it the default tab, so hiding it below the map unlock level would
+     take the whole bar down to nothing for a brand-new player. sysInSec()'s own gate
+     is the real reveal now. */
   for(const u of UNLOCK){
     if(u.p==="p-map")continue;
     const t=$$(".tab").find(x=>x.dataset.p===u.p);
@@ -7267,10 +7294,18 @@ function renderNex(){
      "ever produced/held" test the strip uses, so it can never go hidden again once
      shown (spending the bank to 0 does not stop a held ring-3/4 system producing). */
   const proj=NEXUS.filter(r=>r.cur==="en");
+  projEls=[];
   if(proj.length && ((S.en||0)>0 || enRate()>0)){
     const head=document.createElement("div");
     head.className="sechead pjhead"; head.textContent="THE PROJECT";
     host.appendChild(head);
+    /* PLAN-pacing: "nothing tells you where they come from" - one line, built from
+       the rate constants and the sector names, never hard-coded numbers. */
+    const secName=k=>{ const sec=SECTORS.find(x=>x.key===k); return sec?sec.n:k; };
+    const expl=document.createElement("p"); expl.className="pjexpl";
+    expl.textContent=`Nodes come from held systems in ${secName("frontier")} `
+      +`(${EN_RING3}/h each), ${secName("deep")} and ${secName("beyond")} (${EN_RING4}/h).`;
+    host.appendChild(expl);
     proj.forEach(r=>{
       /* patch592: the game is won - pjx stops reading as just another MAXED card
          and offers its way back into the ending screen instead. */
@@ -7296,6 +7331,14 @@ function renderNex(){
           :`<div class="eff">${r.d(l)}${max?"":" → "+r.d(l+1)}</div>
             ${max?'<button disabled>MAXED</button>':`<button data-cost="${c}" data-cur="en">${fmt(c)} Nodes</button>`}`}`;
       if(!max&&!locked&&!seized)d.querySelector("button").onclick=()=>buyNex(r);
+      /* PLAN-pacing: "you make R/h · ~T to go" - only where it means anything
+         (producing, buyable, not already maxed/locked/seized). Text itself is
+         refreshed every frame by updateEmpBars() (projEls), not rebuilt here. */
+      if(enRate()>0 && !max && !locked && !seized){
+        const eta=document.createElement("p"); eta.className="pjeta";
+        d.appendChild(eta);
+        projEls.push({el:eta, cost:c});
+      }
       host.appendChild(d);
     });
   }
@@ -10773,12 +10816,13 @@ function adopt(o){
     }
     S.han[k]=arr;
   }
-  /* patch609: an old save can carry S.msel naming a system that sysInSec() no longer
-     draws a node for below level 8 (the map used to show every system in a sector
-     regardless of level) - left alone, renderMap() would still find it in SYSMAP and
-     open its sheet on a node that isn't there. Placed after S=f, like the S.han
-     sanitiser just above, because it needs level() to read this save's OWN S.lvl. */
-  if(S.msel && S.msel!=="home" && level()<8) S.msel=null;
+  /* patch609 (PLAN-pacing: level moved to unlockLv("p-map")): an old save can carry
+     S.msel naming a system that sysInSec() no longer draws a node for below the map
+     unlock level (the map used to show every system in a sector regardless of level)
+     - left alone, renderMap() would still find it in SYSMAP and open its sheet on a
+     node that isn't there. Placed after S=f, like the S.han sanitiser just above,
+     because it needs level() to read this save's OWN S.lvl. */
+  if(S.msel && S.msel!=="home" && level()<unlockLv("p-map")) S.msel=null;
   if(S.__seedXp){ delete S.__seedXp; xpSeedAll() }
   /* one-time unlock notices: back-fill "already seen" for whatever this save already
      satisfies, so loading an existing game never queues a flood of "just unlocked"
@@ -10808,7 +10852,7 @@ function adopt(o){
   if(level()>=55)S.seen["vega:drift55"]=true;
   if(level()>=60)S.seen["rival:rv60"]=true;
   if(level()>=65)S.seen["vega:drift65"]=true;
-  if((S.en||0)>0)S.seen["vega:project"]=true;   /* inert until Batch B adds S.en */
+  if(hasRing3Held())S.seen["vega:project"]=true;   /* PLAN-pacing: first ring-3+ claim, not first Node */
   /* the beats below have no "unlockedAt" equivalent - back-filled off the closest
      thing this save already tracks, so an old save never gets a first-time beat for
      something it did long ago. threat/firstLoss are best-effort (thqSeq/S.occ do not
@@ -12197,7 +12241,7 @@ window.__SD={get S(){return S},NEXUS,buyNex,openSite,SITE,siteSlots,
   finalHostileObj,finalSpawnWave,finalBattleTick,finalBossBreakCheck,startFinalWithdraw,
   endFinalBattle,finaleWon,
   FINAL_ALLY_ORDER,ALLY_DPS_FRAC,ALLY_IV,finalAllyJoin,finalAlliesTick,allyRowX,allyRowY,
-  sysBonus,claimSystem,heldSystems,
+  sysBonus,claimSystem,heldSystems,hasRing3Held,unlockedAt,
   SD_C0,SD_CG,SD_AUTOEV,SD_BUILD_BASE,SD_BUILD_PER,DEF_STR,SHD_HULL_PER,DEF_MODULES,
   dmodSlots,dmodSlot,dmodEnsure,dmodBusy,dmodCost,dmodCostOre,dmodPrice,dmodBuildSecs,dmodComplete,
   dmodBuild,dmodUpgrade,dmodRearm,dmodSwap,dmodLv,dmodSummary,dmodConsumeMines,
@@ -12250,7 +12294,7 @@ window.__SD={get S(){return S},NEXUS,buyNex,openSite,SITE,siteSlots,
   playerY,SHOT_T,
   forecastSplit,evadeOf,landedPips,isRaw,
   resolveRound,forecastIncoming,screenCut,telAll,bTapTurn,pendingLevels,takeLevel,lvOffer,lvModal,lvSummary,
-  PERKS,pkl,costMul,perkSummary,xpNeed,grantXp,xpSeed,xpSeedAll,xpOnWins,xpOnDef,xpCrewFull,checkAchs,xpNext,LVXP,LVXP_PTS,lvlMul,UNLOCK,checkLevel,tick,doScan,fmt,GENS,adopt,fresh,clickPow,tot,globalMul,RESH,resCur,resBal,resCost,buyRes,
+  PERKS,pkl,costMul,perkSummary,xpNeed,grantXp,xpSeed,xpSeedAll,xpOnWins,xpOnDef,xpCrewFull,checkAchs,xpNext,LVXP,LVXP_PTS,lvlMul,UNLOCK,unlockLv,checkLevel,tick,doScan,fmt,fmtT,GENS,adopt,fresh,clickPow,tot,globalMul,RESH,resCur,resBal,resCost,buyRes,
   LADDER_KINDS,LADDERS,ladderKindOf,sysLadder,sysTierCount,builtSystems,sysNextGi,tierBuildable,
   ladderRate,ladderPerUnit,ladderCost,ladderMaxAff,ladderGain,ladderExoId,ladderExoCost,ladderBuy,
   ladderMarquee,gCount,anyOf,

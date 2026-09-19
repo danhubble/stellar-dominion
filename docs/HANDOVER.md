@@ -11746,3 +11746,12 @@ and fixed `06-progress.js`'s `lvModal()` `UNLOCK.find()` tie bug in commit 1, be
 the brief's own commit-1 instruction says to "confirm nothing assumes distinct
 levels" and this genuinely did - a level-5 player would otherwise never be told Map
 also opened. No other deviations.
+
+## release b639 — PLAN-pacing shipped (commits 96a99e9…e973285)
+
+Verified by the coordinator at 390x667 and 390x844: Project header line reads the
+constants ("Frontier (4/h each), The Deep and Beyond (12/h)"), per-card ETA line,
+level-5 modal lists both Research and Map. Pre-existing, noted for later: on mobile
+`#left` (SCAN SECTOR + Getting Started) sits under every tab, ~200px at 667.
+csim: unchanged by this batch (csim never reads UNLOCK pane levels or S.en), so the
+baseline file is the same bytes. Published to the existing artifact (Version 39).
