@@ -806,13 +806,14 @@ function refHP(){  return blendPar(parHP(),  fleetHPMax()) }
 /* How a fight is actually likely to go: how long they last against how long you do.
    Above 1 means you outlive them. Uses the same reference the battle uses, so the
    label cannot drift away from the fight it is describing. */
-function fightOdds(t){
+function fightOdds(t,f){
+  f=f||curFleet();
   const dmg=loadoutDPS(t.en);
   if(!(dmg>0))return 0;
   const foeHP=refDPS()*t.secs*t.dif*wepHpMul();
   const ttk=foeHP/dmg;
-  const inc=refHP()*t.dmg/t.secs*WEP_INC*(1-fleetEvade()*0.85);
-  const mine=fleetHPMax()*Math.max(0.05,curFleet().hp||0);
+  const inc=refHP()*t.dmg/t.secs*WEP_INC*(1-fleetEvade(f)*0.85);
+  const mine=fleetHPMax(f)*Math.max(0.05,f.hp||0);
   const ttd=inc>0 ? mine/inc : 1e9;
   /* the wave clock is part of the risk: a fight a real player (about 70% of ideal
      fire) cannot finish before reinforcements is not LOW whatever the hull maths says */
@@ -832,15 +833,17 @@ function riskOf(t){
    nicks fleet integrity a little rather than nothing at all - the fleet did fight,
    nobody just watched a number change. */
 const AUTO_MULT=3, AUTO_YIELD=0.92, AUTO_FHP_COST=0.03;
-function canAutoResolve(t){
-  return !!t && fleetDPS()>0 && curFleet().hp>=0.15 && fightOdds(t)>=AUTO_MULT;
+function canAutoResolve(t,f){
+  f=f||curFleet();
+  return !!t && fleetDPS(f)>0 && f.hp>=0.15 && fightOdds(t,f)>=AUTO_MULT;
 }
 /* engageTarget() does all the real setup (spawn, mode, DOM); this just fast-forwards
    the result before the first frame draws, and tags BT.auto so endBattle() knows to
    apply the small time-cost above instead of a full manual-win payout. */
-function autoResolveTarget(t, idx){
-  if(!canAutoResolve(t))return false;
-  engageTarget(t, idx);
+function autoResolveTarget(t, idx, f){
+  f=f||curFleet();
+  if(!canAutoResolve(t,f))return false;
+  engageTarget(t, idx, f);
   if(!BT)return false;
   BT.auto=1;
   /* patch633: the old instant kill (kill everyone, endBattle("win") the same frame) is

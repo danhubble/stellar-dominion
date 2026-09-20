@@ -54,10 +54,11 @@ function engage(idx){
 }
 /* idx < 0 means the target is not one of the drifting contacts in S.tg - an assault
    builds its own target, so endBattle() must not splice it out of that list. */
-function engageTarget(t, idx){
-  const dps=fleetDPS(), hpm=fleetHPMax();
+function engageTarget(t, idx, f){
+  f=f||curFleet();
+  const dps=fleetDPS(f), hpm=fleetHPMax(f);
   if(dps<=0){ toast("Build warships before you engage."); return }
-  if(curFleet().hp<0.15){ toast("Fleet too damaged — let it repair."); return }
+  if(f.hp<0.15){ toast("Fleet too damaged — let it repair."); return }
   /* sized off par, NOT off dps/hpm - see the par curve above. This is the line that
      used to make every purchase on this page pointless. */
   const wep = (S.cmode!=="live"&&S.cmode!=="turn");
@@ -66,8 +67,8 @@ function engageTarget(t, idx){
      see finalSpawnWave() (next to bUpdateWep) for waves 2/3's own FINAL_WAVE_MULT. */
   const totalHP = t.final ? hpm*FINAL_WAVE_MULT[0] : refDPS()*t.secs*t.dif*(wep?wepHpMul():1);
   const totalDPS = t.final ? dps*FINAL_WAVE_MULT[0] : (refHP()*t.dmg)/t.secs*(wep?WEP_INC:1);
-  BT={ idx, t, T:RAIDS[t.ti], en:[], stars:[], el:0, cap:t.secs*3.2,
-       hp:hpm*curFleet().hp, hpm, dps, kills:0, tot:t.en,
+  BT={ idx, t, T:RAIDS[t.ti], f, en:[], stars:[], el:0, cap:t.secs*3.2,
+       hp:hpm*f.hp, hpm, dps, kills:0, tot:t.en,
        cd:{f:0,k:0}, buf:{f:0,k:0}, tap:0, fx:[], num:[], sh:0, done:0,
        cmb:0, cmbT:0, best:0, crits:0, taps:0, hits:0,
        /* STAGE 1 escalation: the wave sizes its reinforcements off the fight's

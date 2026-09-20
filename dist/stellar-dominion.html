@@ -2964,13 +2964,14 @@ function refHP(){  return blendPar(parHP(),  fleetHPMax()) }
 /* How a fight is actually likely to go: how long they last against how long you do.
    Above 1 means you outlive them. Uses the same reference the battle uses, so the
    label cannot drift away from the fight it is describing. */
-function fightOdds(t){
+function fightOdds(t,f){
+  f=f||curFleet();
   const dmg=loadoutDPS(t.en);
   if(!(dmg>0))return 0;
   const foeHP=refDPS()*t.secs*t.dif*wepHpMul();
   const ttk=foeHP/dmg;
-  const inc=refHP()*t.dmg/t.secs*WEP_INC*(1-fleetEvade()*0.85);
-  const mine=fleetHPMax()*Math.max(0.05,curFleet().hp||0);
+  const inc=refHP()*t.dmg/t.secs*WEP_INC*(1-fleetEvade(f)*0.85);
+  const mine=fleetHPMax(f)*Math.max(0.05,f.hp||0);
   const ttd=inc>0 ? mine/inc : 1e9;
   /* the wave clock is part of the risk: a fight a real player (about 70% of ideal
      fire) cannot finish before reinforcements is not LOW whatever the hull maths says */
@@ -2990,15 +2991,17 @@ function riskOf(t){
    nicks fleet integrity a little rather than nothing at all - the fleet did fight,
    nobody just watched a number change. */
 const AUTO_MULT=3, AUTO_YIELD=0.92, AUTO_FHP_COST=0.03;
-function canAutoResolve(t){
-  return !!t && fleetDPS()>0 && curFleet().hp>=0.15 && fightOdds(t)>=AUTO_MULT;
+function canAutoResolve(t,f){
+  f=f||curFleet();
+  return !!t && fleetDPS(f)>0 && f.hp>=0.15 && fightOdds(t,f)>=AUTO_MULT;
 }
 /* engageTarget() does all the real setup (spawn, mode, DOM); this just fast-forwards
    the result before the first frame draws, and tags BT.auto so endBattle() knows to
    apply the small time-cost above instead of a full manual-win payout. */
-function autoResolveTarget(t, idx){
-  if(!canAutoResolve(t))return false;
-  engageTarget(t, idx);
+function autoResolveTarget(t, idx, f){
+  f=f||curFleet();
+  if(!canAutoResolve(t,f))return false;
+  engageTarget(t, idx, f);
   if(!BT)return false;
   BT.auto=1;
   /* patch633: the old instant kill (kill everyone, endBattle("win") the same frame) is
@@ -4224,8 +4227,9 @@ function assaultTarget(s){
     secs:32+s.ring*8,
     dmg:0.70+s.ring*0.10, sysId:s.id, rival:now, arch:s.arch||"swarm" };
 }
-function canAssault(s){
-  return sysContested(s) && level()>=s.lvl && fleetDPS()>0 && curFleet().hp>=0.15;
+function canAssault(s,f){
+  f=f||curFleet();
+  return sysContested(s) && level()>=s.lvl && fleetDPS(f)>0 && f.hp>=0.15;
 }
 /* PATCH 4 (2026-09-10): travel time. A launched assault sits in S.trip while the
    fleet is in flight/waiting - it is not a fight yet, just a state the Map panel
@@ -4687,7 +4691,10 @@ function startFinale(){
    sceneClose() first), so the sceneOn check below only matters for a future direct
    caller (e.g. a dev shortcut) that skips that flow. */
 function startFinalBattle(){
-  if(fleetDPS()<=0){
+  /* PLAN-fleets run 1 decision 8: the final battle takes every fleet, merged - so
+     readiness is checked against the merged total, not just curFleet(). */
+  const mf=mergeFleetsForFinal();
+  if(fleetDPS(mf)<=0){
     if(sceneOn)sceneClose();
     toast("No fleet \u2014 build warships first.","r");
     return;
@@ -4700,7 +4707,7 @@ function startFinalBattle(){
      hpm/dps*FINAL_WAVE_MULT instead) - kept at sane placeholder values only in
      case something else ever reads them. en is wave 1's own hostile count. */
   engageTarget({ final:1, name:"VEGA's Fleet", arch:"mirror", ti:4,
-    en:FINAL_WAVE_EN[0], secs:FINAL_CAP, dif:1, dmg:1 }, -1);
+    en:FINAL_WAVE_EN[0], secs:FINAL_CAP, dif:1, dmg:1 }, -1, mf);
 }
 function doScan(ev){
   const v=clickPow();
@@ -7690,10 +7697,11 @@ function engage(idx){
 }
 /* idx < 0 means the target is not one of the drifting contacts in S.tg - an assault
    builds its own target, so endBattle() must not splice it out of that list. */
-function engageTarget(t, idx){
-  const dps=fleetDPS(), hpm=fleetHPMax();
+function engageTarget(t, idx, f){
+  f=f||curFleet();
+  const dps=fleetDPS(f), hpm=fleetHPMax(f);
   if(dps<=0){ toast("Build warships before you engage."); return }
-  if(curFleet().hp<0.15){ toast("Fleet too damaged — let it repair."); return }
+  if(f.hp<0.15){ toast("Fleet too damaged — let it repair."); return }
   /* sized off par, NOT off dps/hpm - see the par curve above. This is the line that
      used to make every purchase on this page pointless. */
   const wep = (S.cmode!=="live"&&S.cmode!=="turn");
@@ -7702,8 +7710,8 @@ function engageTarget(t, idx){
      see finalSpawnWave() (next to bUpdateWep) for waves 2/3's own FINAL_WAVE_MULT. */
   const totalHP = t.final ? hpm*FINAL_WAVE_MULT[0] : refDPS()*t.secs*t.dif*(wep?wepHpMul():1);
   const totalDPS = t.final ? dps*FINAL_WAVE_MULT[0] : (refHP()*t.dmg)/t.secs*(wep?WEP_INC:1);
-  BT={ idx, t, T:RAIDS[t.ti], en:[], stars:[], el:0, cap:t.secs*3.2,
-       hp:hpm*curFleet().hp, hpm, dps, kills:0, tot:t.en,
+  BT={ idx, t, T:RAIDS[t.ti], f, en:[], stars:[], el:0, cap:t.secs*3.2,
+       hp:hpm*f.hp, hpm, dps, kills:0, tot:t.en,
        cd:{f:0,k:0}, buf:{f:0,k:0}, tap:0, fx:[], num:[], sh:0, done:0,
        cmb:0, cmbT:0, best:0, crits:0, taps:0, hits:0,
        /* STAGE 1 escalation: the wave sizes its reinforcements off the fight's
@@ -7840,7 +7848,10 @@ function hangarEntriesFor(sysId){
   for(let i=0;i<3;i++) for(let k=0;k<fl[i];k++) arr.push({hull:i, cd:SD_AUTOEV*(0.35+arr.length*0.3)});
   return arr;
 }
-function startDefence(id){
+function startDefence(id,f){
+  /* f: reserved for PLAN-fleets run 2+ (the fleet defending, once travel gates DEFEND
+     IT to a fleet that can arrive in time) - the defence mini-game itself (DT) never
+     reads S.sh/S.fhp today, so nothing here uses f yet. */
   const th = (id===undefined) ? thq()[0] : thqAt(id);
   if(!th)return false;
   const isSab=th.kind==="sab";
@@ -8476,7 +8487,8 @@ function renderEndCard(){
   /* patch589b: a no-fleet check takes priority over the hull one, same order the
      Map's own ASSAULT button already uses (empSysAction(), "NO FLEET" before
      "FLEET TOO DAMAGED") - this card must not offer a fight that cannot start. */
-  const noShips=fleetDPS()<=0, lowHull=!noShips&&curFleet().hp<0.15;
+  const mf=mergeFleetsForFinal();
+  const noShips=fleetDPS(mf)<=0, lowHull=!noShips&&mf.hp<0.15;
   host.innerHTML=`<div class="thrc endc">
     <h5>VEGA'S FLEET HOLDS SOL REACH</h5>
     <p>The turn has come. Production keeps running \u2014 the final battle is yours to choose, whenever you're ready.</p>
@@ -8646,7 +8658,7 @@ function fireWeapon(i){
         : Math.random() < D.acc*(1-evadeOf(e));
       if(!hit){ BT.fx.push({t:"miss",x:e.x*BW,y:e.y*BH,a:1,n:1}); continue }
       const crit=Math.random()<D.crit*(1+0.14*rfl("crt"));
-      const dmg=fleetDPS()*D.mul*(crit?2.4:1)*crewMul("gun");
+      const dmg=fleetDPS(BT.f)*D.mul*(crit?2.4:1)*crewMul("gun");
       /* their screens block whole shots too, unless the gun pierces */
       if(!D.pierce && e.shd>0){
         const wasFinal=e.shd===1;
@@ -8689,7 +8701,7 @@ function foeFire(e){
   const raw=!!K.fuse;                         /* a Charger's breach ignores screens AND evasion */
   /* they roll to hit exactly as you do - being the only side that can whiff was the
      single most unfair-feeling thing in the fight */
-  const miss = !raw && Math.random() >= (K.acc||0.8)*(1-fleetEvade());
+  const miss = !raw && Math.random() >= (K.acc||0.8)*(1-fleetEvade(BT.f));
   /* a shield layer stops the shot WHOLE, whatever its size, then is gone until it
      rebuilds. A breach ignores them, which is what a breach is for. */
   const blocked = !miss && !raw && BT.shd>0;
@@ -9529,7 +9541,7 @@ function queueWin(dt){
 function endBattle(how){
   if(BT.done)return; BT.done=1;
   if(BT.t && BT.t.final)return endFinalBattle(how);   /* patch590: no raid/assault reward or claim logic applies */
-  const t=BT.t, T=BT.T, frac=BT.kills/BT.tot, f=curFleet();
+  const t=BT.t, T=BT.T, frac=BT.kills/BT.tot, f=BT.f;
   const full=raidReward(t);
   let o=0,c=0,m=0,lost=[0,0,0];
   let sv=0;
@@ -9603,19 +9615,55 @@ function endBattle(how){
   sfx(how==="win"?"win":"loss");
   dirty=true;
 }
+/* PLAN-fleets run 1, decision 8: the final battle takes every fleet - it is the one
+   fight that ignores position, all fleets recalled to the Core on engage. Fought
+   with a TEMPORARY merged fleet (never itself pushed into S.fl); mergeFleetsForFinal()
+   builds it, unmergeAfterFinal() (called from endFinalBattle(), below) writes the
+   result back: integrity uniformly (the merged fleet fought as one, so it comes home
+   as one number) and any hull losses split proportionally, per class, off however
+   much of that class each real fleet actually contributed. */
+function mergeFleetsForFinal(){
+  const src=fleets();
+  const sh=[0,0,0];
+  for(const fl of src)for(let i=0;i<3;i++)sh[i]+=fl.sh[i]||0;
+  const hp=src.length?Math.min(...src.map(fl=>Math.max(0,Math.min(1,fl.hp||0)))):1;
+  return { id:0, n:"Combined Fleet", sh, hp, at:"home", to:null, eta:0,
+    _final:{ sh0:sh.slice(), src:src.map(fl=>({id:fl.id, sh:fl.sh.slice()})) } };
+}
+function unmergeAfterFinal(mf){
+  const rec=mf&&mf._final; if(!rec)return;
+  for(let i=0;i<3;i++){
+    const before=rec.sh0[i];
+    const lost=Math.max(0,before-(mf.sh[i]||0));
+    let assigned=0;
+    for(let k=0;k<rec.src.length;k++){
+      const s=rec.src[k], fl=fleet(s.id); if(!fl)continue;
+      const isLast=k===rec.src.length-1;
+      let take = isLast ? Math.max(0,lost-assigned)
+                         : (before>0?Math.round(lost*(s.sh[i]/before)):0);
+      if(!isLast)assigned+=take;
+      take=Math.min(take, fl.sh[i]||0);
+      fl.sh[i]=(fl.sh[i]||0)-take;
+    }
+  }
+  const hp=Math.max(0.05,Math.min(1,mf.hp));
+  for(const fl of fleets())fl.hp=hp;
+}
 /* patch590: the final battle's own result branch - a scripted, one-off fight has no
    loot and does not touch S.tg/S.taken/S.occ, so it never runs through the ordinary
    raid/assault reward or claim logic above (per the code map: "give it its own
    result branch"). how is "lost" (hull 0 or FINAL_CAP - both read the same, per the
    plan) or "finalwin" (the withdraw beat finished). */
 function endFinalBattle(how){
+  const mf=BT.f;
   if(how==="lost"){
-    for(let i=0;i<3;i++){ if(curFleet().sh[i]>0){ const l=Math.max(1,Math.ceil(curFleet().sh[i]*0.25)); curFleet().sh[i]-=l } }
-    S.losses=(S.losses||0)+1; curFleet().hp=0.35;
+    for(let i=0;i<3;i++){ if(mf.sh[i]>0){ const l=Math.max(1,Math.ceil(mf.sh[i]*0.25)); mf.sh[i]-=l } }
+    S.losses=(S.losses||0)+1; mf.hp=0.35;
+    unmergeAfterFinal(mf);
     $("#bRes").innerHTML=`<div class="rescard"><h3 style="color:var(--rd)">${STORY.battleLossT}</h3>
       <div class="rsub">${STORY.battleLoss}</div>
       <div class="rline"><span>Hostiles destroyed</span><b>${BT.kills} / ${BT.tot}</b></div>
-      <div class="rline"><span>Fleet integrity</span><b>${Math.round(curFleet().hp*100)}%</b></div>
+      <div class="rline"><span>Fleet integrity</span><b>${Math.round(mf.hp*100)}%</b></div>
       <button id="bDone">RETURN TO EMPIRE</button></div>`;
     $("#bRes").classList.add("on"); $("#bDone").onclick=closeBattle;
     sfx("loss"); dirty=true; save();
@@ -9624,7 +9672,8 @@ function endFinalBattle(how){
   /* how==="finalwin" - S.end stays 1 until finaleWon() runs, so every seized
      Nexus/advisor/rival surface (patch589) stays exactly as it was through this
      card; only tapping the one button below moves S.end to 2. */
-  curFleet().hp=Math.max(0.05,BT.hp/BT.hpm);
+  mf.hp=Math.max(0.05,BT.hp/BT.hpm);
+  unmergeAfterFinal(mf);
   $("#bRes").innerHTML=`<div class="rescard"><h3 style="color:var(--gr)">${STORY.battleWinT}</h3>
     <div class="rsub">${STORY.battleWin}</div>
     <button id="bFinaleDone">CONTINUE</button></div>`;
@@ -9796,7 +9845,7 @@ function bDraw(){
   bx.globalAlpha=1;
 
   // player fleet
-  const n=Math.min(13,Math.max(1,fleetCount())), fr=Math.min(BW,BH)*0.017;
+  const n=Math.min(13,Math.max(1,fleetCount(BT.f))), fr=Math.min(BW,BH)*0.017;
   for(let i=0;i<n;i++){
     const fx=BW*(0.5+((i-(n-1)/2)*0.058)), bob=Math.sin(BT.el*2+i)*fr*0.25;
     bx.save(); bx.translate(fx,fy+bob);
@@ -12294,6 +12343,7 @@ window.__SD={get S(){return S},NEXUS,buyNex,openSite,SITE,siteSlots,
   MISFX,misClaimFx,get misFxUntil(){return misFxUntil},
   SHIPS,RAIDS,newTarget,fleetDPS,fleetHPMax,fleetCount,buyShip,raidReward,engage,
   FLEET_COL,mkFleet,fleets,fleet,curFleet,fleetAtSys,shipTotal,allFleetShips,
+  mergeFleetsForFinal,unmergeAfterFinal,
   WEAPONS,WEPMAP,parDPS,parHP,parFleet,hardpoints,wepOwned,wepSlots,equipped,buyWeapon,equipWeapon,
   fleetEvade,repairCost,repairFleet,ammoCost,buyAmmo,AMMO_LOT,refDPS,refHP,PAR_BLEND,
   fightOdds,riskOf,blendPar,

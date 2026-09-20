@@ -109,7 +109,10 @@ function startFinale(){
    sceneClose() first), so the sceneOn check below only matters for a future direct
    caller (e.g. a dev shortcut) that skips that flow. */
 function startFinalBattle(){
-  if(fleetDPS()<=0){
+  /* PLAN-fleets run 1 decision 8: the final battle takes every fleet, merged - so
+     readiness is checked against the merged total, not just curFleet(). */
+  const mf=mergeFleetsForFinal();
+  if(fleetDPS(mf)<=0){
     if(sceneOn)sceneClose();
     toast("No fleet \u2014 build warships first.","r");
     return;
@@ -122,7 +125,7 @@ function startFinalBattle(){
      hpm/dps*FINAL_WAVE_MULT instead) - kept at sane placeholder values only in
      case something else ever reads them. en is wave 1's own hostile count. */
   engageTarget({ final:1, name:"VEGA's Fleet", arch:"mirror", ti:4,
-    en:FINAL_WAVE_EN[0], secs:FINAL_CAP, dif:1, dmg:1 }, -1);
+    en:FINAL_WAVE_EN[0], secs:FINAL_CAP, dif:1, dmg:1 }, -1, mf);
 }
 function doScan(ev){
   const v=clickPow();

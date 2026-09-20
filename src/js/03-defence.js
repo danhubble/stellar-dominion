@@ -464,8 +464,9 @@ function assaultTarget(s){
     secs:32+s.ring*8,
     dmg:0.70+s.ring*0.10, sysId:s.id, rival:now, arch:s.arch||"swarm" };
 }
-function canAssault(s){
-  return sysContested(s) && level()>=s.lvl && fleetDPS()>0 && curFleet().hp>=0.15;
+function canAssault(s,f){
+  f=f||curFleet();
+  return sysContested(s) && level()>=s.lvl && fleetDPS(f)>0 && f.hp>=0.15;
 }
 /* PATCH 4 (2026-09-10): travel time. A launched assault sits in S.trip while the
    fleet is in flight/waiting - it is not a fight yet, just a state the Map panel
