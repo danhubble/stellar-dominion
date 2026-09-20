@@ -54,7 +54,9 @@ in the map view." And, for later: missions on fleets, commanders, governors.
    interaction A).** A row of three full-width buttons directly under the map
    square, on the map view and on a system page alike: "1 · AT WRAITHE",
    "2 · → THULE 32s", "3 · LOCKED LV 20", number in the fleet's colour (same as its
-   map marker). Tap = select the fleet (button lit, marker pulses); with a fleet
+   map marker). Tap = select the fleet AND locate it (owner: "locate the fleet when you press the
+   button"): the map switches to the sector the fleet is in (or flying to), the
+   button lights, the marker pulses; with a fleet
    selected, tapping a system node shows a "SEND · 41s" chip on that node, tapping
    the chip sends it and deselects; tapping the map elsewhere deselects; node taps
    do not open the system page while a fleet is selected. Tap the selected button
