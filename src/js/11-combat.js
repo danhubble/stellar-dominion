@@ -2654,18 +2654,43 @@ function renderRaids(){
     const rews=[rw.o?fmt(rw.o)+" "+RI('ore'):null,rw.c?fmt(rw.c)+" "+RI('cry'):null,rw.m?fmt(rw.m)+" "+RI('dm'):null,
       "~"+SVBASE[t.ti]*Math.round(t.dif)+" "+RI('sv')].filter(Boolean).join(" · ");
     const d=document.createElement("div"); d.className="tcard"; d.style.setProperty("--a",T.col);
+    /* PLAN-fleets run 2 (decision 3): a raid is somewhere, and engaging it needs a
+       fleet actually there - hereFleet, not curFleet(). None there yet: offer to
+       SEND the nearest idle one, or say ARRIVING if one is already en route (never
+       a second SEND stacked on top of the first). */
+    const sysName=(SYSMAP[t.sys]||{}).n||t.sys;
+    const hereFleet=fleetAtSys(t.sys);
+    let actHtml, auto=false;
+    if(hereFleet){
+      auto=canAutoResolve(t,hereFleet);
+      actHtml = auto
+        ? '<button>AUTO-RESOLVE</button><button class="ghost" style="margin-top:6px">FIGHT IT ANYWAY</button>'
+        : "<button>ENGAGE</button>";
+    } else {
+      const enRoute=fleetTravelingTo(t.sys);
+      if(enRoute) actHtml=`<button disabled>ARRIVING · ${Math.max(0,Math.ceil(enRoute.eta))}s</button>`;
+      else {
+        const nf=nearestIdleFleetTo(t.sys);
+        actHtml = nf
+          ? `<button>SEND ${nf.n.toUpperCase()} · ${Math.round(travelSecs(nf.at,t.sys))}s</button>`
+          : `<button disabled>ALL FLEETS BUSY</button>`;
+      }
+    }
     d.innerHTML=`<h5>${t.name} <span class="risk" style="color:${risk[1]}">${risk[0]}</span></h5>
+      <div class="tloc">near ${sysName}</div>
       <div class="tm">${T.boss?"FLAGSHIP · single heavy target":t.en+" hostiles"} · ~${Math.round(t.secs*t.dif)}s engagement<br>
         they can strip ~${Math.round(t.dmg*100)}% of a full hull · reinforcements at ${waveTFor(t)}s</div>
       <div class="tr">${rews||"—"}</div>
-      ${canAutoResolve(t,cf)
-        ? '<button>AUTO-RESOLVE</button><button class="ghost" style="margin-top:6px">FIGHT IT ANYWAY</button>'
-        : "<button>ENGAGE</button>"}`;
+      ${actHtml}`;
     const btns=d.querySelectorAll("button");
-    const auto=canAutoResolve(t,cf);
-    btns.forEach(bb=>bb.disabled=dps<=0||cf.hp<0.15);
-    if(auto){ btns[0].onclick=()=>autoEngage(i); btns[1].onclick=()=>engage(i); }
-    else btns[0].onclick=()=>engage(i);
+    if(hereFleet){
+      btns.forEach(bb=>bb.disabled=bb.disabled||dps<=0||cf.hp<0.15);
+      if(auto){ btns[0].onclick=()=>autoEngage(i); btns[1].onclick=()=>engage(i); }
+      else btns[0].onclick=()=>engage(i);
+    } else if(!btns[0].disabled){
+      const nf=nearestIdleFleetTo(t.sys);
+      btns[0].onclick=()=>{ if(nf)fleetSend(nf,t.sys); render(); };
+    }
     th.appendChild(d);
   });
   // salvage chip

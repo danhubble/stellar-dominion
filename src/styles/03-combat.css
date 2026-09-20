@@ -82,6 +82,7 @@
 .tcard{border:1px solid var(--line);border-radius:11px;padding:10px;background:var(--panel);
   display:flex;flex-direction:column;gap:6px;border-left:3px solid var(--a)}
 .tcard h5{margin:0;font:600 12.5px/1.25 system-ui;color:var(--a)}
+.tcard .tloc{font:10.5px/1.4 ui-monospace,monospace;color:var(--dim2)}
 .tcard .tm{font:10.5px/1.5 ui-monospace,monospace;color:var(--mut)}
 .tcard .tr{font:11px/1.5 ui-monospace,monospace;color:var(--gd)}
 .tcard button{border:1px solid var(--a);background:rgba(255,255,255,.05);color:var(--txt);

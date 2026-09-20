@@ -55,7 +55,11 @@ function engage(idx){
 /* idx < 0 means the target is not one of the drifting contacts in S.tg - an assault
    builds its own target, so endBattle() must not splice it out of that list. */
 function engageTarget(t, idx, f){
-  f=f||curFleet();
+  /* run 2 (decision 3): a raid target (t.sys set) needs a fleet actually there -
+     see canAutoResolve()'s own comment, same rule. Anything without t.sys (an
+     assault's t.sysId, the final battle's t.final) is unaffected. */
+  f=f||(t&&t.sys?fleetAtSys(t.sys):curFleet());
+  if(t&&t.sys&&!f){ toast("No fleet at "+((SYSMAP[t.sys]||{}).n||t.sys)); return }
   const dps=fleetDPS(f), hpm=fleetHPMax(f);
   if(dps<=0){ toast("Build warships before you engage."); return }
   if(f.hp<0.15){ toast("Fleet too damaged — let it repair."); return }

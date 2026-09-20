@@ -833,15 +833,21 @@ function riskOf(t){
    nicks fleet integrity a little rather than nothing at all - the fleet did fight,
    nobody just watched a number change. */
 const AUTO_MULT=3, AUTO_YIELD=0.92, AUTO_FHP_COST=0.03;
+/* run 2 (decision 3): a raid target (t.sys set) needs a fleet actually AT that
+   system - fleetAtSys(t.sys), not "whichever fleet the Raids pane happens to be
+   showing". Anything without a t.sys (the assault target's own t.sysId, or the
+   final battle's t.final - see engageTarget()'s own comment) is unaffected and
+   keeps defaulting to curFleet(), exactly as run 1 left it. */
 function canAutoResolve(t,f){
-  f=f||curFleet();
-  return !!t && fleetDPS(f)>0 && f.hp>=0.15 && fightOdds(t,f)>=AUTO_MULT;
+  f=f||(t&&t.sys?fleetAtSys(t.sys):curFleet());
+  return !!t && !!f && fleetDPS(f)>0 && f.hp>=0.15 && fightOdds(t,f)>=AUTO_MULT;
 }
 /* engageTarget() does all the real setup (spawn, mode, DOM); this just fast-forwards
    the result before the first frame draws, and tags BT.auto so endBattle() knows to
    apply the small time-cost above instead of a full manual-win payout. */
 function autoResolveTarget(t, idx, f){
-  f=f||curFleet();
+  f=f||(t&&t.sys?fleetAtSys(t.sys):curFleet());
+  if(!f)return false;
   if(!canAutoResolve(t,f))return false;
   engageTarget(t, idx, f);
   if(!BT)return false;
@@ -1310,6 +1316,20 @@ function curFleet(){
 /* run 2: the first idle (not travelling) fleet sitting at sysId - every fleet is
    idle at home in run 1, so this is unused until travel exists. */
 function fleetAtSys(sysId){ return fleets().find(f=>!f.to&&f.at===sysId)||null }
+/* a fleet already en route to sysId, if any - so a raid card (or the fleet bar)
+   can show "ARRIVING" instead of offering to send a second fleet on top of it. */
+function fleetTravelingTo(sysId){ return fleets().find(f=>f.to===sysId)||null }
+/* the idle fleet that would take the least time to reach sysId - "nearest" by
+   travel time, not map distance, so a cross-sector detour never wins over a fleet
+   already in the neighbourhood. null when every fleet is either travelling or
+   locked out entirely (run 3's slots 2/3 before they unlock never reach fleets()
+   at all - mkFleet() is only ever called for an unlocked slot). */
+function nearestIdleFleetTo(sysId){
+  const idle=fleets().filter(f=>!f.to);
+  if(!idle.length)return null;
+  return idle.reduce((best,f)=>
+    travelSecs(f.at,sysId)<travelSecs(best.at,sysId) ? f : best);
+}
 /* ---------------- PLAN-fleets run 2: position and travel ----------------
    TUNING-PENDING, all three (PLAN-fleets.md decision 4): same-sector travel is
    TRAVEL_BASE + TRAVEL_PER_UNIT per map unit of on-screen distance (sx/sy, 0-100);
@@ -1493,13 +1513,35 @@ function sellShip(i,k){ const f=curFleet(); k=Math.min(k,f.sh[i]); if(k<1)return
   S.ore+=0.5*S1.b*Math.pow(S1.g,shipTotal(i)-k)*(Math.pow(S1.g,k)-1)/(S1.g-1);
   f.sh[i]-=k; blip(150,.09,"square",.04); dirty=true; return true }
 function pick(a){ return a[Math.floor(Math.random()*a.length)] }
+/* PLAN-fleets run 2 (decision 3): where a raid target actually is. Reuses `v` -
+   already drawn below for the difficulty roll - as this target's OWN position roll
+   rather than spending a fresh Math.random() call: newTarget() runs inside
+   raidTick(dt), on tick()'s own path, and csim4.js calls tick() hundreds of
+   thousands of times - a new draw here would shift every Math.random() call after
+   the very first target the run ever generates, breaking csim's seeded
+   byte-identical baseline for a field the sim never reads (it never fields a
+   fleet - see csim4.js's own top-of-file comment). v is already uniform on
+   [0.85,1.3), so its position within that range is exactly as random as a fresh
+   roll would have been - "the existing newTarget() RNG stream" per the plan. */
+function raidTargetSys(v){
+  if(level()<unlockLv("p-map"))return "home";
+  const held=heldSystems();
+  const maxRing=held.reduce((m,s)=>Math.max(m,s.ring),0);
+  const capSec=maxRing+1;
+  const pool=SYS.filter(s=>s.sec<=capSec).sort((a,b)=>a.ring-b.ring);
+  if(!pool.length)return "home";
+  /* weighted toward the frontier - the far end of the ring-sorted pool - by
+     skewing the reused [0,1) draw up (sqrt) before indexing into it */
+  const frac=Math.sqrt(Math.max(0,Math.min(1,(v-0.85)/0.45)));
+  return pool[Math.min(pool.length-1,Math.floor(frac*pool.length))].id;
+}
 function newTarget(){
   let r=Math.random()*RAIDW.reduce((a,b)=>a+b,0), ti=0;
   for(let i=0;i<RAIDW.length;i++){ if(r<RAIDW[i]){ti=i;break} r-=RAIDW[i] }
   const T=RAIDS[ti];
   const en=T.en[0]+Math.floor(Math.random()*(T.en[1]-T.en[0]+1));
   const v=0.85+Math.random()*0.45;
-  return {ti, name:pick(T.names), en, dif:T.dif*v, secs:T.secs, dmg:T.dmg*v};
+  return {ti, name:pick(T.names), en, dif:T.dif*v, secs:T.secs, dmg:T.dmg*v, sys:raidTargetSys(v)};
 }
 const SVBASE=[4,7,11,24,80];
 function svReward(t){

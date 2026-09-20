@@ -69,6 +69,13 @@ function adopt(o){
   });
   if(f.flSel==null || !f.fl.some(fl=>fl.id===f.flSel))f.flSel=f.fl[0].id;
   if(!Array.isArray(f.tg))f.tg=[];
+  /* PLAN-fleets run 2: a target from before t.sys existed becomes "home" - the one
+     system every save always has, so ENGAGE never has to invent a location for it. */
+  f.tg=f.tg.map(t=>{
+    if(!t||typeof t!=="object")return t;
+    if(typeof t.sys!=="string"||!SYSMAP[t.sys])t.sys="home";
+    return t;
+  });
   f.sv=Math.max(0,Math.floor(f.sv||0)); f.svAll=Math.max(0,Math.floor(f.svAll||0));
   if(!f.rf||typeof f.rf!=="object")f.rf={};
   if(!Array.isArray(f.crew))f.crew=[];
