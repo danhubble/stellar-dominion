@@ -50,12 +50,19 @@ in the map view." And, for later: missions on fleets, commanders, governors.
    later). Travel runs on the same clock as threats (`thqTick`'s dt), works offline
    (arrivals resolve on return like everything else), and is shown as a moving
    marker on the sector map plus an ETA on the fleet card.
-5. **Buttons in the map view.** Each fleet is a small marker on its system's node
-   (numbered 1/2/3, in the fleet's colour). On a system page a FLEETS row lists
-   fleets here (tap → fleet card) and one SEND button per fleet elsewhere (with the
-   ETA). Travelling fleets draw a dotted line and a marker sliding along it. The
-   Raids pane keeps the fleet strip but becomes per-fleet tabs (1 · 2 · 3) with
-   the same strip inside each, plus "AT <system>" / "→ <system> · 32s".
+5. **The fleet bar (owner, after the mock: "three buttons in a row below the map",
+   interaction A).** A row of three full-width buttons directly under the map
+   square, on the map view and on a system page alike: "1 · AT WRAITHE",
+   "2 · → THULE 32s", "3 · LOCKED LV 20", number in the fleet's colour (same as its
+   map marker). Tap = select the fleet (button lit, marker pulses); with a fleet
+   selected, tapping a system node shows a "SEND · 41s" chip on that node, tapping
+   the chip sends it and deselects; tapping the map elsewhere deselects; node taps
+   do not open the system page while a fleet is selected. Tap the selected button
+   again → the fleet's card (hulls, integrity, REPAIR, TRANSFER). Travelling fleets
+   draw a dotted line and a sliding marker with the ETA. The system page's FLEETS
+   block only lists who is here plus the threat line; sending is the bar's job.
+   Raids pane: per-fleet tabs (1 · 2 · 3) around today's strip; a raid card's SEND
+   button does the same send as the bar.
 6. **Moving hulls between fleets.** Only when both are at the same system: a
    TRANSFER modal with three +/− rows (one per hull class). Buying a hull adds it
    to the fleet you are looking at (the Raids pane's selected tab) if that fleet

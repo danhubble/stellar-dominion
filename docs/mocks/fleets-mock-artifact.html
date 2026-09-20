@@ -12316,6 +12316,20 @@ window.__SD={get S(){return S},NEXUS,buyNex,openSite,SITE,siteSlots,
 
 <style>
 /* ---- fleets mock (throwaway, tools/mkfleetmock.py) ---- */
+#mapWrap{margin-bottom:0}                 /* base rule's 10px replaced by #mkFleetBar's own 8px top margin, in both map and syspage layouts */
+
+#mkFleetBar{display:flex;gap:6px;margin:8px 0 10px}
+.mk-fbtn{flex:1;min-width:0;cursor:pointer;border:1px solid var(--line);border-radius:10px;
+  padding:6px 4px;background:rgba(10,14,32,.7);color:var(--mut);font:700 9px/1.3 system-ui;
+  letter-spacing:0;text-align:center;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:1px}
+.mk-fbtn .mk-fnum{font-weight:800;font-size:12px;line-height:1}
+.mk-fbtn .mk-fstat{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.mk-fbtn.sel{border-color:var(--cy);background:rgba(72,226,255,.12);color:var(--txt);
+  box-shadow:0 0 10px -2px rgba(72,226,255,.6)}
+.mk-fbtn.locked{opacity:.42;cursor:not-allowed;color:var(--dim2)}
+.mk-fbtn.locked .mk-fnum{color:var(--dim2)!important}
+
 #mkFleetsBlock{margin:10px 0 4px}
 #mkFleetsBlock .sechead{margin:0 0 8px}
 .mk-threat{font:700 11px/1.4 ui-monospace,monospace;color:var(--rd);margin-bottom:6px}
@@ -12329,10 +12343,6 @@ window.__SD={get S(){return S},NEXUS,buyNex,openSite,SITE,siteSlots,
 .mk-frow:last-child{border-bottom:none}
 .mk-fname{font-weight:700;min-width:62px;flex:none}
 .mk-hulls{flex:1;color:var(--mut);font-family:ui-monospace,monospace;font-size:10px}
-.mk-status{font-family:ui-monospace,monospace;font-size:10px;color:var(--dim2);flex:none}
-button.mk-send{border:1px solid var(--line2);background:rgba(72,226,255,.09);color:var(--txt);
-  border-radius:8px;padding:6px 8px;font:700 10px/1 ui-monospace,monospace;cursor:pointer;
-  white-space:nowrap;flex:none}
 button.mk-transfer{width:100%;margin-top:8px;border:1px solid var(--line2);
   background:rgba(168,120,255,.12);color:#a878ff;border-radius:8px;padding:8px;
   font:800 11px/1 system-ui;letter-spacing:.1em;cursor:pointer}
@@ -12345,8 +12355,18 @@ button.mk-transfer{width:100%;margin-top:8px;border:1px solid var(--line2);
   display:flex;align-items:center;justify-content:center;font:800 10px/1 ui-monospace,monospace;
   color:#04050d;box-shadow:0 0 0 2px rgba(4,5,13,.75),0 0 10px 1px rgba(0,0,0,.5);z-index:2}
 .mk-marker.trav{width:15px;height:15px;font-size:8.5px}
+.mk-marker.sel{animation:mkPulseSel 1s ease-in-out infinite}
+@keyframes mkPulseSel{
+  0%,100%{box-shadow:0 0 0 2px rgba(4,5,13,.75),0 0 0 0 rgba(255,255,255,.5)}
+  50%{box-shadow:0 0 0 2px rgba(4,5,13,.75),0 0 13px 5px rgba(255,255,255,.6)}
+}
 .mk-eta{position:absolute;transform:translate(-50%,7px);font:800 8.5px/1 ui-monospace,monospace;
   color:#fff;text-shadow:0 1px 3px #000;white-space:nowrap;pointer-events:none}
+
+.mk-confirmchip{position:absolute;transform:translate(-50%,14px);pointer-events:auto;cursor:pointer;
+  border:1px solid var(--cy);background:rgba(4,10,24,.92);color:var(--txt);border-radius:7px;
+  padding:5px 8px;font:800 9.5px/1 ui-monospace,monospace;letter-spacing:.04em;white-space:nowrap;
+  box-shadow:0 0 12px -1px rgba(72,226,255,.7);z-index:7}
 
 #mkRaidTabs{margin:0 0 10px}
 .mk-tabrow{display:flex;gap:6px;margin-bottom:6px}
@@ -12368,6 +12388,16 @@ button.mk-engage:disabled{opacity:.5;color:var(--dim2);background:rgba(255,255,2
 .mk-tval{min-width:60px;text-align:center;font-family:ui-monospace,monospace}
 .mk-tbtn{width:30px;height:30px;border-radius:8px;border:1px solid var(--line2);
   background:rgba(72,226,255,.09);color:var(--txt);font:800 15px/1 system-ui;cursor:pointer}
+
+.mk-cardhulls{font:11px/1.5 ui-monospace,monospace;color:var(--mut);margin:8px 0}
+.mk-cardint{font:700 12px/1.4 system-ui;color:var(--txt);margin-bottom:4px}
+.mk-cardrow{display:flex;gap:8px;margin-top:12px}
+.mk-cardrow button{flex:1;border:1px solid var(--line2);border-radius:8px;padding:9px 6px;
+  font:800 11px/1 system-ui;letter-spacing:.08em;cursor:pointer}
+#mkCardRepair{background:rgba(72,226,255,.09);color:var(--txt)}
+#mkCardTransfer{background:rgba(168,120,255,.12);color:#a878ff}
+#mkCardTransfer:disabled{opacity:.4;color:var(--dim2);background:rgba(255,255,255,.03);
+  border-color:var(--line);cursor:not-allowed}
 </style>
 
 <script>
@@ -12380,6 +12410,7 @@ try{
   /* ---------------- fixture ---------------- */
   var INNER = ['ash','fer','cor'];      // 3 held Inner Reach systems (sec 1)
   var FRONT = ['anv','thu','wra'];      // 3 held Frontier systems (sec 2)
+  var FLEET3_LV = 20;                   // PLAN-fleets decision 1: Fleet 3 unlocks at level 20
 
   function buildFixture(){
     try{ if(G.sceneOn) G.sceneFinish(); }catch(e){}
@@ -12400,13 +12431,18 @@ try{
 
   /* ---------------- mock fleet state (script-only, never touches S.fl) ---- */
   var FL=[
-    {id:1, n:"1st Fleet", at:"anv",  to:null, from:null, depAt:0, etaAt:0, totalSecs:0, sh:[5,1,0]},
-    {id:2, n:"2nd Fleet", at:"home", to:null, from:null, depAt:0, etaAt:0, totalSecs:0, sh:[4,2,0]},
-    {id:3, n:"3rd Fleet", at:"ash",  to:null, from:null, depAt:0, etaAt:0, totalSecs:0, sh:[3,1,0]}
+    {id:1, n:"1st Fleet", at:"anv",  to:null, from:null, depAt:0, etaAt:0, totalSecs:0, sh:[5,1,0], locked:false},
+    {id:2, n:"2nd Fleet", at:"home", to:null, from:null, depAt:0, etaAt:0, totalSecs:0, sh:[4,2,0], locked:false},
+    {id:3, n:"3rd Fleet", at:"ash",  to:null, from:null, depAt:0, etaAt:0, totalSecs:0, sh:[3,1,0], locked:true}
   ];
+  var INTEGRITY_MOCK={1:92,2:74,3:58};
   var MOCK_THREAT = { sysId:"thu", totalSecs:90, startedAt:Date.now() };
   var NEAR_SYS = ["home","ash","fer","cor","anv","thu","wra"];
   var selTab = 1;
+
+  /* ---- fleet bar selection / confirm-chip state (decision "A") ---- */
+  var selFleet = null;              // id of the fleet picked from the bar, or null
+  var pendingConfirm = null;        // {sysId, fleetId} while a "SEND · Ns" chip is showing
 
   function colorOf(id){ return id===1?"#48e2ff":id===2?"#5ce6a5":"#ffd166"; }
   function fleetById(id){ for(var i=0;i<FL.length;i++) if(FL[i].id===id) return FL[i]; return null; }
@@ -12427,7 +12463,7 @@ try{
     return 20 + 45*rings;
   }
   function nearestIdleFleet(toSysId){
-    var idle=FL.filter(isIdle);
+    var idle=FL.filter(function(f){ return isIdle(f) && !f.locked; });
     if(!idle.length) return null;
     idle.sort(function(a,b){ return travelSecs(a.at,toSysId)-travelSecs(b.at,toSysId); });
     return idle[0];
@@ -12454,8 +12490,100 @@ try{
      are callable directly here — same trick tests/*.js use via page.evaluate(). */
   function mkToast(msg,cls){ try{ toast(msg,cls); }catch(e){} }
 
-  /* ---------------- map markers (item 3) ---------------- */
+  function deselectFleet(){ selFleet=null; pendingConfirm=null; }
+
+  /* ---------------- fleet bar (owner decision "A": control moved off the
+     system card, onto the map view) ---------------- */
   var mapWrap=document.getElementById('mapWrap');
+  var fleetBar=document.createElement('div');
+  fleetBar.id='mkFleetBar';
+  mapWrap.parentNode.insertBefore(fleetBar, mapWrap.nextSibling);
+
+  function fleetBarLabel(f){
+    if(f.locked) return 'LOCKED LV '+FLEET3_LV;
+    if(f.to){
+      var secsLeft=Math.max(0,Math.ceil((f.etaAt-Date.now())/1000));
+      return '→ '+G.SYSMAP[f.to].n.toUpperCase()+' '+secsLeft+'s';
+    }
+    return 'AT '+G.SYSMAP[f.at].n.toUpperCase();
+  }
+  function renderFleetBar(){
+    var html='';
+    FL.forEach(function(f){
+      var cls='mk-fbtn'+(f.locked?' locked':'')+(selFleet===f.id?' sel':'');
+      var numColor=f.locked?'var(--dim2)':colorOf(f.id);
+      html+='<button type="button" class="'+cls+'" data-fbtn="'+f.id+'"'+(f.locked?' disabled':'')+'>'+
+        '<span class="mk-fnum" style="color:'+numColor+'">'+f.id+'</span>'+
+        '<span class="mk-fstat">'+fleetBarLabel(f)+'</span>'+
+        '</button>';
+    });
+    fleetBar.innerHTML=html;
+    fleetBar.querySelectorAll('[data-fbtn]').forEach(function(b){
+      b.onclick=function(){
+        var id=+b.dataset.fbtn, f=fleetById(id);
+        if(!f || f.locked) return;
+        if(f.to){ openFleetCardModal(id); return; }               /* travelling: nothing to select, just view the card */
+        if(selFleet===id){ openFleetCardModal(id); deselectFleet(); }
+        else { selFleet=id; pendingConfirm=null; }
+        tickAll();
+      };
+    });
+  }
+
+  /* ---------------- map: node taps while a fleet is selected ---------------- */
+  var mapNodesEl=document.getElementById('mapNodes');
+  mapNodesEl.addEventListener('click', function(e){
+    if(selFleet==null) return;                 /* nothing selected: let the real game's own node tap (open system page) run */
+    e.stopPropagation();                        /* selected: never let the tap fall through to the real open-system-page handler */
+    var btn=e.target.closest('.mnode'); if(!btn) return;
+    var sysId=btn.dataset.s, f=fleetById(selFleet);
+    if(!f || !isIdle(f)){ pendingConfirm=null; tickAll(); return; }
+    if(f.at===sysId){ mkToast('already here','y'); pendingConfirm=null; tickAll(); return; }
+    pendingConfirm={ sysId:sysId, fleetId:selFleet };
+    tickAll();
+  }, true);
+  mapWrap.addEventListener('click', function(e){
+    if(selFleet==null) return;
+    if(e.target.closest('.mnode') || e.target.closest('.mk-confirmchip')) return;  /* handled above / by the chip's own handler */
+    deselectFleet(); tickAll();                 /* tap elsewhere on the map: deselect */
+  });
+  function confirmSend(){
+    if(!pendingConfirm) return;
+    var f=fleetById(pendingConfirm.fleetId), destId=pendingConfirm.sysId;
+    if(f && isIdle(f) && f.at!==destId){
+      startTravel(f, destId);
+      mkToast(f.n+' departing for '+G.SYSMAP[destId].n);
+    }
+    deselectFleet();
+    tickAll();
+  }
+
+  /* ---------------- fleet card modal (2nd tap on the selected bar button) --- */
+  function openFleetCardModal(id){
+    var f=fleetById(id); if(!f) return;
+    var statusLine = f.to
+      ? ('EN ROUTE TO '+G.SYSMAP[f.to].n.toUpperCase()+' · '+Math.max(0,Math.ceil((f.etaAt-Date.now())/1000))+'s')
+      : ('AT '+G.SYSMAP[f.at].n.toUpperCase());
+    var hereFleets = f.to ? [] : fleetAt(f.at);
+    var canTransfer = !f.to && hereFleets.length>1;
+    var html='<h3 style="color:'+colorOf(id)+'">'+f.n+'</h3>'+
+      '<p class="mk-loc">'+statusLine+'</p>'+
+      '<div class="mk-cardhulls">'+hullStr(f)+'</div>'+
+      '<div class="mk-cardint">Integrity <b>'+(INTEGRITY_MOCK[id]||80)+'%</b></div>'+
+      '<div class="mk-cardrow">'+
+        '<button id="mkCardRepair">REPAIR</button>'+
+        '<button id="mkCardTransfer"'+(canTransfer?'':' disabled')+'>TRANSFER</button>'+
+      '</div>';
+    function wire(){
+      var rb=document.getElementById('mkCardRepair');
+      if(rb) rb.onclick=function(){ mkToast('would repair '+f.n,'g'); };
+      var tb=document.getElementById('mkCardTransfer');
+      if(tb && !tb.disabled) tb.onclick=function(){ hideModal(); openTransferModal(f.at); };
+    }
+    if(typeof showModal==='function') showModal(html, wire);
+  }
+
+  /* ---------------- map markers + confirm chip (item 3) ---------------- */
   var mkLayer=document.createElement('div');
   mkLayer.id='mkFleetLayer';
   mkLayer.innerHTML='<svg id="mkFleetSvg" viewBox="0 0 100 100" preserveAspectRatio="none"></svg><div id="mkFleetMarkers"></div>';
@@ -12463,9 +12591,9 @@ try{
   var mkSvg=mkLayer.querySelector('#mkFleetSvg');
   var mkMarkers=mkLayer.querySelector('#mkFleetMarkers');
 
-  function addMarker(x,y,id,color,trav,badge){
+  function addMarker(x,y,id,color,trav,badge,sel){
     var d=document.createElement('div');
-    d.className='mk-marker'+(trav?' trav':'');
+    d.className='mk-marker'+(trav?' trav':'')+(sel?' sel':'');
     /* a static "at this node" marker sits as a badge to the node's upper-right,
        not centred on the dot - centred there, it clips the node's own label
        (mnode stacks dot then name directly beneath it). A sliding travel marker
@@ -12478,6 +12606,12 @@ try{
   function addEta(x,y,text){
     var d=document.createElement('div');
     d.className='mk-eta'; d.style.left=x+'%'; d.style.top=y+'%'; d.textContent=text;
+    mkMarkers.appendChild(d);
+  }
+  function addConfirmChip(x,y,text){
+    var d=document.createElement('div');
+    d.className='mk-confirmchip'; d.style.left=x+'%'; d.style.top=y+'%'; d.textContent=text;
+    d.onclick=function(){ confirmSend(); };
     mkMarkers.appendChild(d);
   }
   function renderMockMap(){
@@ -12496,37 +12630,35 @@ try{
           mkSvg.appendChild(ln);
           var prog=Math.min(1,Math.max(0,(Date.now()-f.depAt)/(f.totalSecs*1000)));
           var mx=A.sx+(B.sx-A.sx)*prog, my=A.sy+(B.sy-A.sy)*prog;
-          addMarker(mx,my,f.id,color,true);
+          addMarker(mx,my,f.id,color,true,false,false);
           addEta(mx,my,Math.max(0,Math.ceil((f.etaAt-Date.now())/1000))+'s');
-        } else if(A){ addMarker(A.sx,A.sy,f.id,color,true,false); }
-        else if(B){ addMarker(B.sx,B.sy,f.id,color,true,false); }
+        } else if(A){ addMarker(A.sx,A.sy,f.id,color,true,false,false); }
+        else if(B){ addMarker(B.sx,B.sy,f.id,color,true,false,false); }
       } else {
         var s=byId[f.at];
-        if(s) addMarker(s.sx,s.sy,f.id,color,false,true);
+        if(s) addMarker(s.sx,s.sy,f.id,color,false,true,selFleet===f.id);
       }
     });
+    if(pendingConfirm && byId[pendingConfirm.sysId]){
+      var node=byId[pendingConfirm.sysId];
+      var f2=fleetById(pendingConfirm.fleetId);
+      var secs=f2?Math.round(travelSecs(f2.at,node.id)):0;
+      addConfirmChip(node.sx,node.sy,'SEND · '+secs+'s');
+    }
   }
 
-  /* ---------------- system page FLEETS block (item 5) ---------------- */
+  /* ---------------- system page FLEETS block (item 5) — shrunk per owner's
+     decision "A": SEND buttons removed (sending is now the bar's job); the
+     block is just fleets-here + the mock threat/DEFEND-IT line. ---------- */
   var sysSheet=document.getElementById('sysSheet');
   var defWrap=document.getElementById('sysDefWrap');
   var fleetsBlock=document.createElement('div');
   fleetsBlock.id='mkFleetsBlock';
   sysSheet.insertBefore(fleetsBlock, defWrap);
 
-  function fleetRow(f, s, isHere){
-    var status;
-    if(f.to){
-      var secsLeft=Math.max(0,Math.ceil((f.etaAt-Date.now())/1000));
-      status='<span class="mk-status">→ '+G.SYSMAP[f.to].n+' · '+secsLeft+'s</span>';
-    } else if(isHere){
-      status='<span class="mk-status">AT '+s.n+'</span>';
-    } else {
-      var secs=Math.round(travelSecs(f.at, s.id));
-      status='<button class="mk-send" data-send="'+f.id+'">SEND '+f.n.toUpperCase()+' · '+secs+'s</button>';
-    }
+  function fleetHereRow(f){
     return '<div class="mk-frow"><span class="mk-fname" style="color:'+colorOf(f.id)+'">'+f.n+
-      '</span><span class="mk-hulls">'+hullStr(f)+'</span>'+status+'</div>';
+      '</span><span class="mk-hulls">'+hullStr(f)+'</span></div>';
   }
 
   function openTransferModal(sysId){
@@ -12569,31 +12701,20 @@ try{
     if(MOCK_THREAT.sysId===s.id){
       var left=threatSecsLeft();
       var canDefend = fleetAt(s.id).length>0 ||
-        FL.some(function(f){ return isIdle(f) && travelSecs(f.at,s.id)<=left; });
+        FL.some(function(f){ return isIdle(f) && !f.locked && travelSecs(f.at,s.id)<=left; });
       html+='<div class="mk-threat">Raiders arrive in '+Math.ceil(left)+'s</div>'+
         '<button class="mk-defend" id="mkDefendBtn" '+(canDefend?'':'disabled')+'>'+
         (canDefend?'DEFEND IT':'NO FLEET CAN REACH IN TIME')+'</button>';
     }
     var here=fleetAt(s.id);
-    if(here.length){ here.forEach(function(f){ html+=fleetRow(f,s,true); }); }
+    if(here.length){ here.forEach(function(f){ html+=fleetHereRow(f); }); }
     else { html+='<div class="mk-empty">No fleet here.</div>'; }
-    FL.filter(function(f){ return f.at!==s.id || f.to; }).forEach(function(f){ html+=fleetRow(f,s,false); });
-    if(here.length>1) html+='<button class="mk-transfer" id="mkTransferBtn">TRANSFER</button>';
     fleetsBlock.innerHTML=html;
     var db=fleetsBlock.querySelector('#mkDefendBtn');
     if(db && !db.disabled) db.onclick=function(){ mkToast("would engage here","y"); };
-    var tb=fleetsBlock.querySelector('#mkTransferBtn');
-    if(tb) tb.onclick=function(){ openTransferModal(s.id); };
-    fleetsBlock.querySelectorAll('[data-send]').forEach(function(btn){
-      btn.onclick=function(){
-        var f=fleetById(+btn.dataset.send);
-        startTravel(f, s.id);
-        mkToast(f.n+" departing for "+s.n);
-      };
-    });
   }
 
-  /* ---------------- Raids pane: 1·2·3 tabs (item 5) ---------------- */
+  /* ---------------- Raids pane: 1·2·3 tabs (item 5, unchanged) ---------- */
   var flStrip=document.getElementById('flStrip');
   var raidTabs=document.createElement('div');
   raidTabs.id='mkRaidTabs';
@@ -12618,7 +12739,8 @@ try{
     });
   }
 
-  /* ---------------- Raids pane: target cards (item 5) ---------------- */
+  /* ---------------- Raids pane: target cards (item 5, unchanged — a raid
+     card's SEND button already just calls startTravel(), same as the bar) - */
   function renderRaidCards(){
     var tgts=document.getElementById('tgts');
     if(!tgts) return;
@@ -12660,14 +12782,29 @@ try{
      which calls its own closed-over `render` ~11x/s regardless of dirty. Re-running
      our own pass on the same cadence keeps every mock element correct without
      needing to hook the real one. */
-  function tickAll(){ tickFleets(); renderMockMap(); renderSysFleets(); renderRaidTabs(); renderRaidCards(); }
+  function tickAll(){ tickFleets(); renderFleetBar(); renderMockMap(); renderSysFleets(); renderRaidTabs(); renderRaidCards(); }
   tickAll();
   setInterval(tickAll, 150);
 
   /* debug-only hook for the verification screenshots (tools/shotfleetmock.js) -
-     lets it fast-forward a travel instead of waiting out real seconds. Not part
-     of the mock's own UI/behaviour. */
-  window.__mockFleetsDebug={ FL:FL, forceArrive:function(id){ var f=fleetById(id); if(f&&f.to) f.etaAt=Date.now()-1; tickAll(); } };
+     lets it fast-forward a travel instead of waiting out real seconds, and drive
+     the fleet-bar selection without simulating real taps pixel-for-pixel. Not
+     part of the mock's own UI/behaviour. */
+  window.__mockFleetsDebug={
+    FL:FL,
+    forceArrive:function(id){ var f=fleetById(id); if(f&&f.to) f.etaAt=Date.now()-1; tickAll(); },
+    selectFleet:function(id){ selFleet=id; pendingConfirm=null; tickAll(); },
+    tapNode:function(sysId){
+      /* dispatched on the real .mnode button so it runs through the exact same
+         capture-phase listener the real UI uses - no separate logic to drift. */
+      var btn=mapNodesEl.querySelector('.mnode[data-s="'+sysId+'"]');
+      if(btn) btn.dispatchEvent(new MouseEvent('click', {bubbles:true, cancelable:true}));
+      tickAll();
+    },
+    confirmSend:confirmSend,
+    get selFleet(){ return selFleet; },
+    get pendingConfirm(){ return pendingConfirm; }
+  };
 }catch(e){
   console.error("fleets-mock error", e);
 }
