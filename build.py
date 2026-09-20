@@ -4,7 +4,7 @@ Usage: python3 build.py [--check <file>]   (--check: cmp output against a file)
 Concatenation order = sorted filename order in src/styles and src/js."""
 import os, sys, glob, filecmp
 
-BUILD = 640   # bumped per release, not per commit
+BUILD = 641   # bumped per release, not per commit
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 def cat(folder):

@@ -11803,3 +11803,10 @@ needs a scroll to reach - the fleet bar sits in that same scrolled region now, s
 (instant, not `scrollIntoView`'s smooth animation, which was still running when an
 early version of the script took the shot) rather than assuming the bar is already
 on screen. Not a regression this run introduced, just newly relevant to it.
+
+## release b641 — PLAN-fleets runs 1+2 (fleet state, position, travel, fleet bar)
+
+Coordinator verification: sim identical, suite clean (tsabotage2 only times out under
+the sweep's load; passes alone). Cross-ring travel tuned 45→30 s per ring after seeing
+a first raid 110 s away with only home held. DEFEND IT is NOT gated on fleet position
+(garrison mini-game never used the fleet) — noted for the owner. Published Version 41.
