@@ -316,3 +316,47 @@ body.syspage #sysSheet{display:block}
 
 #sysInfo button.dev{border-color:rgba(72,226,255,.5);background:rgba(72,226,255,.11);color:var(--cy)}
 .gexo{font:600 10px/1 ui-monospace,monospace;color:var(--a)}
+
+/* ---------- PLAN-fleets run 2: the fleet bar, map markers, FLEETS block ---------- */
+#fleetBar{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:8px 0 10px}
+#fleetBar[hidden]{display:none}
+.fbtn{min-width:0;cursor:pointer;border:1px solid var(--line);border-radius:10px;padding:6px 4px;
+  background:rgba(10,14,32,.7);color:var(--mut);font:700 9px/1.3 system-ui;letter-spacing:0;
+  text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}
+.fbtn .fnum{font-weight:800;font-size:12px;line-height:1}
+.fbtn .fstat{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.fbtn.sel{border-color:var(--cy);background:rgba(72,226,255,.12);color:var(--txt);
+  box-shadow:0 0 10px -2px rgba(72,226,255,.6)}
+.fbtn.locked{opacity:.42;cursor:not-allowed;color:var(--dim2)}
+.fbtn.locked .fnum{color:var(--dim2)!important}
+/* fleet lines/markers sit in their own layer, separate from #mapLinks/#mapNodes so
+   renderFleetMarkers() never has to coordinate its own rebuilds with buildMap()'s -
+   faded out with the rest of the sector view while zoomed into a system's own scene
+   (#mapWrap.zoomed), same rule #mapBg/#mapLinks/#mapNodes/#mapEdge already follow. */
+#fleetLines{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;transition:opacity .28s ease}
+#fleetLines line{stroke-width:1;stroke-dasharray:2 2}
+#fleetMarkers{position:absolute;inset:0;pointer-events:none;z-index:5;transition:opacity .28s ease}
+#mapWrap.zoomed #fleetLines,#mapWrap.zoomed #fleetMarkers{opacity:0;pointer-events:none}
+.flmark{position:absolute;transform:translate(-50%,-50%);width:16px;height:16px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;font:800 9px/1 ui-monospace,monospace;
+  color:#04050d;box-shadow:0 0 0 2px rgba(4,5,13,.75),0 0 9px 1px rgba(0,0,0,.5);pointer-events:none}
+.flmark.trav{width:14px;height:14px;font-size:8px}
+.flmark.sel{animation:flPulse 1s ease-in-out infinite}
+@keyframes flPulse{
+  0%,100%{box-shadow:0 0 0 2px rgba(4,5,13,.75),0 0 0 0 rgba(255,255,255,.5)}
+  50%{box-shadow:0 0 0 2px rgba(4,5,13,.75),0 0 13px 5px rgba(255,255,255,.6)}
+}
+.fleta{position:absolute;transform:translate(-50%,7px);font:800 8px/1 ui-monospace,monospace;
+  color:#fff;text-shadow:0 1px 3px #000;white-space:nowrap;pointer-events:none}
+.sendchip{position:absolute;transform:translate(-50%,14px);pointer-events:auto;cursor:pointer;
+  border:1px solid var(--cy);background:rgba(4,10,24,.92);color:var(--txt);border-radius:7px;
+  padding:5px 8px;font:800 9.5px/1 ui-monospace,monospace;letter-spacing:.04em;white-space:nowrap;
+  box-shadow:0 0 12px -1px rgba(72,226,255,.7);z-index:7}
+/* system page FLEETS block (decision 5) - a plain list, no buttons; sending is the
+   fleet bar's job. Same .sechead the DEFENCES/BUILDINGS headers use. */
+#sysFleets .sechead{margin:0 0 8px}
+.flempty{font-size:11px;color:var(--dim);margin-bottom:6px}
+.flrow{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--line);font-size:11px}
+.flrow:last-child{border-bottom:none}
+.flname{font-weight:700;min-width:62px;flex:none}
+.flhulls{flex:1;color:var(--mut);font-family:ui-monospace,monospace;font-size:10px}

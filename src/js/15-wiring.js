@@ -42,6 +42,32 @@ function hscroll(el){
     x0=null; y0=null; moved=false;
   },{passive:true});
 })();
+/* PLAN-fleets run 2 (decision 5, interaction "A"): with a fleet selected off the
+   fleet bar, a node tap is a SEND target, not "open this system's page" - capture
+   phase, so it runs and stopPropagation()s before buildMap()'s own per-node
+   onclick (bubble phase) ever sees the click. Nothing here fires while no fleet
+   is selected - the ordinary node tap (S.msel=id) is completely untouched. */
+(function(){
+  const nodes=document.querySelector("#mapNodes"); if(!nodes)return;
+  nodes.addEventListener("click", e=>{
+    if(flSel==null)return;
+    e.stopPropagation();
+    const btn=e.target.closest(".mnode"); if(!btn)return;
+    sendChipSys=btn.dataset.s;
+    dirty=true; render();
+  }, true);
+})();
+/* tapping the map anywhere else (background, not a node or the chip itself)
+   deselects - the sector chips/swipe are untouched, they are not inside
+   #mapNodes/.sendchip so this never intercepts them either. */
+(function(){
+  const wrap=document.querySelector("#mapWrap"); if(!wrap)return;
+  wrap.addEventListener("click", e=>{
+    if(flSel==null)return;
+    if(e.target.closest(".mnode")||e.target.closest(".sendchip"))return;
+    fleetDeselect(); dirty=true; render();
+  });
+})();
 /* patch627 (PLAN-page.md): map background tap-to-close (patch595) is deleted
    outright here, not redirected - `‹ MAP` (now shown on any page, held or
    not - see its own CSS comment near #mapChips) is the one closing affordance,
@@ -89,6 +115,7 @@ $$(".tab").forEach(t=>t.onclick=()=>{
   $$(".pane").forEach(x=>x.classList.remove("on"));
   t.classList.add("on"); t.classList.remove("alert");
   const id=t.dataset.p;
+  if(id!=="p-map")fleetDeselect();   /* PLAN-fleets run 2: leaving the map deselects */
   $("#"+id).classList.add("on");
   if(id==="p-raid" && thq().length>0){ raidMode="targets"; syncRaidMode(); }
   dirty=true; render(); requestAnimationFrame(drawTreeLines);

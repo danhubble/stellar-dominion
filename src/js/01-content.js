@@ -1296,6 +1296,12 @@ function fleetMult(){ return Math.pow(1.3,nexLv("war"))*achBonus()*(1+0.04*pkl("
    map markers/fleet bar can use them without a second patch. */
 const FLEET_COL=["#48e2ff","#a878ff","#ffd166"];
 const FLEET_NAMES=["1st Fleet","2nd Fleet","3rd Fleet"];
+/* run 2's fleet bar shows the slots run 3 unlocks - defined now so run 3 can read it
+   without a second patch to this array. Index 0 is Fleet 1's own unlock (reads
+   unlockLv("p-raid") rather than a bare literal, so a pacing change to Raids moves
+   this with it) - run 2 never actually renders slot 1 locked, since the whole bar
+   is hidden below RAIDLV anyway. */
+const FLEET_UNLOCK=[unlockLv("p-raid"),14,20];
 function mkFleet(id){
   return { id, n:FLEET_NAMES[id-1]||("Fleet "+id), sh:[0,0,0], hp:1, at:"home", to:null, eta:0 };
 }

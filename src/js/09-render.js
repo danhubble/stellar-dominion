@@ -204,7 +204,7 @@ function render(){
   /* a waiting reward is a state, not a moment: keep the dot until it is collected */
   if(misReady()>0)flag("p-mis");
   renderLevel();
-  if($("#p-map").classList.contains("on"))renderMap();
+  if($("#p-map").classList.contains("on")){ renderMap(); renderFleetBar(); }
   if($("#p-res").classList.contains("on"))renderResCryStrip();
   if($("#p-ach").classList.contains("on"))renderStats();
   if($("#p-mkt").classList.contains("on"))renderMarket();
@@ -437,6 +437,197 @@ function buildMap(){
   }
   renderMapEdge();
   mapBuilt=true; mapSecBuilt=mapSec; mapRevealBuilt=level()>=unlockLv("p-map");
+}
+/* ==================== PLAN-fleets run 2: the fleet bar ====================
+   Interaction "A" (PLAN-fleets.md decision 5, revised after the owner played
+   mkfleetmock.py): flSel is a runtime-only var, never saved - a page reload
+   always comes up with nothing selected, same as any other transient UI pick
+   (defSel, mapSite, ...) in this file. sendChipSys is the node a selected
+   fleet's SEND chip is currently sitting on, cleared right along with flSel. */
+let flSel=null, sendChipSys=null;
+function fleetDeselect(){ flSel=null; sendChipSys=null; }
+function fleetBarTap(id){
+  const f=fleet(id); if(!f)return;
+  if(f.to){ openFleetCard(id); return; }         /* travelling: nothing to select, just view */
+  if(flSel===id){ openFleetCard(id); fleetDeselect(); }
+  else {
+    flSel=id; sendChipSys=null;
+    const fsec=secOf(f.to||f.at);
+    if(fsec!==mapSec)setMapSec(fsec);
+    /* LOCATE means "look at the sector the fleet is in" - a system page zoomed
+       into some OTHER system's own planet scene hides #mapNodes entirely
+       (#mapWrap.zoomed), so there would be nothing left to tap a node on. Back
+       out to the sector map itself; the fleet bar stays visible either way. */
+    if(S.msel)S.msel=null;
+  }
+  dirty=true; render();
+}
+function openFleetCard(id){
+  const f=fleet(id); if(!f)return;
+  const col=FLEET_COL[id-1]||FLEET_COL[0];
+  const status = f.to
+    ? "EN ROUTE TO "+((SYSMAP[f.to]||{}).n||f.to).toUpperCase()+" · "+Math.max(0,Math.ceil(f.eta))+"s"
+    : "AT "+((SYSMAP[f.at]||{}).n||f.at).toUpperCase();
+  const hulls=SHIPS.map((sp,i)=>f.sh[i]?f.sh[i]+" "+sp.n+(f.sh[i]===1?"":"s"):null).filter(Boolean).join(" · ")||"No ships";
+  const rc=repairCost(f);
+  const canRepair=fleetCount(f)>0 && f.hp<1 && S.ore>=rc;
+  showModal(`<h3 style="color:${col}">${f.n}</h3>
+    <p class="fcloc">${status}</p>
+    <div class="fchulls">${hulls}</div>
+    <div class="fcint">Integrity <b>${Math.round(f.hp*100)}%</b></div>
+    <div class="row"><button id="fcRepair" ${canRepair?"":"disabled"}>REPAIR · ${fmt(rc)} ORE</button></div>`,
+    ()=>{ const rb=$("#fcRepair"); if(rb)rb.onclick=()=>{ if(repairFleet(f)){ hideModal(); render(); save(); } }; });
+}
+/* run on the SAME 3-slot layout run 3 will fill in - a slot with no real fleet
+   object yet (2/3, this run) always renders LOCKED regardless of level; run 3
+   adds the fleet the moment the level gates it, which is exactly what makes it
+   stop being locked here without this file changing again. The button DOM is
+   only rebuilt when the structural key changes (id/travelling-vs-not/
+   destination/selected) - never on the eta countdown alone, which would hand
+   tchurn2 a fresh button object every second a fleet is en route; the live
+   "AT X" / "→ X 41s" text is written into a nested .fstat span every call
+   instead, the same idiom #sysTripCd's own countdown uses. */
+function renderFleetBar(){
+  const host=$("#fleetBar"); if(!host)return;
+  if(level()<RAIDLV){
+    if(!host.hidden){ host.hidden=true; host.dataset.h=""; host.innerHTML=""; }
+    return;
+  }
+  host.hidden=false;
+  const structKey=[1,2,3].map(id=>{
+    const f=fleet(id), lv=FLEET_UNLOCK[id-1];
+    if(!f||level()<lv)return "L"+id+":"+lv;
+    return id+(f.to?"T"+f.to:"A"+f.at)+(flSel===id?"S":"");
+  }).join(",");
+  if(host.dataset.h!==structKey){
+    host.dataset.h=structKey;
+    let html="";
+    for(let id=1;id<=3;id++){
+      const f=fleet(id), lv=FLEET_UNLOCK[id-1];
+      if(!f||level()<lv){
+        html+=`<button type="button" class="fbtn locked" disabled>
+          <span class="fnum">${id}</span><span class="fstat">LOCKED LV ${lv}</span></button>`;
+      } else {
+        html+=`<button type="button" class="fbtn${flSel===id?" sel":""}" data-fl="${id}">
+          <span class="fnum" style="color:${FLEET_COL[id-1]||FLEET_COL[0]}">${id}</span>
+          <span class="fstat"></span></button>`;
+      }
+    }
+    host.innerHTML=html;
+    host.querySelectorAll("[data-fl]").forEach(b=>{ b.onclick=()=>fleetBarTap(+b.dataset.fl); });
+  }
+  for(let id=1;id<=3;id++){
+    const f=fleet(id), lv=FLEET_UNLOCK[id-1];
+    if(!f||level()<lv)continue;
+    const btn=host.querySelector('[data-fl="'+id+'"]'); if(!btn)continue;
+    const stat=btn.querySelector(".fstat"); if(!stat)continue;
+    const label = f.to
+      ? "→ "+((SYSMAP[f.to]||{}).n||f.to).toUpperCase()+" "+Math.max(0,Math.ceil(f.eta))+"s"
+      : "AT "+((SYSMAP[f.at]||{}).n||f.at).toUpperCase();
+    if(stat.textContent!==label)stat.textContent=label;
+  }
+}
+/* markers + the SEND confirm chip. Structure (lines, marker DOM) is rebuilt only
+   under a churn key that excludes eta - see renderFleetBar()'s own comment, same
+   reasoning; travelling markers then SLIDE via a plain transform/left/top write
+   every call, no rebuild, which is what makes this cheap to run every render()
+   pass (renderMap() already does, ~11Hz while the map tab is open). */
+function renderFleetMarkers(){
+  const svg=$("#fleetLines"), host=$("#fleetMarkers");
+  if(!svg||!host)return;
+  const list=sysInSec(mapSec), byId={};
+  for(const s of list)byId[s.id]=s;
+  const fls=fleets();
+  const key=mapSec+"|"+fls.map(f=>f.id+":"+(f.to?"T"+f.from+">"+f.to:"A"+f.at)+(flSel===f.id?"S":"")).join(",");
+  if(host.dataset.h!==key){
+    host.dataset.h=key;
+    svg.innerHTML=""; host.innerHTML="";
+    fls.forEach(f=>{
+      const col=FLEET_COL[f.id-1]||FLEET_COL[0];
+      if(f.to){
+        const A=byId[f.from], B=byId[f.to];
+        if(A&&B){
+          const ln=document.createElementNS("http://www.w3.org/2000/svg","line");
+          ln.setAttribute("x1",A.sx); ln.setAttribute("y1",A.sy);
+          ln.setAttribute("x2",B.sx); ln.setAttribute("y2",B.sy);
+          ln.setAttribute("stroke",col); ln.dataset.fl=f.id;
+          svg.appendChild(ln);
+        }
+        if(A||B){
+          const m=document.createElement("div");
+          m.className="flmark trav"; m.dataset.fl=f.id;
+          m.style.background=col; m.textContent=f.id;
+          host.appendChild(m);
+          const e=document.createElement("div");
+          e.className="fleta"; e.dataset.fle=f.id;
+          host.appendChild(e);
+        }
+      } else {
+        const s=byId[f.at];
+        if(s){
+          const m=document.createElement("div");
+          m.className="flmark"+(flSel===f.id?" sel":""); m.dataset.fl=f.id;
+          m.style.background=col; m.textContent=f.id;
+          m.style.left=(s.sx+6)+"%"; m.style.top=(s.sy-6)+"%";  /* badge offset - see mkfleetmock.py's own note */
+          host.appendChild(m);
+        }
+      }
+    });
+  }
+  fls.forEach(f=>{
+    if(!f.to)return;
+    const A=byId[f.from], B=byId[f.to]; if(!A||!B)return;
+    const prog=f.tot>0 ? Math.min(1,Math.max(0,1-f.eta/f.tot)) : 0;
+    const x=A.sx+(B.sx-A.sx)*prog, y=A.sy+(B.sy-A.sy)*prog;
+    const m=host.querySelector('.flmark[data-fl="'+f.id+'"]');
+    if(m){ m.style.left=x+"%"; m.style.top=y+"%"; }
+    const e=host.querySelector('[data-fle="'+f.id+'"]');
+    if(e){ e.style.left=x+"%"; e.style.top=y+"%"; e.textContent=Math.max(0,Math.ceil(f.eta))+"s"; }
+  });
+  renderSendChip(byId);
+}
+function renderSendChip(byId){
+  const host=$("#fleetMarkers"); if(!host)return;
+  let chip=host.querySelector(".sendchip");
+  const node=sendChipSys?byId[sendChipSys]:null;
+  const f=flSel!=null?fleet(flSel):null;
+  if(flSel==null || !node || !f){
+    if(chip)chip.remove();
+    return;
+  }
+  const here = !f.to && f.at===sendChipSys;
+  const text = here ? "HERE" : "SEND · "+Math.round(travelSecs(f.at,sendChipSys))+"s";
+  if(!chip){
+    chip=document.createElement("div"); chip.className="sendchip";
+    chip.onclick=()=>{
+      const ff=flSel!=null?fleet(flSel):null;
+      if(ff && sendChipSys && !here)fleetSend(ff, sendChipSys);
+      fleetDeselect(); dirty=true; render();
+    };
+    host.appendChild(chip);
+  }
+  chip.style.left=node.sx+"%"; chip.style.top=node.sy+"%";
+  chip.textContent=text;
+}
+/* system page FLEETS block (decision 5) - a plain list, above DEFENCES; sending is
+   the fleet bar's job, so this never draws a button. Churn-guarded on which
+   fleets are actually here plus their hull mix, same idiom as everything else on
+   this sheet. */
+function renderSysFleets(s){
+  const wrap=$("#sysFleets"); if(!wrap)return;
+  if(!s){ if(wrap.dataset.h!==""){ wrap.dataset.h=""; wrap.innerHTML=""; } return; }
+  const here=fleets().filter(f=>!f.to&&f.at===s.id);
+  const key=s.id+"|"+here.map(f=>f.id+":"+f.sh.join(",")).join("|");
+  if(wrap.dataset.h===key)return;
+  wrap.dataset.h=key;
+  const rows = here.length
+    ? here.map(f=>{
+        const parts=SHIPS.map((sp,i)=>f.sh[i]?f.sh[i]+" "+sp.n+(f.sh[i]===1?"":"s"):null).filter(Boolean).join(" · ")||"No ships";
+        return `<div class="flrow"><span class="flname" style="color:${FLEET_COL[f.id-1]||FLEET_COL[0]}">${f.n}</span>
+          <span class="flhulls">${parts}</span></div>`;
+      }).join("")
+    : '<div class="flempty">No fleet here.</div>';
+  wrap.innerHTML=`<div class="sechead">Fleets</div>${rows}`;
 }
 /* patch607 - the header context card. Reads S.msel -> SYSMAP[..].res -> exoDef, same
    chain empSysRow()/updateOrbBadge() already read for the same purpose. Runs every
@@ -1166,6 +1357,7 @@ function renderMap(){
   refreshTerritory();
   renderTripMarker();
   renderMapEdge();
+  renderFleetMarkers();       /* PLAN-fleets run 2 - after nodes are built/positioned */
   /* patch628b: this used to also declare `sheet` (a $("#sysSheet") lookup) for
      the two classList("open") toggles just below, now deleted along with
      body.syspage's own second writer - see this patch's own header. #sysSheet's
@@ -1196,6 +1388,7 @@ function renderMap(){
     }
     const hanWrap=$("#sysHanWrap");
     if(hanWrap&&!hanWrap.hidden){ hanWrap.hidden=true; hanWrap.dataset.h=""; hanWrap.innerHTML=""; }
+    renderSysFleets(null);
     return;
   }
   const held=s.home||sysHeld(s.id), e=s.res?exoDef(s.res):null;
@@ -1307,6 +1500,7 @@ function renderMap(){
     if(act.dataset.h!==""){ act.dataset.h=""; act.innerHTML=""; }
   }
   renderSysOdds(s);
+  renderSysFleets(s);
   renderSysDef(s);
   renderSysHan(s);
   /* patch595: under attack - the 4th sheet state. Only a held system (home

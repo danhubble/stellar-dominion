@@ -195,8 +195,17 @@
           <button class="rmbtn" data-mm="list">LIST</button>
         </div>
         <div id="mapWrap"><canvas id="mapBg" width="600" height="600"></canvas><svg id="mapLinks" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
-          <div id="mapNodes"></div><div id="mapEdge"></div><canvas id="mapZoom"></canvas>
+          <div id="mapNodes"></div><div id="mapEdge"></div>
+          <svg id="fleetLines" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
+          <div id="fleetMarkers"></div>
+          <canvas id="mapZoom"></canvas>
           <div id="mapZoomBar"><button type="button" id="mapZoomBack">&lsaquo; MAP</button><div id="mapZoomName"></div></div></div>
+        <!-- PLAN-fleets run 2 (decision 5): the fleet bar - three full-width buttons,
+             shown on the map view and on a system page alike (both are #p-map), never
+             inside #mapWrap itself so #mapWrap.zoomed's own fade never hides it (same
+             reasoning #mapZoomBar already uses). renderFleetBar(), called from
+             render() right after renderMap(). -->
+        <div id="fleetBar" hidden></div>
         <div id="mapList" hidden></div>
         <div id="sysSheet">
           <div id="sysThreat" hidden></div>
@@ -213,6 +222,9 @@
             <div id="sysBuildRows"></div>
           </div>
           <div id="sysOdds" hidden></div>
+          <!-- PLAN-fleets run 2 (decision 5): who is here, above DEFENCES. Sending is
+               the fleet bar's job - this block only ever lists, never sends. -->
+          <div id="sysFleets"></div>
           <div id="sysDefWrap" hidden>
             <div id="sysDefHead"></div>
             <div id="sysDefRow"></div>
