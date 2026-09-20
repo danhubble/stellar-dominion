@@ -11764,3 +11764,42 @@ so levels 9–11 had the Raids tab and `fleetCap()===0`. Now `RAIDLV=unlockLv("p
 Side effect, intended: the par curve (`refDPS`/`refHP`, floored at RAIDLV) now starts
 growing at 9, so early raids are sized for a level-9 fleet. csim unchanged (never
 fights). `tpacing2` asserts RAIDLV===9, cap>0 at 9, 0 at 8.
+
+## PLAN-fleets run 2 — position, travel, the fleet bar (four commits)
+
+Run 1 (three commits, prior session) moved the single fleet into `S.fl[0]` with no
+visible change. This run gives it a place: `travelSecs()`/`fleetSend()`/
+`fleetTravelTick()` (own clock, called from `rvTick()` right after `thqTick()` -
+never csim's economy path, since csim never calls `fleetSend()`); raid targets now
+carry `t.sys` (picked by reusing the difficulty roll's own `v`, not a fresh
+`Math.random()` call - csim's `raidTick()` does call `newTarget()` three times
+filling `S.tg`, so a real new draw there would have shifted the seeded baseline for
+the rest of the run); `engageTarget()`/`autoResolveTarget()`/`canAutoResolve()`
+default to `fleetAtSys(t.sys)` instead of `curFleet()`; and the fleet bar
+(`#fleetBar`, interaction "A" from the owner-approved mock) - three buttons below
+the map, tap to select-and-LOCATE, tap again for the fleet's card, tap a node while
+selected for a SEND/HERE chip. Map markers live in their own `#fleetLines`/
+`#fleetMarkers` layer; the system page gets a plain FLEETS list above DEFENCES.
+
+Scope cut, coordinator decision (kept, see BRIEF-fleets-run2.md): threats/DEFEND IT
+are NOT gated on position this run - the defence mini-game never used the fleet,
+so gating it would be changing a mechanic, not finishing one. Position gates raids
+only; the FLEETS block only shows who is at a threatened system.
+
+csim byte-identical throughout (confirmed after every commit, not just at the end).
+`tfleets2.js` (run 1's file, appended) covers travel maths, send/land/refuse,
+engage-refused-when-away, the raid card's SEND/ENGAGE states, an offline arrival,
+the bar's hidden/locked states, LOCATE, and the node-tap/chip flow - 30 assertions,
+all passing. `tchurn2.js` clean: the bar and markers rebuild only on a structural
+key that excludes the eta countdown, which is written into a live nested span every
+render() pass instead (same idiom `#sysTripCd`'s own countdown already uses) -
+verified by hand with a 2.5s idle-churn sample (0 button-identity changes while a
+fleet was en route) before trusting `tchurn2` alone.
+
+Pre-existing layout note (already in this file, above, from the b639 release):
+`#left` (SCAN SECTOR + Getting Started) sits below the map on a short phone and
+needs a scroll to reach - the fleet bar sits in that same scrolled region now, so
+`tools/shots/shotfleetsr2.js`'s own screenshots jump `#view.scrollTop` directly
+(instant, not `scrollIntoView`'s smooth animation, which was still running when an
+early version of the script took the shot) rather than assuming the bar is already
+on screen. Not a regression this run introduced, just newly relevant to it.

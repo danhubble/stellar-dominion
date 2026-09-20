@@ -136,6 +136,141 @@ const { chromium } = require('playwright-core');
  ok('...and writes the post-fight integrity back to every fleet uniformly on a loss too',
    Math.abs(final.lossHp1-0.35)<1e-9 && Math.abs(final.lossHp2-0.35)<1e-9, final);
 
+ // ================== PLAN-fleets run 2: position, travel, the fleet bar ==================
+ // BRIEF-fleets-run2.md's "Tests" section: travelSecs() maths, fleetSend()/
+ // fleetTravelTick() landing and refusing, engageTarget() gated on t.sys, a raid
+ // card's SEND/ENGAGE states, an offline arrival, the fleet bar's hidden/locked
+ // states and its LOCATE tap, and node-tap interception with the SEND chip.
+
+ // earlier tests in this file fight battles but never close the results screen -
+ // BT stays truthy until closeBattle() runs, and fleetSend() (rightly) refuses to
+ // send a fleet mid-fight. Clear it before any of the travel tests below run.
+ await p.evaluate(()=>{ const G=window.__SD; if(G.BT)G.closeBattle(); });
+
+ // ---------------- travelSecs(): same-sector distance, cross-sector rings ----------------
+ const travel=await p.evaluate(()=>{
+   const G=window.__SD;
+   const A=G.SYSMAP.home, B=G.SYSMAP.kor;         // both sec 0 - same-sector maths
+   const dist=Math.hypot(A.sx-B.sx,A.sy-B.sy);
+   const sameSecExpected=G.TRAVEL_BASE+G.TRAVEL_PER_UNIT*dist;
+   const sameSecGot=G.travelSecs('home','kor');
+   const C=G.SYSMAP.home, D=G.SYSMAP.ash;         // sec 0 -> sec 1 - cross-sector maths
+   const rings=Math.abs(C.ring-D.ring);
+   const crossSecExpected=G.TRAVEL_BASE+G.TRAVEL_PER_RING*rings;
+   const crossSecGot=G.travelSecs('home','ash');
+   return { sameSec:A.sec===B.sec, sameSecExpected, sameSecGot,
+     crossSec:C.sec!==D.sec, crossSecExpected, crossSecGot };
+ });
+ ok('travelSecs(): same sector is TRAVEL_BASE + TRAVEL_PER_UNIT*dist(sx,sy)',
+   travel.sameSec && Math.abs(travel.sameSecExpected-travel.sameSecGot)<1e-9, travel);
+ ok('travelSecs(): crossing sectors is TRAVEL_BASE + TRAVEL_PER_RING*|ring delta| (distance ignored)',
+   travel.crossSec && Math.abs(travel.crossSecExpected-travel.crossSecGot)<1e-9, travel);
+
+ // ---------------- fleetSend()/fleetTravelTick(): send, refuse, land ----------------
+ const send=await p.evaluate(()=>{
+   const G=window.__SD;
+   G.adopt({...G.fresh(), lvl:14, lvSeen:14});
+   const f=G.S.fl[0];
+   const sent=G.fleetSend(f,'kor');
+   const to1=f.to, from1=f.from, eta1=f.eta, tot1=f.tot;
+   const sentAgain=G.fleetSend(f,'dra');          // refused - already travelling
+   G.fleetTravelTick(f.eta+1);
+   return { sent, to1, from1, eta1, tot1, sentAgain,
+     at2:f.at, to2:f.to, eta2:f.eta, from2:f.from };
+ });
+ ok('fleetSend() sets to/from/eta/tot', send.sent && send.to1==='kor' && send.from1==='home' && send.eta1>0 && send.tot1===send.eta1, send);
+ ok('fleetSend() refuses a fleet that is already travelling', send.sentAgain===false, send);
+ ok('fleetTravelTick(eta+1) lands the fleet: at=dest, to/from=null, eta=0', send.at2==='kor' && send.to2===null && send.from2===null && send.eta2===0, send);
+
+ // ---------------- engageTarget() refused with no fleet at t.sys ----------------
+ const noFleet=await p.evaluate(()=>{
+   const G=window.__SD;
+   G.adopt({...G.fresh(), all:1e30, lvl:99, lvSeen:99, ore:1e30, sh:[500,300,150], fhp:1,
+     cmode:"wep", tg:[], rf:{gun:10,arm:10}, nx:{war:15}, xp:{casc:15,core:20}});
+   const t=Object.assign(G.newTarget(), {sys:"kor"});   // the fleet (migrated from sh/fhp) is at home
+   G.engageTarget(t,-1);
+   return { btStarted:!!G.BT };
+ });
+ ok('engageTarget() refuses (no battle starts) when no fleet is at t.sys', !noFleet.btStarted, noFleet);
+
+ // ---------------- a raid target card: SEND while away, ENGAGE once there ----------------
+ const card=await p.evaluate(()=>{
+   const G=window.__SD;
+   G.adopt({...G.fresh(), all:1e30, lvl:14, lvSeen:14, ore:1e30});
+   G.buyShip(0,10);
+   G.S.tg=[Object.assign(G.newTarget(),{sys:"kor"})];
+   G.gotoTab("p-raid"); G.dirty=true; G.render();
+   const away=document.querySelector("#tgts .tcard button");
+   const awayText=away?away.textContent:null;
+   G.fleetSend(G.S.fl[0],"kor");
+   G.fleetTravelTick(G.S.fl[0].eta+1);
+   G.dirty=true; G.render();
+   const there=document.querySelector("#tgts .tcard button");
+   return { awayText, thereText: there?there.textContent:null };
+ });
+ ok('a raid target card shows SEND while the fleet is away', /SEND/.test(card.awayText), card);
+ ok('...and ENGAGE/AUTO-RESOLVE once the fleet has arrived', /ENGAGE|AUTO-RESOLVE/.test(card.thereText), card);
+
+ // ---------------- offline arrival: eta<=away lands the fleet, quietly ----------------
+ const offline=await p.evaluate(()=>{
+   const G=window.__SD;
+   G.adopt({...G.fresh(), lvl:14, lvSeen:14});
+   G.S.fl[0].to="kor"; G.S.fl[0].from="home"; G.S.fl[0].eta=10; G.S.fl[0].tot=30;
+   G.S.last=Date.now()-70000;   // 70s "away" - well past the 10s left on the eta
+   G.offlineReport();
+   return { at:G.S.fl[0].at, to:G.S.fl[0].to, eta:G.S.fl[0].eta };
+ });
+ ok('offline arrival: offlineReport() catches a fleet up and lands it', offline.at==="kor" && offline.to===null && offline.eta===0, offline);
+
+ // ---------------- the fleet bar: hidden below Raids level, locked slots above it ----------------
+ const bar=await p.evaluate(()=>{
+   const G=window.__SD;
+   G.adopt({...G.fresh(), lvl:G.RAIDLV-1, lvSeen:G.RAIDLV-1});
+   G.gotoTab("p-map"); G.dirty=true; G.render();
+   const hiddenBelow=document.getElementById("fleetBar").hidden;
+   G.adopt({...G.fresh(), lvl:12, lvSeen:12});
+   G.dirty=true; G.render();
+   const btns=[...document.querySelectorAll("#fleetBar button")];
+   return { hiddenBelow, hiddenAt12:document.getElementById("fleetBar").hidden,
+     count:btns.length, locked:btns.filter(b=>b.classList.contains("locked")).length };
+ });
+ ok('the fleet bar is hidden below the Raids unlock level', bar.hiddenBelow===true, bar);
+ ok('at level 12: one real fleet button + two LOCKED slots', !bar.hiddenAt12 && bar.count===3 && bar.locked===2, bar);
+
+ // ---------------- tapping a bar button LOCATEs - switches mapSec ----------------
+ const locate=await p.evaluate(()=>{
+   const G=window.__SD;
+   G.adopt({...G.fresh(), lvl:14, lvSeen:14});
+   G.S.fl[0].at="ash";                            /* Inner Reach - a different sector than home's */
+   G.gotoTab("p-map"); G.setMapSec(0); G.dirty=true; G.render();
+   const before=G.mapSec;
+   document.querySelector('#fleetBar [data-fl="1"]').click();
+   return { before, after:G.mapSec, expected:G.SYSMAP.ash.sec };
+ });
+ ok('tapping the fleet bar button switches mapSec to the fleet\'s own sector',
+   locate.before===0 && locate.expected!==0 && locate.after===locate.expected, locate);
+
+ // ---------------- node tap while selected: chip, not the system page; chip sends ----------------
+ const nodeTap=await p.evaluate(()=>{
+   const G=window.__SD;
+   G.fleetDeselect();   /* the LOCATE test just above leaves a fleet selected - start clean */
+   G.adopt({...G.fresh(), lvl:14, lvSeen:14});
+   G.gotoTab("p-map"); G.setMapSec(0); G.dirty=true; G.render();
+   document.querySelector('#fleetBar [data-fl="1"]').click();
+   const selAfterTap=G.flSel;
+   document.querySelector('#mapNodes .mnode[data-s="kor"]').click();
+   const mselAfterNodeTap=G.S.msel;
+   const chip=document.querySelector(".sendchip");
+   const chipText=chip?chip.textContent:null;
+   if(chip)chip.click();
+   return { selAfterTap, mselAfterNodeTap, chipText,
+     flSelAfter:G.flSel, toAfter:G.S.fl[0].to };
+ });
+ ok('tapping a bar button selects the fleet', nodeTap.selAfterTap===1, nodeTap);
+ ok('a node tap while a fleet is selected does NOT open the system page', nodeTap.mselAfterNodeTap===null, nodeTap);
+ ok('...and shows a SEND chip on that node instead', !!nodeTap.chipText && /SEND/.test(nodeTap.chipText), nodeTap);
+ ok('tapping the chip sends the fleet and deselects', nodeTap.flSelAfter===null && nodeTap.toAfter==="kor", nodeTap);
+
  if(errs.length)ok('no page errors', false, errs);
  console.log(out.join('\n'));
  console.log(out.filter(l=>l.startsWith('FAIL')).length+' failures');
