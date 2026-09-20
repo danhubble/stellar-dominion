@@ -1,3 +1,4 @@
+const SHOTS=require('path').resolve(__dirname,'../shots')+'/';
 const GAME_URL='file://'+require('path').resolve(__dirname,'../dist/stellar-dominion.html');
 const { chromium } = require('playwright-core');
 (async()=>{
@@ -31,9 +32,9 @@ const { chromium } = require('playwright-core');
  await p.evaluate(()=>{ __SD.S.rs={drill:5,amp:4,cryo:3,cold:1,auto:2}; __SD.S.cry=5e4; });
  await p.click('.tab[data-p="p-res"]'); await p.waitForTimeout(700);
  console.log('chips',await p.$$eval('.rchip',n=>n.length),'nodes',await p.$$eval('.rn',n=>n.length),'segs',await p.$$eval('#treeLines path',n=>n.length));
- await p.screenshot({path:'r2-drill.png'});
+ await p.screenshot({path:SHOTS+'r2-drill.png'});
  await p.click('.rchip:nth-child(6)'); await p.waitForTimeout(600);
- await p.screenshot({path:'r2-void.png'});
+ await p.screenshot({path:SHOTS+'r2-void.png'});
  await p.click('.rchip:nth-child(1)'); await p.waitForTimeout(400);
  const before=await p.evaluate(()=>__SD.S.rs.drill);
  await p.click('#treeGrid .rn:nth-child(6)'); await p.waitForTimeout(300); await p.click('#nmBuy'); await p.waitForTimeout(400);
@@ -57,7 +58,7 @@ const { chromium } = require('playwright-core');
  await p2.evaluate(()=>{ __SD.S.xpn=1e9; __SD.S.lvl=80; __SD.S.lvSeen=80; });   // open the level-gated tabs
  await p2.evaluate(()=>{ __SD.S.rs={drill:5,amp:4,cryo:3,cold:1,auto:2}; __SD.S.cry=5e4; });
  await p2.click('.tab[data-p="p-res"]'); await p2.waitForTimeout(800);
- await p2.screenshot({path:'r2-mobile.png'});
+ await p2.screenshot({path:SHOTS+'r2-mobile.png'});
  clearInterval(noticeJanitor); clearInterval(noticeJanitor2);
  console.log(errs.length?'ERR '+errs.join('|'):'NO JS ERRORS');
  await b.close();

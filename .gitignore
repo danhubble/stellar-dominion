@@ -1,6 +1,5 @@
 node_modules/
 shots/
 *.png
-!tests/r2-*.png
 docs/mocks/*.png
 .DS_Store
