@@ -56,7 +56,16 @@ function adopt(o){
     const hpRaw=(fl&&fl.hp!==undefined)?fl.hp:1;
     const hp=Math.max(0,Math.min(1,hpRaw));
     const at=(fl&&typeof fl.at==="string"&&(fl.at==="home"||SYSMAP[fl.at]))?fl.at:"home";
-    return {id,n,sh,hp,at,to:null,eta:0};
+    /* PLAN-fleets run 2: `to`/`eta`/`from`/`tot` now survive a reload (a save mid-
+       flight resumes exactly where it was - offlineReport()'s fleetTravelTick()
+       call is what actually catches the eta up for the time away). An unknown
+       `to` (a removed system id, or just garbage) clears the whole travel - there
+       is nowhere to arrive, so the fleet is simplest left standing at `at`. */
+    const to=(fl&&typeof fl.to==="string"&&SYSMAP[fl.to])?fl.to:null;
+    const eta=to?Math.max(0,+((fl&&fl.eta))||0):0;
+    const from=to?((fl&&typeof fl.from==="string"&&(fl.from==="home"||SYSMAP[fl.from]))?fl.from:at):null;
+    const tot=to?Math.max(eta,+((fl&&fl.tot))||0):0;
+    return {id,n,sh,hp,at,to,eta,from,tot};
   });
   if(f.flSel==null || !f.fl.some(fl=>fl.id===f.flSel))f.flSel=f.fl[0].id;
   if(!Array.isArray(f.tg))f.tg=[];
@@ -456,6 +465,10 @@ function offlineReport(){
   tripTick(true);
   const away=(Date.now()-(S.last||Date.now()))/1000;
   if(away<60)return;
+  /* PLAN-fleets run 2: land any fleet that was mid-flight when the tab closed -
+     quiet (no toast; see fleetTravelTick's own comment), folded into the report
+     below only if it is already showing something else. */
+  const fleetArrivals=fleetTravelTick(away, true);
   /* Age the queue for the whole time away - NOT capped like production is. The window is
      a promise about wall-clock time; capping it would mean an attack survived a week
      because the offline cap is eight hours. Quiet, because the report speaks for it. */
@@ -493,6 +506,10 @@ function offlineReport(){
     return out.slice(0,3);
   })();
   /* even with nothing earned, a garrison action is worth showing */
+  /* fleetArrivals is deliberately NOT one of these conditions - a fleet arriving
+     with nothing else to report is not worth a modal on its own (see the comment
+     where fleetArrivals is computed above); it only ever shows as an extra line
+     folded into a report already popping up for some other reason. */
   if(ore<=0&&cry<=0&&en<=0&&!fought.length&&!claims.length&&!occupied.length)return;
   S.ore+=ore;S.all+=ore;S.cry+=cry;S.en+=en;S.enAll+=en;
   for(const e of EXO){ const r=exoRate(e.id); if(r>0)S.exo[e.id]=exo(e.id)+r*t*eff }
@@ -501,6 +518,7 @@ function offlineReport(){
    <div style="font:700 26px/1.2 ui-monospace,monospace;color:var(--cy);margin:10px 0">+${fmt(ore)} ${RI("ore")}</div>
    ${cry>0?`<div style="font:700 16px/1.2 ui-monospace,monospace;color:var(--vi)">+${fmt(cry)} ${RI("cry")}</div>`:""}
    ${en>0?`<div style="font:700 16px/1.2 ui-monospace,monospace;color:${EN_COL}">+${fmt(en)} Exotic Nodes</div>`:""}
+   ${fleetArrivals.length?`<p class="awnote">${fleetArrivals.join(", ")}.</p>`:""}
    ${claims.length?`<div class="awrep claims"><h5>The map moved while you were gone</h5>${
      claims.map(f=>`<div class="awrow bad"><span>${f.sys}</span><b>${f.rv}</b></div>`).join("")
      }<p class="awnote">None of these were yours \u2014 the war between them moves whether

@@ -39,6 +39,8 @@ function rvProvoke(rid, amount){
 function rvTick(dt){
   thqPrune();
   thqTick(dt);
+  fleetTravelTick(dt);   /* PLAN-fleets run 2: same clock as thqTick - never csim's
+    economy path, since csim never calls fleetSend() so no S.fl entry ever has `to` set */
   if(S.end>=1)return;   /* patch589: rivals go quiet once the turn has come */
   if(!rvAwake())return;
   /* have we come within reach of anyone new? */

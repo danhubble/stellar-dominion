@@ -1310,6 +1310,59 @@ function curFleet(){
 /* run 2: the first idle (not travelling) fleet sitting at sysId - every fleet is
    idle at home in run 1, so this is unused until travel exists. */
 function fleetAtSys(sysId){ return fleets().find(f=>!f.to&&f.at===sysId)||null }
+/* ---------------- PLAN-fleets run 2: position and travel ----------------
+   TUNING-PENDING, all three (PLAN-fleets.md decision 4): same-sector travel is
+   TRAVEL_BASE + TRAVEL_PER_UNIT per map unit of on-screen distance (sx/sy, 0-100);
+   crossing sectors ignores that distance entirely and charges TRAVEL_PER_RING per
+   ring boundary crossed instead - a lane between neighbouring sectors, not a
+   straight-line flight. */
+const TRAVEL_BASE=20, TRAVEL_PER_UNIT=0.4, TRAVEL_PER_RING=45;
+function travelSecs(fromId,toId){
+  const A=SYSMAP[fromId], B=SYSMAP[toId];
+  if(!A||!B)return Infinity;
+  if(A.sec===B.sec)return TRAVEL_BASE+TRAVEL_PER_UNIT*Math.hypot(A.sx-B.sx,A.sy-B.sy);
+  return TRAVEL_BASE+TRAVEL_PER_RING*Math.abs(A.ring-B.ring);
+}
+/* refuses: already travelling, already there, an unknown system, or mid-fight (a
+   battle/defence in progress is not a moment to be reassigning the fleet that is,
+   or might be, in it). f.at is left alone while travelling - it is still where the
+   fleet department (and is used, unlike `to`/`eta`, as its last-known position by
+   the map/FLEETS block; fleetAtSys()'s own !f.to guard already excludes it from
+   anything that cares "is a fleet actually here right now"). */
+function fleetSend(f,toId){
+  if(!f||f.to)return false;
+  if(toId===f.at)return false;
+  if(!SYSMAP[toId])return false;
+  if(BT||DT)return false;
+  const eta=travelSecs(f.at,toId);
+  f.to=toId; f.from=f.at; f.eta=eta; f.tot=eta;
+  toast(f.n+" departing for "+SYSMAP[toId].n+" · "+Math.round(eta)+"s","y");
+  dirty=true; return true;
+}
+/* run on the SAME clock thqTick(dt) already runs on (rvTick, called from tick()) -
+   never csim's economy path, since csim never calls fleetSend() and so never has a
+   fleet with `to` set to decrement in the first place. `quiet` (offlineReport()'s
+   catch-up pass) skips the arrival toast and instead returns each arrival's line
+   for the away-report to fold in IF that report is already showing something else -
+   a fleet quietly arriving is not, on its own, worth waking the player's phone or
+   popping a modal (see offlineReport()'s own comment). */
+function fleetTravelTick(dt, quiet){
+  const arrived=[];
+  for(const f of fleets()){
+    if(!f.to)continue;
+    f.eta-=dt;
+    if(f.eta<=0){
+      const dest=SYSMAP[f.to];
+      f.at=f.to; f.to=null; f.eta=0; f.from=null; f.tot=0;
+      if(dest){
+        if(!quiet)toast(f.n+" arrived at "+dest.n,"g");
+        arrived.push(f.n+" arrived at "+dest.n);
+      }
+      flag("p-map"); dirty=true;
+    }
+  }
+  return arrived;
+}
 function fleetDPS(f){ f=f||curFleet(); let d=0; for(let i=0;i<SHIPS.length;i++)d+=f.sh[i]*SHIPS[i].dps;
   return d*shipCountMul()*fleetMult()*Math.pow(1.25,rfl("gun"))*crewMul("cap") }
 function fleetHPMax(f){ f=f||curFleet(); let h=0; for(let i=0;i<SHIPS.length;i++)h+=f.sh[i]*SHIPS[i].hp;
