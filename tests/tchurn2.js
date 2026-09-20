@@ -171,7 +171,7 @@ async function sweep(page, label){
  await check('Map (assault en route)', async()=>{
    await p.evaluate(()=>{
      const G=window.__SD;
-     G.S.lvl=20; G.S.lvSeen=20; G.S.fhp=1;
+     G.S.lvl=20; G.S.lvSeen=20; G.S.fl[0].hp=1;   // fixture moved to S.fl[0] (PLAN-fleets run 1)
      if(!G.S.trip)G.launchAssault(G.SYSMAP.tan);
      G.S.msel='tan'; gotoTab('p-map'); dirty=true; render();
    });

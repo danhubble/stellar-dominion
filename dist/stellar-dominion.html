@@ -1598,6 +1598,7 @@ body.syspage #toasts{bottom:calc(var(--sysbarh) + 8px + env(safe-area-inset-bott
             <button class="rmbtn" data-rd="loadout">LOADOUT<i class="dot"></i></button>
             <button class="rmbtn" data-rd="crew">CREW<i class="dot"></i></button>
           </div>
+          <div id="flTabs" class="buybar"></div>
           <div id="flStrip">
             <div class="fl-h"><span class="fl-t">FLEET</span>
               <span class="fl-st" id="flStat"></span>
@@ -10373,17 +10374,35 @@ $("#trRep").onclick=()=>{ if(addOrder("rep"))dirty=true };
 $("#bClear").onclick=()=>{ clearOrders(); dirty=true };
 $("#bResolve").onclick=()=>{ if(!BT||!(BT.lock>0))resolveRound() };
 
+/* the tab row above the fleet strip - one .chip per fleet in fleets() (just "1" in
+   run 1; run 3 adds locked placeholders for 2/3). Tapping sets S.flSel and
+   re-renders. Churn-guarded on the fleet ids + S.flSel, same idiom every other
+   rendered block in this game uses (tchurn2). */
+function renderFleetTabs(){
+  const host=$("#flTabs"); if(!host)return;
+  const fls=fleets();
+  const key=fls.map(f=>f.id).join(",")+"|"+S.flSel;
+  if(host.dataset.h===key)return;
+  host.dataset.h=key;
+  host.innerHTML=fls.map(f=>
+    `<button type="button" class="chip${f.id===S.flSel?" on":""}" data-fl="${f.id}">${f.n}</button>`
+  ).join("");
+  host.querySelectorAll("[data-fl]").forEach(b=>{
+    b.onclick=()=>{ S.flSel=+b.dataset.fl; dirty=true; render(); };
+  });
+}
 function renderRaids(){
-  renderEndCard(); renderThreat(); renderRivalBars();
+  renderEndCard(); renderThreat(); renderRivalBars(); renderFleetTabs();
+  const cf=curFleet();
   const st=$("#flStat");
   const pw=shipPower(), cp=fleetCap(), over=pw>cp;
   const thinCap=cp>0&&pw<cp*0.7;
-  st.innerHTML=fmt(fleetDPS())+" dps · "+fmt(fleetHPMax())+" hull"
+  st.innerHTML=fmt(fleetDPS(cf))+" dps · "+fmt(fleetHPMax(cf))+" hull"
     +` <b class="flcap${over?" over":thinCap?" thin":""}">⚡${pw}/${cp}</b>`;
-  const hp=curFleet().hp, bar=$(".fl-hp");
+  const hp=cf.hp, bar=$(".fl-hp");
   bar.classList.toggle("hurt",hp<=.6&&hp>.3); bar.classList.toggle("crit",hp<=.3);
   $("#flHp").style.width=(hp*100)+"%";
-  $("#flHpT").textContent=fleetCount()?("FLEET INTEGRITY "+Math.round(hp*100)+"%"+(hp<1?" · repairing":"")):"NO SHIPS";
+  $("#flHpT").textContent=fleetCount(cf)?("FLEET INTEGRITY "+Math.round(hp*100)+"%"+(hp<1?" · repairing":"")):"NO SHIPS";
   /* the single most useful thing the page can say to someone losing every fight */
   const wn=$("#flWarn");
   if(wn){
@@ -10391,16 +10410,16 @@ function renderRaids(){
     wn.classList.toggle("on",thin);
     if(thin)wn.innerHTML=`Your fleet is using <b>${pw} of ${cp}</b> command capacity.
       Hostiles are sized against a full one, so raids will go badly until you build more
-      \\u2014 heavier hulls give far more per point of capacity.`;
+      \u2014 heavier hulls give far more per point of capacity.`;
   }
-  const fx=$("#flFix"), rc=repairCost();
-  fx.classList.toggle("hide", !fleetCount() || hp>=1);
+  const fx=$("#flFix"), rc=repairCost(cf);
+  fx.classList.toggle("hide", !fleetCount(cf) || hp>=1);
   fx.disabled = S.ore<rc || hp>=1;
   fx.textContent = "REPAIR \u00b7 "+fmt(rc)+" ORE";
   const host=$("#flShips"); host.innerHTML="";
   SHIPS.forEach((sp,i)=>{
     const d=document.createElement("div"); d.className="shp"; d.style.setProperty("--a",sp.col);
-    const k=S.sell?Math.min(S.buy==="max"?curFleet().sh[i]:S.buy,curFleet().sh[i]):(S.buy==="max"?Math.max(1,shipMax(i)):S.buy);
+    const k=S.sell?Math.min(S.buy==="max"?cf.sh[i]:S.buy,cf.sh[i]):(S.buy==="max"?Math.max(1,shipMax(i)):S.buy);
     const c=S.sell?(k>0?0.5*sp.b*Math.pow(sp.g,shipTotal(i)-k)*(Math.pow(sp.g,k)-1)/(sp.g-1):0):shipCost(i,k);
     const fits=k*sp.pw<=capLeft();
     const can=S.sell?k>0:(S.ore>=c&&fits);
@@ -10408,7 +10427,7 @@ function renderRaids(){
       <div><div class="sn">${sp.n}</div>
         <div class="sd">${fmt(sp.dps*fleetMult())} dps · ${fmt(sp.hp*fleetMult())} hull · ⚡${sp.pw}</div></div>
       <div style="display:flex;align-items:center;gap:10px">
-        <div class="sc">${curFleet().sh[i]}</div>
+        <div class="sc">${cf.sh[i]}</div>
         <button class="gb"><b>${S.sell||fits?fmt(c)+" ore":"NO CAPACITY"}</b><i>${
           S.sell?"SCRAP ×"+k:"BUY ×"+k}</i></button>
       </div>`;
@@ -10422,7 +10441,7 @@ function renderRaids(){
   }
   S.tg.forEach((t,i)=>{
     const T=RAIDS[t.ti], rw=raidReward(t);
-    const dps=fleetDPS(), hpm=fleetHPMax();
+    const dps=fleetDPS(cf), hpm=fleetHPMax(cf);
     const eHP=dps*t.secs*t.dif, eDPS=(hpm*t.dmg)/t.secs;
     const risk=riskOf(t);
     const rews=[rw.o?fmt(rw.o)+" "+RI('ore'):null,rw.c?fmt(rw.c)+" "+RI('cry'):null,rw.m?fmt(rw.m)+" "+RI('dm'):null,
@@ -10432,12 +10451,12 @@ function renderRaids(){
       <div class="tm">${T.boss?"FLAGSHIP · single heavy target":t.en+" hostiles"} · ~${Math.round(t.secs*t.dif)}s engagement<br>
         they can strip ~${Math.round(t.dmg*100)}% of a full hull · reinforcements at ${waveTFor(t)}s</div>
       <div class="tr">${rews||"—"}</div>
-      ${canAutoResolve(t)
+      ${canAutoResolve(t,cf)
         ? '<button>AUTO-RESOLVE</button><button class="ghost" style="margin-top:6px">FIGHT IT ANYWAY</button>'
         : "<button>ENGAGE</button>"}`;
     const btns=d.querySelectorAll("button");
-    const auto=canAutoResolve(t);
-    btns.forEach(bb=>bb.disabled=dps<=0||curFleet().hp<0.15);
+    const auto=canAutoResolve(t,cf);
+    btns.forEach(bb=>bb.disabled=dps<=0||cf.hp<0.15);
     if(auto){ btns[0].onclick=()=>autoEngage(i); btns[1].onclick=()=>engage(i); }
     else btns[0].onclick=()=>engage(i);
     th.appendChild(d);
@@ -10529,7 +10548,7 @@ function renderRaids(){
     }
   }
 
-  $("#raidHint").textContent = fleetCount()? "Tap the glowing seam on a hostile for a critical. Chain hits without missing to build a damage multiplier."
+  $("#raidHint").textContent = fleetCount(cf)? "Tap the glowing seam on a hostile for a critical. Chain hits without missing to build a damage multiplier."
     : "Build warships below, then engage a target.";
   raidSubFlags();
 }
@@ -10538,7 +10557,7 @@ function renderRaids(){
    summarised into one bool per sub-tab. Runs every dirty frame, so kept O(rows). */
 function raidSubFlags(){
   const f={targets:false,fleet:false,loadout:false,crew:false};
-  f.targets = S.tg.length>0 && fleetCount()>0 && curFleet().hp>=0.15;
+  { const cf=curFleet(); f.targets = S.tg.length>0 && fleetCount(cf)>0 && cf.hp>=0.15; }
   f.fleet   = SHIPS.some((sp,i)=> sp.pw<=capLeft() && S.ore>=shipCost(i,1));
   f.loadout = wepSlots().some(s=>!s) && WEAPONS.some(w=>wepOwned(w.id)&&wepSlots().indexOf(w.id)<0)
            || WEAPONS.some(w=>!wepOwned(w.id)&&S.sv>=w.cost)

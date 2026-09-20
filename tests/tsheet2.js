@@ -91,7 +91,7 @@ const URL=GAME_URL;
  // ---------------- CONTESTED - en route ----------------
  await p.evaluate(()=>{
    const G=window.__SD;
-   G.S.ore=1e9; G.S.fhp=1; G.buyShip(0,10);
+   G.S.ore=1e9; G.S.fl[0].hp=1; G.buyShip(0,10);   // fixture moved to S.fl[0] (PLAN-fleets run 1)
    if(!G.S.trip)G.launchAssault(G.SYSMAP.tan);
  });
  await selectNode('tan');

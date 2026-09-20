@@ -271,7 +271,7 @@ const { chromium } = require('playwright-core');
    const exoAfter=G.sysExoRate('kor');
 
    // pj2: fleet damage & hull
-   G.S.sh=[10,0,0,0,0,0,0,0];
+   G.S.fl[0].sh=[10,0,0,0,0,0,0,0];   // fixture moved to S.fl[0] (PLAN-fleets run 1)
    const dpsBefore=G.fleetDPS(), hpBefore=G.fleetHPMax();
    G.S.en=5000; G.buyNex(G.NEXUS.find(x=>x.id==='pj2'));
    const dpsAfter=G.fleetDPS(), hpAfter=G.fleetHPMax();

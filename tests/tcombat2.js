@@ -149,7 +149,7 @@ const { chromium } = require('playwright-core');
    const tStrong=G.assaultTarget(G.SYSMAP.tan);
    out.strongOdds=G.fightOdds(tStrong);
    out.strongCanAuto=G.canAutoResolve(tStrong);
-   const fhpBefore=G.S.fhp;
+   const fhpBefore=G.S.fl[0].hp;   // fixture moved to S.fl[0] (PLAN-fleets run 1)
    const resolved=G.autoResolveTarget(tStrong,-1);
    out.resolvedOk=resolved;
    // patch633: auto-resolve no longer wins synchronously - it arms a ~2.5s scripted
@@ -158,7 +158,7 @@ const { chromium } = require('playwright-core');
    out.armedCine = !!(G.BT&&G.BT.cine);
    for(let i=0;i<400 && G.BT && !G.BT.done;i++)G.bUpdate(1/30);
    out.won=!!(G.S.taken&&G.S.taken.tan);
-   out.fhpDropMatches = Math.abs((fhpBefore-G.S.fhp)-G.AUTO_FHP_COST)<1e-6;
+   out.fhpDropMatches = Math.abs((fhpBefore-G.S.fl[0].hp)-G.AUTO_FHP_COST)<1e-6;
 
    // just below AUTO_MULT -> tactical screen still required (BT.auto unset)
    G.adopt({...G.fresh(), all:1e30, lvl:99, lvSeen:99, ore:1e30, sh:[6,2,0], fhp:1, tg:[],

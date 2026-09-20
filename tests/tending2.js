@@ -95,7 +95,7 @@ const { chromium } = require('playwright-core');
    G.S.sys.home.b[0]=200; G.S.sys.home.b[1]=100;   // ore + crystal production, for cryRate()>0
    const exoGi=G.sysLadder('kor').find(gi=>G.GENS[gi].kind!=='ore');
    if(exoGi!=null)G.S.sys.kor.b[exoGi]=100;   // give sysExoRate('kor') something to read, mirrors tnodes2.js
-   G.S.sh=[10,0,0,0,0,0,0,0];
+   G.S.fl[0].sh=[10,0,0,0,0,0,0,0];   // fixture moved to S.fl[0] (PLAN-fleets run 1)
    const before={ fleetDPS:G.fleetDPS(), fleetHPMax:G.fleetHPMax(), globalMul:G.globalMul(),
      cryRate:G.cryRate(), offlineEff:G.offlineEff(), sysExoRate:G.sysExoRate('kor') };
    G.S.en=5000; G.buyNex(G.NEXUS.find(x=>x.id==='pjx'));   // S.end -> 1
@@ -293,7 +293,7 @@ const { chromium } = require('playwright-core');
  const notYet = await p.evaluate(({baseAdopt,grantAll})=>{
    const G=window.__SD;
    eval(baseAdopt); eval(grantAll);
-   G.S.fhp=1;
+   G.S.fl[0].hp=1;   // fixture moved to S.fl[0] (PLAN-fleets run 1)
    G.S.en=5000; G.buyNex(G.NEXUS.find(x=>x.id==='pjx'));   // opens the scene
    G.sceneFinish();   // reveal ENGAGE/NOT YET (same as tapping SKIP or reaching the last line)
    const btnTexts=[...document.querySelectorAll('#sceneEnd button')].map(b=>b.textContent.trim());
@@ -316,7 +316,7 @@ const { chromium } = require('playwright-core');
  const engageClick = await p.evaluate(({baseAdopt,grantAll})=>{
    const G=window.__SD;
    eval(baseAdopt); eval(grantAll);
-   G.S.fhp=1;
+   G.S.fl[0].hp=1;   // fixture moved to S.fl[0] (PLAN-fleets run 1)
    G.S.en=5000; G.buyNex(G.NEXUS.find(x=>x.id==='pjx'));
    G.sceneFinish();
    const endBefore=G.S.end;
@@ -357,12 +357,12 @@ const { chromium } = require('playwright-core');
    const G=window.__SD;
    eval(baseAdopt); eval(grantAll);
    G.S.en=5000; G.buyNex(G.NEXUS.find(x=>x.id==='pjx'));
-   G.S.sh=[10,0,0];
-   G.S.fhp=0.05;
+   G.S.fl[0].sh=[10,0,0];   // fixture moved to S.fl[0] (PLAN-fleets run 1)
+   G.S.fl[0].hp=0.05;
    G.renderEndCard();
    const lowHull={ disabled:document.getElementById('endEngage').disabled,
      hint:document.getElementById('endCard').innerHTML.includes('too damaged') };
-   G.S.fhp=1;
+   G.S.fl[0].hp=1;
    G.renderEndCard();
    const fullHull={ disabled:document.getElementById('endEngage').disabled };
    return { lowHull, fullHull };
@@ -384,7 +384,7 @@ const { chromium } = require('playwright-core');
    const G=window.__SD;
    eval(baseAdopt); eval(grantAll);
    G.S.en=5000; G.buyNex(G.NEXUS.find(x=>x.id==='pjx'));
-   G.S.sh=[0,0,0]; G.S.fhp=1;
+   G.S.fl[0].sh=[0,0,0]; G.S.fl[0].hp=1;   // fixture moved to S.fl[0] (PLAN-fleets run 1)
    G.renderEndCard();
    const card={ disabled:document.getElementById('endEngage').disabled,
      hint:document.getElementById('endCard').innerHTML.includes('No fleet') };
@@ -615,14 +615,14 @@ const { chromium } = require('playwright-core');
  const lossReturn = await p.evaluate(({finalAdopt})=>{
    const G=window.__SD; eval(finalAdopt);
    G.startFinalBattle();
-   const shBefore=G.S.sh.slice();
+   const shBefore=G.S.fl[0].sh.slice();   // fixture moved to S.fl[0] (PLAN-fleets run 1)
    G.BT.hp=0;
    G.bUpdateWep(0.1);
    const resHTML=document.getElementById('bRes').innerHTML;
    document.getElementById('bDone').click();
    G.gotoTab('p-raid'); G.render();
    const engageDisabled=document.getElementById('endEngage').disabled;
-   return { end:G.S.end, btOpen:!!G.BT, shBefore, shAfter:G.S.sh, fhp:G.S.fhp, engageDisabled, resHTML };
+   return { end:G.S.end, btOpen:!!G.BT, shBefore, shAfter:G.S.fl[0].sh, fhp:G.S.fl[0].hp, engageDisabled, resHTML };
  }, {finalAdopt});
  ok('a hull-0 loss applies the normal fleet-damage handling (ships lost)',
    lossReturn.shAfter.some((n,i)=>n<lossReturn.shBefore[i]), lossReturn);

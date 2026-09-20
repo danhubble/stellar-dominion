@@ -40,7 +40,7 @@ const { chromium } = require('playwright-core');
  const info = await p.evaluate(()=>{
    const G=window.__SD;
    const h3=document.querySelector('#bRes h3');
-   return {fhp:G.S.fhp, title:h3?h3.textContent:null, kills:G.BT.kills, tot:G.BT.tot};
+   return {fhp:G.S.fl[0].hp, title:h3?h3.textContent:null, kills:G.BT.kills, tot:G.BT.tot};   // fixture moved to S.fl[0] (PLAN-fleets run 1)
  });
  console.log(JSON.stringify(info));
  await b.close();

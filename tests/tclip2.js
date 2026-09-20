@@ -63,7 +63,7 @@ const { chromium } = require('playwright-core');
      cmode:"wep", tg:[], rf:{gun:10,arm:10}, nx:{war:15}, xp:{casc:15,core:20},
      wep:{own:{pulse:1,rocket:1}, slot:["pulse","rocket"]}});
    const t=G.assaultTarget(G.SYSMAP.dra);
-   const fhpBefore=G.S.fhp;
+   const fhpBefore=G.S.fl[0].hp;
    G.autoResolveTarget(t,-1);
    const iters=window.__driveToDone(1/30, 400);
    const everyoneDead = G.BT.en.every(e=>!e.alive);
@@ -75,8 +75,8 @@ const { chromium } = require('playwright-core');
      bResOn: document.getElementById('bRes').classList.contains('on'),
      title: h3?h3.textContent:null,
      kills: G.BT.kills, tot: G.BT.tot,
-     fhpBefore, fhpAfter: G.S.fhp, expected,
-     fhpMatches: Math.abs(G.S.fhp-expected)<1e-6,
+     fhpBefore, fhpAfter: G.S.fl[0].hp, expected,
+     fhpMatches: Math.abs(G.S.fl[0].hp-expected)<1e-6,
    };
  });
  ok('finished on its own well within a generous iteration budget (never got stuck)', played.iters<400, played);
@@ -120,8 +120,8 @@ const { chromium } = require('playwright-core');
      shotCount:shots.length, nonzeroCount:nonzero.length,
      nonzeroMatches: nonzero.length===1 && Math.abs(nonzero[0].d-expectedD)<1e-9,
      badNum, iters, done:G.BT.done,
-     fhpAfter:G.S.fhp,
-     fhp97: Math.abs(G.S.fhp-0.97)<1e-9,
+     fhpAfter:G.S.fl[0].hp,
+     fhp97: Math.abs(G.S.fl[0].hp-0.97)<1e-9,
    };
  });
  ok('the enemy volley actually fires (sanity check on the fixture itself)', volley.shotCount>0, volley);
@@ -137,7 +137,7 @@ const { chromium } = require('playwright-core');
    G.adopt({...G.fresh(), all:1e30, lvl:99, lvSeen:99, ore:1e30, sh:[500,300,150], fhp:1,
      cmode:"wep", tg:[], rf:{gun:10,arm:10}, nx:{war:15}, xp:{casc:15,core:20}});
    const t=G.assaultTarget(G.SYSMAP.dra);
-   const fhpBefore=G.S.fhp;
+   const fhpBefore=G.S.fl[0].hp;
    G.autoResolveTarget(t,-1);
    G.bUpdate(0.06); G.bUpdate(0.04);   // t=0.10s - before the 0.35s enemy volley even starts
    window.__preSkip = {t:G.BT.cine.t, charged:!!G.BT.cine.charged, done:G.BT.done};
@@ -156,8 +156,8 @@ const { chromium } = require('playwright-core');
      title: h3?h3.textContent:null,
      everyoneDead: G.BT.en.every(e=>!e.alive),
      kills: G.BT.kills, tot: G.BT.tot,
-     fhpAfter: G.S.fhp, expected,
-     matches: Math.abs(G.S.fhp-expected)<1e-6,
+     fhpAfter: G.S.fl[0].hp, expected,
+     matches: Math.abs(G.S.fl[0].hp-expected)<1e-6,
    };
  });
  ok('skip is tested before the clip had charged the cost on its own (t=0.1s < 0.35s)', !afterSkip.pre.charged && !afterSkip.pre.done, afterSkip);
@@ -228,11 +228,11 @@ const { chromium } = require('playwright-core');
    G.adopt({...G.fresh(), all:1e30, lvl:99, lvSeen:99, ore:1e30, sh:[500,300,150], fhp:1,
      cmode:"wep", tg:[], rf:{gun:10,arm:10}, nx:{war:15}, xp:{casc:15,core:20}});
    const t=G.assaultTarget(G.SYSMAP.dra);
-   const fhpBefore=G.S.fhp;
+   const fhpBefore=G.S.fl[0].hp;
    G.autoResolveTarget(t,-1);
    G.bUpdate(1/60);   // a single real frame
    const expected=Math.max(0.05, fhpBefore-G.AUTO_FHP_COST);
-   return {done:G.BT.done, matches: Math.abs(G.S.fhp-expected)<1e-6,
+   return {done:G.BT.done, matches: Math.abs(G.S.fl[0].hp-expected)<1e-6,
      bResOn: document.getElementById('bRes').classList.contains('on')};
  });
  ok('prefers-reduced-motion skips straight to the card on the very first cine frame', reduced.done===1 && reduced.bResOn, reduced);

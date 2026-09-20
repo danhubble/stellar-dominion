@@ -37,7 +37,7 @@ const { chromium } = require('playwright-core');
  // button itself shows), so buy a few interceptors first.
  await p.evaluate(()=>{
    const G=window.__SD;
-   G.S.ore=1e9; G.S.lvl=20; G.S.lvSeen=20; G.S.fhp=1;
+   G.S.ore=1e9; G.S.lvl=20; G.S.lvSeen=20; G.S.fl[0].hp=1;   // fixture moved to S.fl[0] (PLAN-fleets run 1)
    G.buyShip(0,10);
    if(!G.S.trip)G.launchAssault(G.SYSMAP.tan);
  });

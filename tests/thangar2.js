@@ -63,9 +63,9 @@ const URL=GAME_URL;
  // ---------------- stationing takes capacity, recalling returns it ----------------
  const stationed=await p.evaluate(()=>{
    const G=window.__SD;
-   const before={ sh:[...G.S.sh], capLeft:G.capLeft(), shipPower:G.shipPower() };
+   const before={ sh:[...G.S.fl[0].sh], capLeft:G.capLeft(), shipPower:G.shipPower() };
    const did=G.stationHan('kor',0,5);
-   const after={ sh:[...G.S.sh], capLeft:G.capLeft(), shipPower:G.shipPower(), han:G.hanFleet('kor').slice() };
+   const after={ sh:[...G.S.fl[0].sh], capLeft:G.capLeft(), shipPower:G.shipPower(), han:G.hanFleet('kor').slice() };
    return { did, before, after };
  });
  ok('stationHan() moves hulls OUT of S.sh into S.han', stationed.did&&stationed.after.sh[0]===stationed.before.sh[0]-5&&stationed.after.han[0]===5, stationed);
@@ -73,9 +73,9 @@ const URL=GAME_URL;
 
  const recalled=await p.evaluate(()=>{
    const G=window.__SD;
-   const before={ sh:[...G.S.sh], han:G.hanFleet('kor').slice() };
+   const before={ sh:[...G.S.fl[0].sh], han:G.hanFleet('kor').slice() };
    const did=G.recallHan('kor',0,2);
-   const after={ sh:[...G.S.sh], han:G.hanFleet('kor').slice() };
+   const after={ sh:[...G.S.fl[0].sh], han:G.hanFleet('kor').slice() };
    return { did, before, after };
  });
  ok('recallHan() moves hulls back OUT of S.han into S.sh', recalled.did&&recalled.after.sh[0]===recalled.before.sh[0]+2&&recalled.after.han[0]===recalled.before.han[0]-2, recalled);
@@ -83,18 +83,18 @@ const URL=GAME_URL;
  const recallAll=await p.evaluate(()=>{
    const G=window.__SD;
    G.stationHan('kor',1,3);
-   const before=[...G.S.sh];
+   const before=[...G.S.fl[0].sh];
    const did=G.recallHanAll('kor');
-   return { did, after:[...G.S.sh], before, han:G.hanFleet('kor').slice(), count:G.hanCount('kor') };
+   return { did, after:[...G.S.fl[0].sh], before, han:G.hanFleet('kor').slice(), count:G.hanCount('kor') };
  });
  ok('recallHanAll() empties every hull class at once', recallAll.did&&recallAll.count===0&&recallAll.han.every(x=>x===0), recallAll);
 
  // ---------------- cannot station more than owned, or more than HAN_CAP ----------------
  const overOwned=await p.evaluate(()=>{
    const G=window.__SD;
-   const owned=G.S.sh[2];   // Dreadnoughts: 4 in fleet (stage()'s own sh:[20,10,4])
+   const owned=G.S.fl[0].sh[2];   // Dreadnoughts: 4 in fleet (stage()'s own sh:[20,10,4])
    const did=G.stationHan('kor',2,999);
-   return { owned, did, stationed:G.hanFleet('kor')[2], shLeft:G.S.sh[2] };
+   return { owned, did, stationed:G.hanFleet('kor')[2], shLeft:G.S.fl[0].sh[2] };
  });
  ok('stationHan() clamps to what you actually own, never fabricates hulls', overOwned.did&&overOwned.stationed===overOwned.owned&&overOwned.shLeft===0, overOwned);
 
@@ -163,7 +163,7 @@ const URL=GAME_URL;
        ghost:[1,1,1]             // unknown system - folded back
      }
    });
-   return { kor:G.S.han.kor, hasDra:'dra' in G.S.han, hasGhost:'ghost' in G.S.han, sh:G.S.sh.slice() };
+   return { kor:G.S.han.kor, hasDra:'dra' in G.S.han, hasGhost:'ghost' in G.S.han, sh:G.S.fl[0].sh.slice() };
  });
  ok('adopt() clamps negative/fractional stationed counts', sanitised.kor[0]===3&&sanitised.kor[1]===0&&sanitised.kor[2]===2, sanitised);
  // both the "dra" (no Hangar) and "ghost" (unknown system) entries refund into
@@ -181,7 +181,7 @@ const URL=GAME_URL;
      def:{ kor:{ s:[ {m:'han',lv:1,armed:true,q:null}, null, null ] } },
      han:{ kor:[20,20,20] }
    });
-   return { kor:G.S.han.kor, total:G.hanCount('kor'), HAN_CAP:G.HAN_CAP, sh:G.S.sh.slice() };
+   return { kor:G.S.han.kor, total:G.hanCount('kor'), HAN_CAP:G.HAN_CAP, sh:G.S.fl[0].sh.slice() };
  });
  ok('adopt() clamps a save claiming more than HAN_CAP stationed, refunding the surplus to S.sh',
    overCapSave.total===overCapSave.HAN_CAP && (overCapSave.sh[0]+overCapSave.sh[1]+overCapSave.sh[2])===60-overCapSave.HAN_CAP,
@@ -198,7 +198,7 @@ const URL=GAME_URL;
    saved.han={ kor:[4,0,0] };
    saved.occ={ kor:'hel' }; saved.occAt={ kor:Date.now() };   // now occupied, not held
    G.adopt(saved);
-   return { hasKor:'kor' in G.S.han, sh0:G.S.sh[0] };
+   return { hasKor:'kor' in G.S.han, sh0:G.S.fl[0].sh[0] };
  });
  ok('adopt() drops (and refunds) a stationed entry for a system that is no longer held', !unheldDrop.hasKor&&unheldDrop.sh0===2+4, unheldDrop);
 
@@ -209,9 +209,9 @@ const URL=GAME_URL;
    G.claimSystem(G.SYSMAP.kor);
    G.dmodBuild(G.SYSMAP.kor,0,'han'); G.S.def.kor.s[0].q.dueAt=Date.now()-1; G.dmodComplete();
    G.stationHan('kor',0,5);
-   const before={ sh:G.S.sh[0], han:G.hanFleet('kor')[0] };
+   const before={ sh:G.S.fl[0].sh[0], han:G.hanFleet('kor')[0] };
    const took=G.occupySystem('kor','hel');
-   const after={ sh:G.S.sh[0], han:G.hanFleet('kor')[0], hasEntry:!!(G.S.han&&G.S.han.kor) };
+   const after={ sh:G.S.fl[0].sh[0], han:G.hanFleet('kor')[0], hasEntry:!!(G.S.han&&G.S.han.kor) };
    return { took, before, after };
  });
  ok('occupySystem() recalls every stationed hull immediately (the kinder reading - see HANDOVER)',
@@ -224,9 +224,9 @@ const URL=GAME_URL;
    G.claimSystem(G.SYSMAP.kor);
    G.dmodBuild(G.SYSMAP.kor,0,'han'); G.S.def.kor.s[0].q.dueAt=Date.now()-1; G.dmodComplete();
    G.stationHan('kor',0,4);
-   const before={ sh:G.S.sh[0], han:G.hanFleet('kor')[0] };
+   const before={ sh:G.S.fl[0].sh[0], han:G.hanFleet('kor')[0] };
    const did=G.dmodSwap(G.SYSMAP.kor,0);
-   const after={ sh:G.S.sh[0], han:G.hanFleet('kor')[0] };
+   const after={ sh:G.S.fl[0].sh[0], han:G.hanFleet('kor')[0] };
    return { did, before, after };
  });
  ok('dmodSwap() removing a Hangar slot recalls its stationed ships first', swapped.did&&swapped.after.sh===swapped.before.sh+swapped.before.han&&swapped.after.han===0, swapped);
