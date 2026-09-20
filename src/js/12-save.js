@@ -37,8 +37,28 @@ function adopt(o){
   const f=fresh();
   for(const k in f) if(k in o) f[k]=o[k];
   if(f.site!=null&&!SITE[f.site])f.site=null;
-  if(!Array.isArray(f.sh)||f.sh.length!==3)f.sh=[0,0,0];
-  f.sh=f.sh.map(x=>Math.max(0,Math.floor(x||0)));
+  /* PLAN-fleets run 1: S.fl replaces the old flat S.sh/S.fhp pair. A save (or test
+     fixture) carrying o.sh/o.fhp - anything from before this patch - always wins as
+     the legacy hint and becomes Fleet 1, even over a stray o.fl a `{...fresh()}`
+     spread incidentally carries (fresh() itself now seeds one). A save already
+     carrying S.fl (and no o.sh/o.fhp) is sanitised fleet-by-fleet instead; neither
+     present self-heals to a single fresh Fleet 1, same as fleets() does live. */
+  if(Array.isArray(o.sh) || o.fhp!==undefined){
+    const sh=Array.isArray(o.sh)&&o.sh.length===3?o.sh.slice():[0,0,0];
+    f.fl=[{id:1,n:"1st Fleet",sh,hp:o.fhp===undefined?1:o.fhp,at:"home",to:null,eta:0}];
+  }
+  if(!Array.isArray(f.fl)||!f.fl.length)f.fl=[mkFleet(1)];
+  f.fl=f.fl.map((fl,i)=>{
+    const id=Math.max(1,Math.floor((fl&&fl.id)||i+1));
+    const n=(fl&&typeof fl.n==="string"&&fl.n)||mkFleet(id).n;
+    let sh=(fl&&Array.isArray(fl.sh)&&fl.sh.length===3)?fl.sh:[0,0,0];
+    sh=sh.map(x=>Math.max(0,Math.floor(x||0)));
+    const hpRaw=(fl&&fl.hp!==undefined)?fl.hp:1;
+    const hp=Math.max(0,Math.min(1,hpRaw));
+    const at=(fl&&typeof fl.at==="string"&&(fl.at==="home"||SYSMAP[fl.at]))?fl.at:"home";
+    return {id,n,sh,hp,at,to:null,eta:0};
+  });
+  if(f.flSel==null || !f.fl.some(fl=>fl.id===f.flSel))f.flSel=f.fl[0].id;
   if(!Array.isArray(f.tg))f.tg=[];
   f.sv=Math.max(0,Math.floor(f.sv||0)); f.svAll=Math.max(0,Math.floor(f.svAll||0));
   if(!f.rf||typeof f.rf!=="object")f.rf={};
@@ -58,7 +78,6 @@ function adopt(o){
     for(let i=0;i<Math.min(3,dk.length);i++) f.bridge[i]=dk[i].id;
   }
   f.cseed=f.cseed||((Date.now()^0x5bf03635)&0x7fffffff)||1;
-  f.fhp=Math.max(0,Math.min(1,f.fhp===undefined?1:f.fhp));
   if(!f.exoSeen||typeof f.exoSeen!=="object")f.exoSeen={};
   if(!f.mkt||typeof f.mkt!=="object")f.mkt={};
   if(!f.mkt.heat||typeof f.mkt.heat!=="object")f.mkt.heat={};
@@ -349,23 +368,27 @@ function adopt(o){
      whatever game was running before this load. An entry naming a system that is
      not currently held, or that carries no built+armed Hangar (never reachable from
      the real UI - stationHan() itself checks both) is not deleted outright: its
-     counts fold straight back into S.sh instead, the same "never actually destroy a
-     ship over a save/sanitiser edge case" kindness occupySystem()'s own
-     recallHanAll() already applies during ordinary play. */
+     counts fold straight back into Fleet 1 instead (PLAN-fleets run 1: S.sh is gone,
+     and this fold-back is not "the fleet you happen to be looking at" territory -
+     it is a load-time sanitiser, so it always lands on Fleet 1, same as every other
+     fold-back this function does), the same "never actually destroy a ship over a
+     save/sanitiser edge case" kindness occupySystem()'s own recallHanAll() already
+     applies during ordinary play. */
   if(!S.han||typeof S.han!=="object")S.han={};
+  const homeFl=fleet(1);
   for(const k in S.han){
     const raw=S.han[k];
     const arr=(Array.isArray(raw)&&raw.length===3) ? raw.map(x=>Math.max(0,Math.floor(x||0))) : [0,0,0];
     const ok = SYSMAP[k] && !SYSMAP[k].home && sysHeld(k) && dmodLv(k,"han")>0;
     if(!ok){
-      for(let i=0;i<3;i++) if(arr[i]>0) S.sh[i]=(S.sh[i]||0)+arr[i];
+      for(let i=0;i<3;i++) if(arr[i]>0) homeFl.sh[i]=(homeFl.sh[i]||0)+arr[i];
       delete S.han[k];
       continue;
     }
     let total=arr[0]+arr[1]+arr[2];
     for(let i=0;i<3&&total>HAN_CAP;i++){
       const cut=Math.min(arr[i], total-HAN_CAP);
-      arr[i]-=cut; S.sh[i]=(S.sh[i]||0)+cut; total-=cut;
+      arr[i]-=cut; homeFl.sh[i]=(homeFl.sh[i]||0)+cut; total-=cut;
     }
     S.han[k]=arr;
   }

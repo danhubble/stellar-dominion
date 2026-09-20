@@ -88,16 +88,18 @@ function stationHan(sysId,hullIdx,n){
   if(dmodLv(sysId,"han")<=0)return false;
   if(!SHIPS[hullIdx])return false;
   n=Math.floor(n||0); if(n<=0)return false;
-  n=Math.min(n, S.sh[hullIdx]||0, hanLeft(sysId));
+  const f=curFleet();
+  n=Math.min(n, f.sh[hullIdx]||0, hanLeft(sysId));
   if(n<=0)return false;
-  S.sh[hullIdx]-=n;
+  f.sh[hullIdx]-=n;
   const arr=hanFleet(sysId).slice(); arr[hullIdx]=(arr[hullIdx]||0)+n;
   if(!S.han||typeof S.han!=="object")S.han={};
   S.han[sysId]=arr;
   dirty=true; return true;
 }
-/* recalls n hulls of class hullIdx back into the active fleet - n omitted (or too
-   large) recalls everything of that class this system has stationed. */
+/* recalls n hulls of class hullIdx back into the fleet - the first fleet already
+   sitting at this system, else the fleet at home, else Fleet 1 (PLAN-fleets run 1
+   decision 6). n omitted (or too large) recalls everything of that class stationed. */
 function recallHan(sysId,hullIdx,n){
   const arr=hanFleet(sysId).slice(); const have=arr[hullIdx]||0;
   n = n===undefined ? have : Math.min(Math.max(0,Math.floor(n)), have);
@@ -105,7 +107,8 @@ function recallHan(sysId,hullIdx,n){
   arr[hullIdx]=have-n;
   if(!S.han||typeof S.han!=="object")S.han={};
   S.han[sysId]=arr;
-  S.sh[hullIdx]=(S.sh[hullIdx]||0)+n;
+  const tgt = fleetAtSys(sysId) || fleets().find(fl=>fl.at==="home") || fleet(1);
+  tgt.sh[hullIdx]=(tgt.sh[hullIdx]||0)+n;
   dirty=true; return true;
 }
 /* every hull this system has stationed, home in one call - occupySystem()'s own
@@ -462,7 +465,7 @@ function assaultTarget(s){
     dmg:0.70+s.ring*0.10, sysId:s.id, rival:now, arch:s.arch||"swarm" };
 }
 function canAssault(s){
-  return sysContested(s) && level()>=s.lvl && fleetDPS()>0 && S.fhp>=0.15;
+  return sysContested(s) && level()>=s.lvl && fleetDPS()>0 && curFleet().hp>=0.15;
 }
 /* PATCH 4 (2026-09-10): travel time. A launched assault sits in S.trip while the
    fleet is in flight/waiting - it is not a fight yet, just a state the Map panel

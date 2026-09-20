@@ -704,7 +704,7 @@ const MISSIONS=[
  {d:"Build an Orbital Harvester",         k:s=>gCount(4)>=1,        p:s=>gCount(4)>=1?1:0,         r:{c:180,dm:3}},
  {d:"Hold 250 crystal at once",      k:s=>s.cry>=250,          p:s=>s.cry/250,                 r:{dm:6}},
  {d:"Win your first raid",           k:s=>(s.wins||0)>=1,      p:s=>(s.wins||0)>=1?1:0,        r:{c:220,dm:4}},
- {d:"Field 20 warships",             k:s=>(s.sh||[]).reduce((a,b)=>a+b,0)>=20, p:s=>(s.sh||[]).reduce((a,b)=>a+b,0)/20, r:{c:500,dm:7}},
+ {d:"Field 20 warships",             k:s=>allFleetShips(s)>=20, p:s=>allFleetShips(s)/20, r:{c:500,dm:7}},
  {d:"Strip 100 salvage",             k:s=>(s.svAll||0)>=100,  p:s=>(s.svAll||0)/100,           r:{c:600,dm:6}},
  {d:"Sign your first crew",          k:s=>(s.crew||[]).length>=1, p:s=>(s.crew||[]).length>=1?1:0, r:{c:800,dm:8}},
  {d:"Reach 1M ore per second",       k:s=>rate()>=1e6,         p:s=>rate()/1e6,                r:{c:400,dm:8}},
@@ -744,7 +744,7 @@ const ACHS=[
  {id:"a21",n:"Scholar",           d:"25 research levels",           k:s=>Object.values(s.rs).reduce((a,b)=>a+b,0)>=25, b:.05},
  {id:"a23",n:"First Blood",     d:"Win a raid",                    k:s=>(s.wins||0)>=1,  b:.02},
  {id:"a24",n:"Privateer",      d:"Win 25 raids",                  k:s=>(s.wins||0)>=25, b:.05},
- {id:"a25",n:"Admiralty",      d:"Field 50 warships",             k:s=>(s.sh||[]).reduce((a,b)=>a+b,0)>=50, b:.05},
+ {id:"a25",n:"Admiralty",      d:"Field 50 warships",             k:s=>allFleetShips(s)>=50, b:.05},
  {id:"a26",n:"Untouchable",    d:"Win a raid at 100% hull",       k:s=>!!s.flawless,    b:.06},
  {id:"a27",n:"Steady Output",  d:"Reach 1,000 ore per second",     k:s=>rate()>=1000, b:.05},
  {id:"a28",n:"Full Line",     d:"Own one of every structure",     k:s=>GENS.every((g,gi)=>gCount(gi)>=1), b:.06},
@@ -812,7 +812,7 @@ function fightOdds(t){
   const foeHP=refDPS()*t.secs*t.dif*wepHpMul();
   const ttk=foeHP/dmg;
   const inc=refHP()*t.dmg/t.secs*WEP_INC*(1-fleetEvade()*0.85);
-  const mine=fleetHPMax()*Math.max(0.05,S.fhp||0);
+  const mine=fleetHPMax()*Math.max(0.05,curFleet().hp||0);
   const ttd=inc>0 ? mine/inc : 1e9;
   /* the wave clock is part of the risk: a fight a real player (about 70% of ideal
      fire) cannot finish before reinforcements is not LOW whatever the hull maths says */
@@ -833,7 +833,7 @@ function riskOf(t){
    nobody just watched a number change. */
 const AUTO_MULT=3, AUTO_YIELD=0.92, AUTO_FHP_COST=0.03;
 function canAutoResolve(t){
-  return !!t && fleetDPS()>0 && S.fhp>=0.15 && fightOdds(t)>=AUTO_MULT;
+  return !!t && fleetDPS()>0 && curFleet().hp>=0.15 && fightOdds(t)>=AUTO_MULT;
 }
 /* engageTarget() does all the real setup (spawn, mode, DOM); this just fast-forwards
    the result before the first frame draws, and tags BT.auto so endBattle() knows to
@@ -1102,7 +1102,7 @@ function mirrorWeaponFocus(){
   return best.id;
 }
 function mirrorMix(){
-  const sh=S.sh||[0,0,0], tot=Math.max(1,(sh[0]||0)+(sh[1]||0)+(sh[2]||0));
+  const sh=[shipTotal(0),shipTotal(1),shipTotal(2)], tot=Math.max(1,sh[0]+sh[1]+sh[2]);
   const fInt=(sh[0]||0)/tot, fFrig=(sh[1]||0)/tot, fDread=(sh[2]||0)/tot;
   const w={grunt:10, shield:10, swift:8, bomber:8, split:6, heal:6, warden:6, phantom:6, impaler:8};
   w.swift+=fInt*30; w.grunt+=fInt*15;
@@ -1280,24 +1280,63 @@ function shipCountMul(){
 }
 function fleetMult(){ return Math.pow(1.3,nexLv("war"))*achBonus()*(1+0.04*pkl("war"))
   *Math.pow(CASC_EXP,xlv("casc"))*(nexLv("pj2")?PJ2_MUL:1) }
-function fleetDPS(){ let d=0; for(let i=0;i<SHIPS.length;i++)d+=S.sh[i]*SHIPS[i].dps;
+/* ---------------- PLAN-fleets run 1: the fleet model ----------------
+   S.fl replaces the old flat S.sh (hulls)/S.fhp (integrity) pair - one fleet, at
+   home, plays exactly as before; run 2 gives fleets a place, run 3 a second and
+   third one. Cyan/violet/gold - the three ship colours - exported now so run 2's
+   map markers/fleet bar can use them without a second patch. */
+const FLEET_COL=["#48e2ff","#a878ff","#ffd166"];
+const FLEET_NAMES=["1st Fleet","2nd Fleet","3rd Fleet"];
+function mkFleet(id){
+  return { id, n:FLEET_NAMES[id-1]||("Fleet "+id), sh:[0,0,0], hp:1, at:"home", to:null, eta:0 };
+}
+/* self-healing: a save that somehow lost S.fl (or never had one past adopt()'s own
+   sanitiser - defensive only, adopt() should never actually hand this an empty
+   array) gets a fresh Fleet 1 rather than the game reading fleet-less forever. */
+function fleets(){
+  if(!Array.isArray(S.fl)||!S.fl.length)S.fl=[mkFleet(1)];
+  return S.fl;
+}
+function fleet(id){ return fleets().find(f=>f.id===id)||null }
+/* the fleet the Raids pane is showing (run 3's tab row picks it) - S.flSel, an id,
+   default 1, saved like any other plain state. */
+function curFleet(){
+  const f=fleet(S.flSel); if(f)return f;
+  const f0=fleets()[0]; S.flSel=f0.id; return f0;
+}
+/* run 2: the first idle (not travelling) fleet sitting at sysId - every fleet is
+   idle at home in run 1, so this is unused until travel exists. */
+function fleetAtSys(sysId){ return fleets().find(f=>!f.to&&f.at===sysId)||null }
+function fleetDPS(f){ f=f||curFleet(); let d=0; for(let i=0;i<SHIPS.length;i++)d+=f.sh[i]*SHIPS[i].dps;
   return d*shipCountMul()*fleetMult()*Math.pow(1.25,rfl("gun"))*crewMul("cap") }
-function fleetHPMax(){ let h=0; for(let i=0;i<SHIPS.length;i++)h+=S.sh[i]*SHIPS[i].hp;
+function fleetHPMax(f){ f=f||curFleet(); let h=0; for(let i=0;i<SHIPS.length;i++)h+=f.sh[i]*SHIPS[i].hp;
   return h*shipCountMul()*fleetMult()*Math.pow(1.25,rfl("arm"))*crewMul("eng") }
-function fleetCount(){ return S.sh.reduce((a,b)=>a+b,0) }
+function fleetCount(f){ f=f||curFleet(); return f.sh.reduce((a,b)=>a+b,0) }
+/* every hull owned, empire-wide, of class i - buy/sell/max price off this total
+   (summed across every fleet, same shape the single S.sh total used to give) so the
+   cost curve is unchanged whichever fleet you are actually buying into. */
+function shipTotal(i){ let n=0; for(const f of fleets())n+=f.sh[i]||0; return n }
+/* every warship any fleet on a given state object owns - missions/achievements take
+   an arbitrary state (s), never necessarily the live S, so this reads s.fl directly
+   rather than going through fleets()/S. */
+function allFleetShips(s){
+  return ((s&&s.fl)||[]).reduce((a,f)=>a+(f.sh||[]).reduce((x,y)=>x+y,0),0);
+}
 /* a full patch-up is about three minutes of production, pro-rata to the damage. Ore is
    the one thing you always have, so this is a soft gate, not a wall. */
-function repairCost(){
-  const need=Math.max(0,1-(S.fhp||0));
+function repairCost(f){
+  f=f||curFleet();
+  const need=Math.max(0,1-(f.hp||0));
   if(need<=0.001)return 0;
   return Math.max(50, rate()*180*need);
 }
-function repairNow(){
+function repairFleet(f){
+  f=f||curFleet();
   if(BT&&!BT.done)return false;           /* not mid-battle - a finished one is fine,
                                              and is exactly when you want to repair */
-  const c=repairCost(); if(c<=0)return false;
+  const c=repairCost(f); if(c<=0)return false;
   if(S.ore<c)return false;
-  S.ore-=c; S.fhp=1;
+  S.ore-=c; f.hp=1;
   blip(660,.22,"sine",.05); toast("Fleet repaired","g"); dirty=true; return true;
 }
 /* ---------------- loadout ---------------- */
@@ -1357,13 +1396,16 @@ function loadoutDPS(foes){ let d=0;
   for(const w of equipped())if(w)d+=wepDPS(w,foes);
   return d*fleetDPS();
 }
-/* capacity: what the fleet costs you in command, and what you have to spend */
-function shipPower(){ let p=0; for(let i=0;i<SHIPS.length;i++)p+=S.sh[i]*SHIPS[i].pw; return p+hanTotalPower() }
-/* how hard your fleet is to hit. Weighted by capacity rather than hull count, so this
+/* capacity: what the fleet costs you in command, and what you have to spend -
+   empire-wide, every fleet plus every garrisoned Hangar summed exactly as the old
+   single S.sh+hangar total was. */
+function shipPower(){ let p=0; for(const f of fleets())for(let i=0;i<SHIPS.length;i++)p+=f.sh[i]*SHIPS[i].pw; return p+hanTotalPower() }
+/* how hard a fleet is to hit. Weighted by capacity rather than hull count, so this
    is a real composition choice: light hulls dodge, heavy hulls simply endure. */
-function fleetEvade(){
+function fleetEvade(f){
+  f=f||curFleet();
   let w=0, e=0;
-  for(let i=0;i<SHIPS.length;i++){ const p=S.sh[i]*SHIPS[i].pw; w+=p; e+=p*(SHIPS[i].ev||0) }
+  for(let i=0;i<SHIPS.length;i++){ const p=f.sh[i]*SHIPS[i].pw; w+=p; e+=p*(SHIPS[i].ev||0) }
   const hull = w>0 ? e/w : 0;
   /* engines are a live choice on top of what you fly */
   return Math.min(0.75, hull + ENG_EV*pwrOf("eng"));
@@ -1372,18 +1414,28 @@ function fleetCap(){ return level()<RAIDLV ? 0 : FCAP0+FCAPK*(level()-RAIDLV)+Ma
 function capLeft(){ return fleetCap()-shipPower() }
 /* how many of tier i the remaining capacity allows (may be 0, never negative) */
 function capMax(i){ return Math.max(0,Math.floor(capLeft()/SHIPS[i].pw)) }
-function shipCost(i,k){ const S1=SHIPS[i]; return S1.b*Math.pow(S1.g,S.sh[i])*(Math.pow(S1.g,k)-1)/(S1.g-1) }
+/* priced off the empire-wide owned count of class i (summed across every fleet),
+   so the cost curve is unchanged whichever fleet is actually buying. */
+function shipCost(i,k){ const S1=SHIPS[i]; return S1.b*Math.pow(S1.g,shipTotal(i))*(Math.pow(S1.g,k)-1)/(S1.g-1) }
 function shipMax(i){ const S1=SHIPS[i];
-  const inner=1+S.ore*(S1.g-1)/(S1.b*Math.pow(S1.g,S.sh[i])); if(inner<=1)return 0;
+  const inner=1+S.ore*(S1.g-1)/(S1.b*Math.pow(S1.g,shipTotal(i))); if(inner<=1)return 0;
   const byOre=Math.max(0,Math.floor(Math.log(inner)/Math.log(S1.g)));
   return Math.min(byOre, capMax(i));          /* whichever runs out first */ }
+/* adds to curFleet() when it is at home, else to the first fleet at home; if none is
+   home, the purchase would need to queue (decision 6, PLAN-fleets.md) and land when
+   that fleet next reaches home - not reachable in run 1 (every fleet is at home), so
+   left as this comment rather than real queueing code. TODO(run 2): queue to Fleet 1,
+   "delivers at Sol Reach" placeholder copy on the button. */
 function buyShip(i,k){ if(k<1)return false;
   if(k*SHIPS[i].pw>capLeft())return false;    /* capacity is checked before price */
   const c=shipCost(i,k); if(S.ore<c)return false;
-  S.ore-=c; S.sh[i]+=k; blip(300+i*60,.1,"triangle",.05); dirty=true; return true }
-function sellShip(i,k){ k=Math.min(k,S.sh[i]); if(k<1)return false; const S1=SHIPS[i];
-  S.ore+=0.5*S1.b*Math.pow(S1.g,S.sh[i]-k)*(Math.pow(S1.g,k)-1)/(S1.g-1);
-  S.sh[i]-=k; blip(150,.09,"square",.04); dirty=true; return true }
+  const cf=curFleet();
+  const tgt = cf.at==="home" ? cf : fleets().find(fl=>fl.at==="home");
+  if(!tgt)return false;
+  S.ore-=c; tgt.sh[i]+=k; blip(300+i*60,.1,"triangle",.05); dirty=true; return true }
+function sellShip(i,k){ const f=curFleet(); k=Math.min(k,f.sh[i]); if(k<1)return false; const S1=SHIPS[i];
+  S.ore+=0.5*S1.b*Math.pow(S1.g,shipTotal(i)-k)*(Math.pow(S1.g,k)-1)/(S1.g-1);
+  f.sh[i]-=k; blip(150,.09,"square",.04); dirty=true; return true }
 function pick(a){ return a[Math.floor(Math.random()*a.length)] }
 function newTarget(){
   let r=Math.random()*RAIDW.reduce((a,b)=>a+b,0), ti=0;

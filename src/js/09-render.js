@@ -959,7 +959,7 @@ function renderSysHan(s){
   }
 }
 function hanRowHTML(sysId,i){
-  const owned=S.sh[i]||0, stationed=hanFleet(sysId)[i]||0, left=hanLeft(sysId);
+  const owned=curFleet().sh[i]||0, stationed=hanFleet(sysId)[i]||0, left=hanLeft(sysId);
   const canAdd=owned>0&&left>0, canSub=stationed>0;
   return `<div class="hanrow">
     <div class="hi" style="color:${SHIPS[i].col}"><svg viewBox="0 0 48 48">${SHIPS[i].ic}</svg></div>
@@ -1284,7 +1284,7 @@ function renderMap(){
       let why=sysOccupied(s.id)?"RETAKE SYSTEM":"ASSAULT GARRISON";   /* STAGE 2 */
       if(level()<s.lvl)why="LOCKED \u00b7 LEVEL "+s.lvl;
       else if(fleetDPS()<=0)why="NO FLEET \u00b7 BUILD WARSHIPS";
-      else if(S.fhp<0.15)why="FLEET TOO DAMAGED";
+      else if(curFleet().hp<0.15)why="FLEET TOO DAMAGED";
       else if(otherTrip)why="FLEET AWAY";
       const ah=`<button class="foe" id="sysWar" ${can?"":"disabled"}>${why}</button>`;
       if(act.dataset.h!==ah){

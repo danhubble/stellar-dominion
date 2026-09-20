@@ -7,7 +7,10 @@ function fresh(){
        already there - claiming is what gives a system one, see claimSystem(). */
     clicks:0,
     mkt:{heat:{sv:{v:0,t:0},dm:{v:0,t:0}},sold:false},
-    sh:[0,0,0], fhp:1, tg:[], tgT:0, wins:0, losses:0, plunder:0, flawless:0,
+    /* PLAN-fleets run 1: S.fl replaces the old flat S.sh/S.fhp pair - see mkFleet()/
+       fleets()/curFleet() next to fleetDPS() in 01-content.js. S.flSel is the id of
+       the fleet the Raids pane is showing (run 3 adds more than one to pick from). */
+    fl:[mkFleet(1)], flSel:1, tg:[], tgT:0, wins:0, losses:0, plunder:0, flawless:0,
     sv:0, svAll:0, rf:{}, crew:makeDeckhands(), bridge:makeDeckhands().map(c=>c.id), crewPool:[],
     cseed:1, bestCmb:0, flags:0, end:0,
     rs:{}, nx:{}, ac:{}, mi:0, miq:[], lvSeen:1, lvl:1, pk:{}, pkLog:[], lvOffer:null,

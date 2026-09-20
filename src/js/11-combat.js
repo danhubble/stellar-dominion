@@ -692,7 +692,7 @@ function renderEndCard(){
   /* patch589b: a no-fleet check takes priority over the hull one, same order the
      Map's own ASSAULT button already uses (empSysAction(), "NO FLEET" before
      "FLEET TOO DAMAGED") - this card must not offer a fight that cannot start. */
-  const noShips=fleetDPS()<=0, lowHull=!noShips&&S.fhp<0.15;
+  const noShips=fleetDPS()<=0, lowHull=!noShips&&curFleet().hp<0.15;
   host.innerHTML=`<div class="thrc endc">
     <h5>VEGA'S FLEET HOLDS SOL REACH</h5>
     <p>The turn has come. Production keeps running \u2014 the final battle is yours to choose, whenever you're ready.</p>
@@ -1745,7 +1745,7 @@ function queueWin(dt){
 function endBattle(how){
   if(BT.done)return; BT.done=1;
   if(BT.t && BT.t.final)return endFinalBattle(how);   /* patch590: no raid/assault reward or claim logic applies */
-  const t=BT.t, T=BT.T, frac=BT.kills/BT.tot;
+  const t=BT.t, T=BT.T, frac=BT.kills/BT.tot, f=curFleet();
   const full=raidReward(t);
   let o=0,c=0,m=0,lost=[0,0,0];
   let sv=0;
@@ -1756,13 +1756,13 @@ function endBattle(how){
     if(BT.hp>=BT.hpm*0.999)S.flawless=1;
     if(BT.auto){ o*=AUTO_YIELD; c*=AUTO_YIELD; m*=AUTO_YIELD; sv=Math.floor(sv*AUTO_YIELD); S.flawless=0; } }
   else if(how==="lost"){
-    for(let i=0;i<3;i++){ if(S.sh[i]>0)lost[i]=Math.max(1,Math.ceil(S.sh[i]*0.25)); S.sh[i]-=lost[i]; }
-    S.losses=(S.losses||0)+1; S.fhp=0.35;
+    for(let i=0;i<3;i++){ if(f.sh[i]>0)lost[i]=Math.max(1,Math.ceil(f.sh[i]*0.25)); f.sh[i]-=lost[i]; }
+    S.losses=(S.losses||0)+1; f.hp=0.35;
     o=full.o*frac*0.35; c=full.c*frac*0.35; sv=Math.floor(svReward(t)*frac*0.3);
   } else { o=full.o*frac*0.6; c=full.c*frac*0.6; if(full.m&&frac>=1)m=full.m;
     sv=Math.floor(svReward(t)*frac*0.6); }
-  if(how!=="lost")S.fhp=Math.max(0.05,BT.hp/BT.hpm);
-  if(how==="win"&&BT.auto&&!(BT.cine&&BT.cine.charged))S.fhp=Math.max(0.05,S.fhp-AUTO_FHP_COST);   /* patch633: the clip already took this off BT.hp (BT.cine.charged) - S.fhp=max(0.05,BT.hp/BT.hpm) just above already carries it into S.fhp, so this flat subtraction would otherwise double-charge it */
+  if(how!=="lost")f.hp=Math.max(0.05,BT.hp/BT.hpm);
+  if(how==="win"&&BT.auto&&!(BT.cine&&BT.cine.charged))f.hp=Math.max(0.05,f.hp-AUTO_FHP_COST);   /* patch633: the clip already took this off BT.hp (BT.cine.charged) - f.hp=max(0.05,BT.hp/BT.hpm) just above already carries it into f.hp, so this flat subtraction would otherwise double-charge it */
   S.ore+=o; S.all+=o; S.cry+=c; if(m){S.dm+=m;S.dmAll+=m}
   if(sv>0){ S.sv=(S.sv||0)+sv; S.svAll=(S.svAll||0)+sv }
   if(BT.best>(S.bestCmb||0))S.bestCmb=BT.best;
@@ -1810,7 +1810,7 @@ function endBattle(how){
   const anyLost=lost.reduce((a,b)=>a+b,0);
   if(anyLost)rows+=`<div class="rline"><span style="color:var(--rd)">Ships lost</span><b style="color:var(--rd)">${
     lost.map((n,i)=>n?n+"× "+SHIPS[i].n:null).filter(Boolean).join(", ")}</b></div>`;
-  rows+=`<div class="rline"><span>Fleet integrity</span><b>${Math.round(S.fhp*100)}%</b></div>`;
+  rows+=`<div class="rline"><span>Fleet integrity</span><b>${Math.round(f.hp*100)}%</b></div>`;
   $("#bRes").innerHTML=`<div class="rescard"><h3 style="color:${col}">${ttl}</h3>
     <div class="rsub">${sub}</div>${rows}
     <button id="bDone">RETURN TO EMPIRE</button></div>`;
@@ -1826,12 +1826,12 @@ function endBattle(how){
    plan) or "finalwin" (the withdraw beat finished). */
 function endFinalBattle(how){
   if(how==="lost"){
-    for(let i=0;i<3;i++){ if(S.sh[i]>0){ const l=Math.max(1,Math.ceil(S.sh[i]*0.25)); S.sh[i]-=l } }
-    S.losses=(S.losses||0)+1; S.fhp=0.35;
+    for(let i=0;i<3;i++){ if(curFleet().sh[i]>0){ const l=Math.max(1,Math.ceil(curFleet().sh[i]*0.25)); curFleet().sh[i]-=l } }
+    S.losses=(S.losses||0)+1; curFleet().hp=0.35;
     $("#bRes").innerHTML=`<div class="rescard"><h3 style="color:var(--rd)">${STORY.battleLossT}</h3>
       <div class="rsub">${STORY.battleLoss}</div>
       <div class="rline"><span>Hostiles destroyed</span><b>${BT.kills} / ${BT.tot}</b></div>
-      <div class="rline"><span>Fleet integrity</span><b>${Math.round(S.fhp*100)}%</b></div>
+      <div class="rline"><span>Fleet integrity</span><b>${Math.round(curFleet().hp*100)}%</b></div>
       <button id="bDone">RETURN TO EMPIRE</button></div>`;
     $("#bRes").classList.add("on"); $("#bDone").onclick=closeBattle;
     sfx("loss"); dirty=true; save();
@@ -1840,7 +1840,7 @@ function endFinalBattle(how){
   /* how==="finalwin" - S.end stays 1 until finaleWon() runs, so every seized
      Nexus/advisor/rival surface (patch589) stays exactly as it was through this
      card; only tapping the one button below moves S.end to 2. */
-  S.fhp=Math.max(0.05,BT.hp/BT.hpm);
+  curFleet().hp=Math.max(0.05,BT.hp/BT.hpm);
   $("#bRes").innerHTML=`<div class="rescard"><h3 style="color:var(--gr)">${STORY.battleWinT}</h3>
     <div class="rsub">${STORY.battleWin}</div>
     <button id="bFinaleDone">CONTINUE</button></div>`;
@@ -2533,7 +2533,7 @@ function bTapTurn(cx,cy){
 $("#abFocus").onclick=()=>{ if(BT&&!BT.done&&BT.cd.f<=0){BT.buf.f=5;BT.cd.f=16;blip(700,.15,"square",.05)} };
 $("#abFlak").onclick=()=>{ if(BT&&!BT.done&&BT.cd.k<=0){BT.buf.k=5;BT.cd.k=22;blip(420,.15,"sine",.05)} };
 $("#bRetreat").onclick=()=>{ if(BT&&!BT.done)endBattle("timeout") };
-$("#flFix").onclick=()=>{ if(repairNow()){ renderAll(); save() } };
+$("#flFix").onclick=()=>{ if(repairFleet()){ renderAll(); save() } };
 $("#bPause").onclick=()=>{ if(BT&&!BT.done){ BT.paused=!BT.paused; dirty=true } };
 $("#trScr").onclick=()=>{ if(addOrder("scr"))dirty=true };
 $("#trRep").onclick=()=>{ if(addOrder("rep"))dirty=true };
@@ -2547,7 +2547,7 @@ function renderRaids(){
   const thinCap=cp>0&&pw<cp*0.7;
   st.innerHTML=fmt(fleetDPS())+" dps · "+fmt(fleetHPMax())+" hull"
     +` <b class="flcap${over?" over":thinCap?" thin":""}">⚡${pw}/${cp}</b>`;
-  const hp=S.fhp, bar=$(".fl-hp");
+  const hp=curFleet().hp, bar=$(".fl-hp");
   bar.classList.toggle("hurt",hp<=.6&&hp>.3); bar.classList.toggle("crit",hp<=.3);
   $("#flHp").style.width=(hp*100)+"%";
   $("#flHpT").textContent=fleetCount()?("FLEET INTEGRITY "+Math.round(hp*100)+"%"+(hp<1?" · repairing":"")):"NO SHIPS";
@@ -2558,7 +2558,7 @@ function renderRaids(){
     wn.classList.toggle("on",thin);
     if(thin)wn.innerHTML=`Your fleet is using <b>${pw} of ${cp}</b> command capacity.
       Hostiles are sized against a full one, so raids will go badly until you build more
-      \u2014 heavier hulls give far more per point of capacity.`;
+      \\u2014 heavier hulls give far more per point of capacity.`;
   }
   const fx=$("#flFix"), rc=repairCost();
   fx.classList.toggle("hide", !fleetCount() || hp>=1);
@@ -2567,15 +2567,15 @@ function renderRaids(){
   const host=$("#flShips"); host.innerHTML="";
   SHIPS.forEach((sp,i)=>{
     const d=document.createElement("div"); d.className="shp"; d.style.setProperty("--a",sp.col);
-    const k=S.sell?Math.min(S.buy==="max"?S.sh[i]:S.buy,S.sh[i]):(S.buy==="max"?Math.max(1,shipMax(i)):S.buy);
-    const c=S.sell?(k>0?0.5*sp.b*Math.pow(sp.g,S.sh[i]-k)*(Math.pow(sp.g,k)-1)/(sp.g-1):0):shipCost(i,k);
+    const k=S.sell?Math.min(S.buy==="max"?curFleet().sh[i]:S.buy,curFleet().sh[i]):(S.buy==="max"?Math.max(1,shipMax(i)):S.buy);
+    const c=S.sell?(k>0?0.5*sp.b*Math.pow(sp.g,shipTotal(i)-k)*(Math.pow(sp.g,k)-1)/(sp.g-1):0):shipCost(i,k);
     const fits=k*sp.pw<=capLeft();
     const can=S.sell?k>0:(S.ore>=c&&fits);
     d.innerHTML=`<div class="si"><svg viewBox="0 0 48 48">${sp.ic}</svg></div>
       <div><div class="sn">${sp.n}</div>
         <div class="sd">${fmt(sp.dps*fleetMult())} dps · ${fmt(sp.hp*fleetMult())} hull · ⚡${sp.pw}</div></div>
       <div style="display:flex;align-items:center;gap:10px">
-        <div class="sc">${S.sh[i]}</div>
+        <div class="sc">${curFleet().sh[i]}</div>
         <button class="gb"><b>${S.sell||fits?fmt(c)+" ore":"NO CAPACITY"}</b><i>${
           S.sell?"SCRAP ×"+k:"BUY ×"+k}</i></button>
       </div>`;
@@ -2604,7 +2604,7 @@ function renderRaids(){
         : "<button>ENGAGE</button>"}`;
     const btns=d.querySelectorAll("button");
     const auto=canAutoResolve(t);
-    btns.forEach(bb=>bb.disabled=dps<=0||S.fhp<0.15);
+    btns.forEach(bb=>bb.disabled=dps<=0||curFleet().hp<0.15);
     if(auto){ btns[0].onclick=()=>autoEngage(i); btns[1].onclick=()=>engage(i); }
     else btns[0].onclick=()=>engage(i);
     th.appendChild(d);
@@ -2705,7 +2705,7 @@ function renderRaids(){
    summarised into one bool per sub-tab. Runs every dirty frame, so kept O(rows). */
 function raidSubFlags(){
   const f={targets:false,fleet:false,loadout:false,crew:false};
-  f.targets = S.tg.length>0 && fleetCount()>0 && S.fhp>=0.15;
+  f.targets = S.tg.length>0 && fleetCount()>0 && curFleet().hp>=0.15;
   f.fleet   = SHIPS.some((sp,i)=> sp.pw<=capLeft() && S.ore>=shipCost(i,1));
   f.loadout = wepSlots().some(s=>!s) && WEAPONS.some(w=>wepOwned(w.id)&&wepSlots().indexOf(w.id)<0)
            || WEAPONS.some(w=>!wepOwned(w.id)&&S.sv>=w.cost)

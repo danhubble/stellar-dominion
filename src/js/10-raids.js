@@ -1,7 +1,10 @@
 /* ============================ raids ============================ */
 const TGT_MAX=3, TGT_EVERY=110;
 function raidTick(dt){
-  if(S.fhp<1 && !BT){ S.fhp=Math.min(1,S.fhp+dt/600*Math.pow(1.30,rfl("rep"))*crewMul("eng")); }
+  if(!BT){
+    const rep=dt/600*Math.pow(1.30,rfl("rep"))*crewMul("eng");
+    for(const f of fleets()) if(f.hp<1) f.hp=Math.min(1,f.hp+rep);
+  }
   S.tgT=(S.tgT||0)+dt;
   const every=TGT_EVERY/(Math.pow(1.22,rfl("sen"))*crewMul("nav"));
   while(S.tg.length<TGT_MAX && S.tgT>=every){ S.tgT-=every; S.tg.push(newTarget()); dirty=true; }
@@ -54,7 +57,7 @@ function engage(idx){
 function engageTarget(t, idx){
   const dps=fleetDPS(), hpm=fleetHPMax();
   if(dps<=0){ toast("Build warships before you engage."); return }
-  if(S.fhp<0.15){ toast("Fleet too damaged — let it repair."); return }
+  if(curFleet().hp<0.15){ toast("Fleet too damaged — let it repair."); return }
   /* sized off par, NOT off dps/hpm - see the par curve above. This is the line that
      used to make every purchase on this page pointless. */
   const wep = (S.cmode!=="live"&&S.cmode!=="turn");
@@ -64,7 +67,7 @@ function engageTarget(t, idx){
   const totalHP = t.final ? hpm*FINAL_WAVE_MULT[0] : refDPS()*t.secs*t.dif*(wep?wepHpMul():1);
   const totalDPS = t.final ? dps*FINAL_WAVE_MULT[0] : (refHP()*t.dmg)/t.secs*(wep?WEP_INC:1);
   BT={ idx, t, T:RAIDS[t.ti], en:[], stars:[], el:0, cap:t.secs*3.2,
-       hp:hpm*S.fhp, hpm, dps, kills:0, tot:t.en,
+       hp:hpm*curFleet().hp, hpm, dps, kills:0, tot:t.en,
        cd:{f:0,k:0}, buf:{f:0,k:0}, tap:0, fx:[], num:[], sh:0, done:0,
        cmb:0, cmbT:0, best:0, crits:0, taps:0, hits:0,
        /* STAGE 1 escalation: the wave sizes its reinforcements off the fight's

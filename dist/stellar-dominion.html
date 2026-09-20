@@ -2862,7 +2862,7 @@ const MISSIONS=[
  {d:"Build an Orbital Harvester",         k:s=>gCount(4)>=1,        p:s=>gCount(4)>=1?1:0,         r:{c:180,dm:3}},
  {d:"Hold 250 crystal at once",      k:s=>s.cry>=250,          p:s=>s.cry/250,                 r:{dm:6}},
  {d:"Win your first raid",           k:s=>(s.wins||0)>=1,      p:s=>(s.wins||0)>=1?1:0,        r:{c:220,dm:4}},
- {d:"Field 20 warships",             k:s=>(s.sh||[]).reduce((a,b)=>a+b,0)>=20, p:s=>(s.sh||[]).reduce((a,b)=>a+b,0)/20, r:{c:500,dm:7}},
+ {d:"Field 20 warships",             k:s=>allFleetShips(s)>=20, p:s=>allFleetShips(s)/20, r:{c:500,dm:7}},
  {d:"Strip 100 salvage",             k:s=>(s.svAll||0)>=100,  p:s=>(s.svAll||0)/100,           r:{c:600,dm:6}},
  {d:"Sign your first crew",          k:s=>(s.crew||[]).length>=1, p:s=>(s.crew||[]).length>=1?1:0, r:{c:800,dm:8}},
  {d:"Reach 1M ore per second",       k:s=>rate()>=1e6,         p:s=>rate()/1e6,                r:{c:400,dm:8}},
@@ -2902,7 +2902,7 @@ const ACHS=[
  {id:"a21",n:"Scholar",           d:"25 research levels",           k:s=>Object.values(s.rs).reduce((a,b)=>a+b,0)>=25, b:.05},
  {id:"a23",n:"First Blood",     d:"Win a raid",                    k:s=>(s.wins||0)>=1,  b:.02},
  {id:"a24",n:"Privateer",      d:"Win 25 raids",                  k:s=>(s.wins||0)>=25, b:.05},
- {id:"a25",n:"Admiralty",      d:"Field 50 warships",             k:s=>(s.sh||[]).reduce((a,b)=>a+b,0)>=50, b:.05},
+ {id:"a25",n:"Admiralty",      d:"Field 50 warships",             k:s=>allFleetShips(s)>=50, b:.05},
  {id:"a26",n:"Untouchable",    d:"Win a raid at 100% hull",       k:s=>!!s.flawless,    b:.06},
  {id:"a27",n:"Steady Output",  d:"Reach 1,000 ore per second",     k:s=>rate()>=1000, b:.05},
  {id:"a28",n:"Full Line",     d:"Own one of every structure",     k:s=>GENS.every((g,gi)=>gCount(gi)>=1), b:.06},
@@ -2970,7 +2970,7 @@ function fightOdds(t){
   const foeHP=refDPS()*t.secs*t.dif*wepHpMul();
   const ttk=foeHP/dmg;
   const inc=refHP()*t.dmg/t.secs*WEP_INC*(1-fleetEvade()*0.85);
-  const mine=fleetHPMax()*Math.max(0.05,S.fhp||0);
+  const mine=fleetHPMax()*Math.max(0.05,curFleet().hp||0);
   const ttd=inc>0 ? mine/inc : 1e9;
   /* the wave clock is part of the risk: a fight a real player (about 70% of ideal
      fire) cannot finish before reinforcements is not LOW whatever the hull maths says */
@@ -2991,7 +2991,7 @@ function riskOf(t){
    nobody just watched a number change. */
 const AUTO_MULT=3, AUTO_YIELD=0.92, AUTO_FHP_COST=0.03;
 function canAutoResolve(t){
-  return !!t && fleetDPS()>0 && S.fhp>=0.15 && fightOdds(t)>=AUTO_MULT;
+  return !!t && fleetDPS()>0 && curFleet().hp>=0.15 && fightOdds(t)>=AUTO_MULT;
 }
 /* engageTarget() does all the real setup (spawn, mode, DOM); this just fast-forwards
    the result before the first frame draws, and tags BT.auto so endBattle() knows to
@@ -3260,7 +3260,7 @@ function mirrorWeaponFocus(){
   return best.id;
 }
 function mirrorMix(){
-  const sh=S.sh||[0,0,0], tot=Math.max(1,(sh[0]||0)+(sh[1]||0)+(sh[2]||0));
+  const sh=[shipTotal(0),shipTotal(1),shipTotal(2)], tot=Math.max(1,sh[0]+sh[1]+sh[2]);
   const fInt=(sh[0]||0)/tot, fFrig=(sh[1]||0)/tot, fDread=(sh[2]||0)/tot;
   const w={grunt:10, shield:10, swift:8, bomber:8, split:6, heal:6, warden:6, phantom:6, impaler:8};
   w.swift+=fInt*30; w.grunt+=fInt*15;
@@ -3438,24 +3438,63 @@ function shipCountMul(){
 }
 function fleetMult(){ return Math.pow(1.3,nexLv("war"))*achBonus()*(1+0.04*pkl("war"))
   *Math.pow(CASC_EXP,xlv("casc"))*(nexLv("pj2")?PJ2_MUL:1) }
-function fleetDPS(){ let d=0; for(let i=0;i<SHIPS.length;i++)d+=S.sh[i]*SHIPS[i].dps;
+/* ---------------- PLAN-fleets run 1: the fleet model ----------------
+   S.fl replaces the old flat S.sh (hulls)/S.fhp (integrity) pair - one fleet, at
+   home, plays exactly as before; run 2 gives fleets a place, run 3 a second and
+   third one. Cyan/violet/gold - the three ship colours - exported now so run 2's
+   map markers/fleet bar can use them without a second patch. */
+const FLEET_COL=["#48e2ff","#a878ff","#ffd166"];
+const FLEET_NAMES=["1st Fleet","2nd Fleet","3rd Fleet"];
+function mkFleet(id){
+  return { id, n:FLEET_NAMES[id-1]||("Fleet "+id), sh:[0,0,0], hp:1, at:"home", to:null, eta:0 };
+}
+/* self-healing: a save that somehow lost S.fl (or never had one past adopt()'s own
+   sanitiser - defensive only, adopt() should never actually hand this an empty
+   array) gets a fresh Fleet 1 rather than the game reading fleet-less forever. */
+function fleets(){
+  if(!Array.isArray(S.fl)||!S.fl.length)S.fl=[mkFleet(1)];
+  return S.fl;
+}
+function fleet(id){ return fleets().find(f=>f.id===id)||null }
+/* the fleet the Raids pane is showing (run 3's tab row picks it) - S.flSel, an id,
+   default 1, saved like any other plain state. */
+function curFleet(){
+  const f=fleet(S.flSel); if(f)return f;
+  const f0=fleets()[0]; S.flSel=f0.id; return f0;
+}
+/* run 2: the first idle (not travelling) fleet sitting at sysId - every fleet is
+   idle at home in run 1, so this is unused until travel exists. */
+function fleetAtSys(sysId){ return fleets().find(f=>!f.to&&f.at===sysId)||null }
+function fleetDPS(f){ f=f||curFleet(); let d=0; for(let i=0;i<SHIPS.length;i++)d+=f.sh[i]*SHIPS[i].dps;
   return d*shipCountMul()*fleetMult()*Math.pow(1.25,rfl("gun"))*crewMul("cap") }
-function fleetHPMax(){ let h=0; for(let i=0;i<SHIPS.length;i++)h+=S.sh[i]*SHIPS[i].hp;
+function fleetHPMax(f){ f=f||curFleet(); let h=0; for(let i=0;i<SHIPS.length;i++)h+=f.sh[i]*SHIPS[i].hp;
   return h*shipCountMul()*fleetMult()*Math.pow(1.25,rfl("arm"))*crewMul("eng") }
-function fleetCount(){ return S.sh.reduce((a,b)=>a+b,0) }
+function fleetCount(f){ f=f||curFleet(); return f.sh.reduce((a,b)=>a+b,0) }
+/* every hull owned, empire-wide, of class i - buy/sell/max price off this total
+   (summed across every fleet, same shape the single S.sh total used to give) so the
+   cost curve is unchanged whichever fleet you are actually buying into. */
+function shipTotal(i){ let n=0; for(const f of fleets())n+=f.sh[i]||0; return n }
+/* every warship any fleet on a given state object owns - missions/achievements take
+   an arbitrary state (s), never necessarily the live S, so this reads s.fl directly
+   rather than going through fleets()/S. */
+function allFleetShips(s){
+  return ((s&&s.fl)||[]).reduce((a,f)=>a+(f.sh||[]).reduce((x,y)=>x+y,0),0);
+}
 /* a full patch-up is about three minutes of production, pro-rata to the damage. Ore is
    the one thing you always have, so this is a soft gate, not a wall. */
-function repairCost(){
-  const need=Math.max(0,1-(S.fhp||0));
+function repairCost(f){
+  f=f||curFleet();
+  const need=Math.max(0,1-(f.hp||0));
   if(need<=0.001)return 0;
   return Math.max(50, rate()*180*need);
 }
-function repairNow(){
+function repairFleet(f){
+  f=f||curFleet();
   if(BT&&!BT.done)return false;           /* not mid-battle - a finished one is fine,
                                              and is exactly when you want to repair */
-  const c=repairCost(); if(c<=0)return false;
+  const c=repairCost(f); if(c<=0)return false;
   if(S.ore<c)return false;
-  S.ore-=c; S.fhp=1;
+  S.ore-=c; f.hp=1;
   blip(660,.22,"sine",.05); toast("Fleet repaired","g"); dirty=true; return true;
 }
 /* ---------------- loadout ---------------- */
@@ -3515,13 +3554,16 @@ function loadoutDPS(foes){ let d=0;
   for(const w of equipped())if(w)d+=wepDPS(w,foes);
   return d*fleetDPS();
 }
-/* capacity: what the fleet costs you in command, and what you have to spend */
-function shipPower(){ let p=0; for(let i=0;i<SHIPS.length;i++)p+=S.sh[i]*SHIPS[i].pw; return p+hanTotalPower() }
-/* how hard your fleet is to hit. Weighted by capacity rather than hull count, so this
+/* capacity: what the fleet costs you in command, and what you have to spend -
+   empire-wide, every fleet plus every garrisoned Hangar summed exactly as the old
+   single S.sh+hangar total was. */
+function shipPower(){ let p=0; for(const f of fleets())for(let i=0;i<SHIPS.length;i++)p+=f.sh[i]*SHIPS[i].pw; return p+hanTotalPower() }
+/* how hard a fleet is to hit. Weighted by capacity rather than hull count, so this
    is a real composition choice: light hulls dodge, heavy hulls simply endure. */
-function fleetEvade(){
+function fleetEvade(f){
+  f=f||curFleet();
   let w=0, e=0;
-  for(let i=0;i<SHIPS.length;i++){ const p=S.sh[i]*SHIPS[i].pw; w+=p; e+=p*(SHIPS[i].ev||0) }
+  for(let i=0;i<SHIPS.length;i++){ const p=f.sh[i]*SHIPS[i].pw; w+=p; e+=p*(SHIPS[i].ev||0) }
   const hull = w>0 ? e/w : 0;
   /* engines are a live choice on top of what you fly */
   return Math.min(0.75, hull + ENG_EV*pwrOf("eng"));
@@ -3530,18 +3572,28 @@ function fleetCap(){ return level()<RAIDLV ? 0 : FCAP0+FCAPK*(level()-RAIDLV)+Ma
 function capLeft(){ return fleetCap()-shipPower() }
 /* how many of tier i the remaining capacity allows (may be 0, never negative) */
 function capMax(i){ return Math.max(0,Math.floor(capLeft()/SHIPS[i].pw)) }
-function shipCost(i,k){ const S1=SHIPS[i]; return S1.b*Math.pow(S1.g,S.sh[i])*(Math.pow(S1.g,k)-1)/(S1.g-1) }
+/* priced off the empire-wide owned count of class i (summed across every fleet),
+   so the cost curve is unchanged whichever fleet is actually buying. */
+function shipCost(i,k){ const S1=SHIPS[i]; return S1.b*Math.pow(S1.g,shipTotal(i))*(Math.pow(S1.g,k)-1)/(S1.g-1) }
 function shipMax(i){ const S1=SHIPS[i];
-  const inner=1+S.ore*(S1.g-1)/(S1.b*Math.pow(S1.g,S.sh[i])); if(inner<=1)return 0;
+  const inner=1+S.ore*(S1.g-1)/(S1.b*Math.pow(S1.g,shipTotal(i))); if(inner<=1)return 0;
   const byOre=Math.max(0,Math.floor(Math.log(inner)/Math.log(S1.g)));
   return Math.min(byOre, capMax(i));          /* whichever runs out first */ }
+/* adds to curFleet() when it is at home, else to the first fleet at home; if none is
+   home, the purchase would need to queue (decision 6, PLAN-fleets.md) and land when
+   that fleet next reaches home - not reachable in run 1 (every fleet is at home), so
+   left as this comment rather than real queueing code. TODO(run 2): queue to Fleet 1,
+   "delivers at Sol Reach" placeholder copy on the button. */
 function buyShip(i,k){ if(k<1)return false;
   if(k*SHIPS[i].pw>capLeft())return false;    /* capacity is checked before price */
   const c=shipCost(i,k); if(S.ore<c)return false;
-  S.ore-=c; S.sh[i]+=k; blip(300+i*60,.1,"triangle",.05); dirty=true; return true }
-function sellShip(i,k){ k=Math.min(k,S.sh[i]); if(k<1)return false; const S1=SHIPS[i];
-  S.ore+=0.5*S1.b*Math.pow(S1.g,S.sh[i]-k)*(Math.pow(S1.g,k)-1)/(S1.g-1);
-  S.sh[i]-=k; blip(150,.09,"square",.04); dirty=true; return true }
+  const cf=curFleet();
+  const tgt = cf.at==="home" ? cf : fleets().find(fl=>fl.at==="home");
+  if(!tgt)return false;
+  S.ore-=c; tgt.sh[i]+=k; blip(300+i*60,.1,"triangle",.05); dirty=true; return true }
+function sellShip(i,k){ const f=curFleet(); k=Math.min(k,f.sh[i]); if(k<1)return false; const S1=SHIPS[i];
+  S.ore+=0.5*S1.b*Math.pow(S1.g,shipTotal(i)-k)*(Math.pow(S1.g,k)-1)/(S1.g-1);
+  f.sh[i]-=k; blip(150,.09,"square",.04); dirty=true; return true }
 function pick(a){ return a[Math.floor(Math.random()*a.length)] }
 function newTarget(){
   let r=Math.random()*RAIDW.reduce((a,b)=>a+b,0), ti=0;
@@ -3574,7 +3626,10 @@ function fresh(){
        already there - claiming is what gives a system one, see claimSystem(). */
     clicks:0,
     mkt:{heat:{sv:{v:0,t:0},dm:{v:0,t:0}},sold:false},
-    sh:[0,0,0], fhp:1, tg:[], tgT:0, wins:0, losses:0, plunder:0, flawless:0,
+    /* PLAN-fleets run 1: S.fl replaces the old flat S.sh/S.fhp pair - see mkFleet()/
+       fleets()/curFleet() next to fleetDPS() in 01-content.js. S.flSel is the id of
+       the fleet the Raids pane is showing (run 3 adds more than one to pick from). */
+    fl:[mkFleet(1)], flSel:1, tg:[], tgT:0, wins:0, losses:0, plunder:0, flawless:0,
     sv:0, svAll:0, rf:{}, crew:makeDeckhands(), bridge:makeDeckhands().map(c=>c.id), crewPool:[],
     cseed:1, bestCmb:0, flags:0, end:0,
     rs:{}, nx:{}, ac:{}, mi:0, miq:[], lvSeen:1, lvl:1, pk:{}, pkLog:[], lvOffer:null,
@@ -3793,16 +3848,18 @@ function stationHan(sysId,hullIdx,n){
   if(dmodLv(sysId,"han")<=0)return false;
   if(!SHIPS[hullIdx])return false;
   n=Math.floor(n||0); if(n<=0)return false;
-  n=Math.min(n, S.sh[hullIdx]||0, hanLeft(sysId));
+  const f=curFleet();
+  n=Math.min(n, f.sh[hullIdx]||0, hanLeft(sysId));
   if(n<=0)return false;
-  S.sh[hullIdx]-=n;
+  f.sh[hullIdx]-=n;
   const arr=hanFleet(sysId).slice(); arr[hullIdx]=(arr[hullIdx]||0)+n;
   if(!S.han||typeof S.han!=="object")S.han={};
   S.han[sysId]=arr;
   dirty=true; return true;
 }
-/* recalls n hulls of class hullIdx back into the active fleet - n omitted (or too
-   large) recalls everything of that class this system has stationed. */
+/* recalls n hulls of class hullIdx back into the fleet - the first fleet already
+   sitting at this system, else the fleet at home, else Fleet 1 (PLAN-fleets run 1
+   decision 6). n omitted (or too large) recalls everything of that class stationed. */
 function recallHan(sysId,hullIdx,n){
   const arr=hanFleet(sysId).slice(); const have=arr[hullIdx]||0;
   n = n===undefined ? have : Math.min(Math.max(0,Math.floor(n)), have);
@@ -3810,7 +3867,8 @@ function recallHan(sysId,hullIdx,n){
   arr[hullIdx]=have-n;
   if(!S.han||typeof S.han!=="object")S.han={};
   S.han[sysId]=arr;
-  S.sh[hullIdx]=(S.sh[hullIdx]||0)+n;
+  const tgt = fleetAtSys(sysId) || fleets().find(fl=>fl.at==="home") || fleet(1);
+  tgt.sh[hullIdx]=(tgt.sh[hullIdx]||0)+n;
   dirty=true; return true;
 }
 /* every hull this system has stationed, home in one call - occupySystem()'s own
@@ -4167,7 +4225,7 @@ function assaultTarget(s){
     dmg:0.70+s.ring*0.10, sysId:s.id, rival:now, arch:s.arch||"swarm" };
 }
 function canAssault(s){
-  return sysContested(s) && level()>=s.lvl && fleetDPS()>0 && S.fhp>=0.15;
+  return sysContested(s) && level()>=s.lvl && fleetDPS()>0 && curFleet().hp>=0.15;
 }
 /* PATCH 4 (2026-09-10): travel time. A launched assault sits in S.trip while the
    fleet is in flight/waiting - it is not a fight yet, just a state the Map panel
@@ -6457,7 +6515,7 @@ function renderSysHan(s){
   }
 }
 function hanRowHTML(sysId,i){
-  const owned=S.sh[i]||0, stationed=hanFleet(sysId)[i]||0, left=hanLeft(sysId);
+  const owned=curFleet().sh[i]||0, stationed=hanFleet(sysId)[i]||0, left=hanLeft(sysId);
   const canAdd=owned>0&&left>0, canSub=stationed>0;
   return `<div class="hanrow">
     <div class="hi" style="color:${SHIPS[i].col}"><svg viewBox="0 0 48 48">${SHIPS[i].ic}</svg></div>
@@ -6782,7 +6840,7 @@ function renderMap(){
       let why=sysOccupied(s.id)?"RETAKE SYSTEM":"ASSAULT GARRISON";   /* STAGE 2 */
       if(level()<s.lvl)why="LOCKED \u00b7 LEVEL "+s.lvl;
       else if(fleetDPS()<=0)why="NO FLEET \u00b7 BUILD WARSHIPS";
-      else if(S.fhp<0.15)why="FLEET TOO DAMAGED";
+      else if(curFleet().hp<0.15)why="FLEET TOO DAMAGED";
       else if(otherTrip)why="FLEET AWAY";
       const ah=`<button class="foe" id="sysWar" ${can?"":"disabled"}>${why}</button>`;
       if(act.dataset.h!==ah){
@@ -7579,7 +7637,10 @@ function renderAll(){ dirty=true; render(); }
 /* ============================ raids ============================ */
 const TGT_MAX=3, TGT_EVERY=110;
 function raidTick(dt){
-  if(S.fhp<1 && !BT){ S.fhp=Math.min(1,S.fhp+dt/600*Math.pow(1.30,rfl("rep"))*crewMul("eng")); }
+  if(!BT){
+    const rep=dt/600*Math.pow(1.30,rfl("rep"))*crewMul("eng");
+    for(const f of fleets()) if(f.hp<1) f.hp=Math.min(1,f.hp+rep);
+  }
   S.tgT=(S.tgT||0)+dt;
   const every=TGT_EVERY/(Math.pow(1.22,rfl("sen"))*crewMul("nav"));
   while(S.tg.length<TGT_MAX && S.tgT>=every){ S.tgT-=every; S.tg.push(newTarget()); dirty=true; }
@@ -7632,7 +7693,7 @@ function engage(idx){
 function engageTarget(t, idx){
   const dps=fleetDPS(), hpm=fleetHPMax();
   if(dps<=0){ toast("Build warships before you engage."); return }
-  if(S.fhp<0.15){ toast("Fleet too damaged — let it repair."); return }
+  if(curFleet().hp<0.15){ toast("Fleet too damaged — let it repair."); return }
   /* sized off par, NOT off dps/hpm - see the par curve above. This is the line that
      used to make every purchase on this page pointless. */
   const wep = (S.cmode!=="live"&&S.cmode!=="turn");
@@ -7642,7 +7703,7 @@ function engageTarget(t, idx){
   const totalHP = t.final ? hpm*FINAL_WAVE_MULT[0] : refDPS()*t.secs*t.dif*(wep?wepHpMul():1);
   const totalDPS = t.final ? dps*FINAL_WAVE_MULT[0] : (refHP()*t.dmg)/t.secs*(wep?WEP_INC:1);
   BT={ idx, t, T:RAIDS[t.ti], en:[], stars:[], el:0, cap:t.secs*3.2,
-       hp:hpm*S.fhp, hpm, dps, kills:0, tot:t.en,
+       hp:hpm*curFleet().hp, hpm, dps, kills:0, tot:t.en,
        cd:{f:0,k:0}, buf:{f:0,k:0}, tap:0, fx:[], num:[], sh:0, done:0,
        cmb:0, cmbT:0, best:0, crits:0, taps:0, hits:0,
        /* STAGE 1 escalation: the wave sizes its reinforcements off the fight's
@@ -8415,7 +8476,7 @@ function renderEndCard(){
   /* patch589b: a no-fleet check takes priority over the hull one, same order the
      Map's own ASSAULT button already uses (empSysAction(), "NO FLEET" before
      "FLEET TOO DAMAGED") - this card must not offer a fight that cannot start. */
-  const noShips=fleetDPS()<=0, lowHull=!noShips&&S.fhp<0.15;
+  const noShips=fleetDPS()<=0, lowHull=!noShips&&curFleet().hp<0.15;
   host.innerHTML=`<div class="thrc endc">
     <h5>VEGA'S FLEET HOLDS SOL REACH</h5>
     <p>The turn has come. Production keeps running \u2014 the final battle is yours to choose, whenever you're ready.</p>
@@ -9468,7 +9529,7 @@ function queueWin(dt){
 function endBattle(how){
   if(BT.done)return; BT.done=1;
   if(BT.t && BT.t.final)return endFinalBattle(how);   /* patch590: no raid/assault reward or claim logic applies */
-  const t=BT.t, T=BT.T, frac=BT.kills/BT.tot;
+  const t=BT.t, T=BT.T, frac=BT.kills/BT.tot, f=curFleet();
   const full=raidReward(t);
   let o=0,c=0,m=0,lost=[0,0,0];
   let sv=0;
@@ -9479,13 +9540,13 @@ function endBattle(how){
     if(BT.hp>=BT.hpm*0.999)S.flawless=1;
     if(BT.auto){ o*=AUTO_YIELD; c*=AUTO_YIELD; m*=AUTO_YIELD; sv=Math.floor(sv*AUTO_YIELD); S.flawless=0; } }
   else if(how==="lost"){
-    for(let i=0;i<3;i++){ if(S.sh[i]>0)lost[i]=Math.max(1,Math.ceil(S.sh[i]*0.25)); S.sh[i]-=lost[i]; }
-    S.losses=(S.losses||0)+1; S.fhp=0.35;
+    for(let i=0;i<3;i++){ if(f.sh[i]>0)lost[i]=Math.max(1,Math.ceil(f.sh[i]*0.25)); f.sh[i]-=lost[i]; }
+    S.losses=(S.losses||0)+1; f.hp=0.35;
     o=full.o*frac*0.35; c=full.c*frac*0.35; sv=Math.floor(svReward(t)*frac*0.3);
   } else { o=full.o*frac*0.6; c=full.c*frac*0.6; if(full.m&&frac>=1)m=full.m;
     sv=Math.floor(svReward(t)*frac*0.6); }
-  if(how!=="lost")S.fhp=Math.max(0.05,BT.hp/BT.hpm);
-  if(how==="win"&&BT.auto&&!(BT.cine&&BT.cine.charged))S.fhp=Math.max(0.05,S.fhp-AUTO_FHP_COST);   /* patch633: the clip already took this off BT.hp (BT.cine.charged) - S.fhp=max(0.05,BT.hp/BT.hpm) just above already carries it into S.fhp, so this flat subtraction would otherwise double-charge it */
+  if(how!=="lost")f.hp=Math.max(0.05,BT.hp/BT.hpm);
+  if(how==="win"&&BT.auto&&!(BT.cine&&BT.cine.charged))f.hp=Math.max(0.05,f.hp-AUTO_FHP_COST);   /* patch633: the clip already took this off BT.hp (BT.cine.charged) - f.hp=max(0.05,BT.hp/BT.hpm) just above already carries it into f.hp, so this flat subtraction would otherwise double-charge it */
   S.ore+=o; S.all+=o; S.cry+=c; if(m){S.dm+=m;S.dmAll+=m}
   if(sv>0){ S.sv=(S.sv||0)+sv; S.svAll=(S.svAll||0)+sv }
   if(BT.best>(S.bestCmb||0))S.bestCmb=BT.best;
@@ -9533,7 +9594,7 @@ function endBattle(how){
   const anyLost=lost.reduce((a,b)=>a+b,0);
   if(anyLost)rows+=`<div class="rline"><span style="color:var(--rd)">Ships lost</span><b style="color:var(--rd)">${
     lost.map((n,i)=>n?n+"× "+SHIPS[i].n:null).filter(Boolean).join(", ")}</b></div>`;
-  rows+=`<div class="rline"><span>Fleet integrity</span><b>${Math.round(S.fhp*100)}%</b></div>`;
+  rows+=`<div class="rline"><span>Fleet integrity</span><b>${Math.round(f.hp*100)}%</b></div>`;
   $("#bRes").innerHTML=`<div class="rescard"><h3 style="color:${col}">${ttl}</h3>
     <div class="rsub">${sub}</div>${rows}
     <button id="bDone">RETURN TO EMPIRE</button></div>`;
@@ -9549,12 +9610,12 @@ function endBattle(how){
    plan) or "finalwin" (the withdraw beat finished). */
 function endFinalBattle(how){
   if(how==="lost"){
-    for(let i=0;i<3;i++){ if(S.sh[i]>0){ const l=Math.max(1,Math.ceil(S.sh[i]*0.25)); S.sh[i]-=l } }
-    S.losses=(S.losses||0)+1; S.fhp=0.35;
+    for(let i=0;i<3;i++){ if(curFleet().sh[i]>0){ const l=Math.max(1,Math.ceil(curFleet().sh[i]*0.25)); curFleet().sh[i]-=l } }
+    S.losses=(S.losses||0)+1; curFleet().hp=0.35;
     $("#bRes").innerHTML=`<div class="rescard"><h3 style="color:var(--rd)">${STORY.battleLossT}</h3>
       <div class="rsub">${STORY.battleLoss}</div>
       <div class="rline"><span>Hostiles destroyed</span><b>${BT.kills} / ${BT.tot}</b></div>
-      <div class="rline"><span>Fleet integrity</span><b>${Math.round(S.fhp*100)}%</b></div>
+      <div class="rline"><span>Fleet integrity</span><b>${Math.round(curFleet().hp*100)}%</b></div>
       <button id="bDone">RETURN TO EMPIRE</button></div>`;
     $("#bRes").classList.add("on"); $("#bDone").onclick=closeBattle;
     sfx("loss"); dirty=true; save();
@@ -9563,7 +9624,7 @@ function endFinalBattle(how){
   /* how==="finalwin" - S.end stays 1 until finaleWon() runs, so every seized
      Nexus/advisor/rival surface (patch589) stays exactly as it was through this
      card; only tapping the one button below moves S.end to 2. */
-  S.fhp=Math.max(0.05,BT.hp/BT.hpm);
+  curFleet().hp=Math.max(0.05,BT.hp/BT.hpm);
   $("#bRes").innerHTML=`<div class="rescard"><h3 style="color:var(--gr)">${STORY.battleWinT}</h3>
     <div class="rsub">${STORY.battleWin}</div>
     <button id="bFinaleDone">CONTINUE</button></div>`;
@@ -10256,7 +10317,7 @@ function bTapTurn(cx,cy){
 $("#abFocus").onclick=()=>{ if(BT&&!BT.done&&BT.cd.f<=0){BT.buf.f=5;BT.cd.f=16;blip(700,.15,"square",.05)} };
 $("#abFlak").onclick=()=>{ if(BT&&!BT.done&&BT.cd.k<=0){BT.buf.k=5;BT.cd.k=22;blip(420,.15,"sine",.05)} };
 $("#bRetreat").onclick=()=>{ if(BT&&!BT.done)endBattle("timeout") };
-$("#flFix").onclick=()=>{ if(repairNow()){ renderAll(); save() } };
+$("#flFix").onclick=()=>{ if(repairFleet()){ renderAll(); save() } };
 $("#bPause").onclick=()=>{ if(BT&&!BT.done){ BT.paused=!BT.paused; dirty=true } };
 $("#trScr").onclick=()=>{ if(addOrder("scr"))dirty=true };
 $("#trRep").onclick=()=>{ if(addOrder("rep"))dirty=true };
@@ -10270,7 +10331,7 @@ function renderRaids(){
   const thinCap=cp>0&&pw<cp*0.7;
   st.innerHTML=fmt(fleetDPS())+" dps · "+fmt(fleetHPMax())+" hull"
     +` <b class="flcap${over?" over":thinCap?" thin":""}">⚡${pw}/${cp}</b>`;
-  const hp=S.fhp, bar=$(".fl-hp");
+  const hp=curFleet().hp, bar=$(".fl-hp");
   bar.classList.toggle("hurt",hp<=.6&&hp>.3); bar.classList.toggle("crit",hp<=.3);
   $("#flHp").style.width=(hp*100)+"%";
   $("#flHpT").textContent=fleetCount()?("FLEET INTEGRITY "+Math.round(hp*100)+"%"+(hp<1?" · repairing":"")):"NO SHIPS";
@@ -10281,7 +10342,7 @@ function renderRaids(){
     wn.classList.toggle("on",thin);
     if(thin)wn.innerHTML=`Your fleet is using <b>${pw} of ${cp}</b> command capacity.
       Hostiles are sized against a full one, so raids will go badly until you build more
-      \u2014 heavier hulls give far more per point of capacity.`;
+      \\u2014 heavier hulls give far more per point of capacity.`;
   }
   const fx=$("#flFix"), rc=repairCost();
   fx.classList.toggle("hide", !fleetCount() || hp>=1);
@@ -10290,15 +10351,15 @@ function renderRaids(){
   const host=$("#flShips"); host.innerHTML="";
   SHIPS.forEach((sp,i)=>{
     const d=document.createElement("div"); d.className="shp"; d.style.setProperty("--a",sp.col);
-    const k=S.sell?Math.min(S.buy==="max"?S.sh[i]:S.buy,S.sh[i]):(S.buy==="max"?Math.max(1,shipMax(i)):S.buy);
-    const c=S.sell?(k>0?0.5*sp.b*Math.pow(sp.g,S.sh[i]-k)*(Math.pow(sp.g,k)-1)/(sp.g-1):0):shipCost(i,k);
+    const k=S.sell?Math.min(S.buy==="max"?curFleet().sh[i]:S.buy,curFleet().sh[i]):(S.buy==="max"?Math.max(1,shipMax(i)):S.buy);
+    const c=S.sell?(k>0?0.5*sp.b*Math.pow(sp.g,shipTotal(i)-k)*(Math.pow(sp.g,k)-1)/(sp.g-1):0):shipCost(i,k);
     const fits=k*sp.pw<=capLeft();
     const can=S.sell?k>0:(S.ore>=c&&fits);
     d.innerHTML=`<div class="si"><svg viewBox="0 0 48 48">${sp.ic}</svg></div>
       <div><div class="sn">${sp.n}</div>
         <div class="sd">${fmt(sp.dps*fleetMult())} dps · ${fmt(sp.hp*fleetMult())} hull · ⚡${sp.pw}</div></div>
       <div style="display:flex;align-items:center;gap:10px">
-        <div class="sc">${S.sh[i]}</div>
+        <div class="sc">${curFleet().sh[i]}</div>
         <button class="gb"><b>${S.sell||fits?fmt(c)+" ore":"NO CAPACITY"}</b><i>${
           S.sell?"SCRAP ×"+k:"BUY ×"+k}</i></button>
       </div>`;
@@ -10327,7 +10388,7 @@ function renderRaids(){
         : "<button>ENGAGE</button>"}`;
     const btns=d.querySelectorAll("button");
     const auto=canAutoResolve(t);
-    btns.forEach(bb=>bb.disabled=dps<=0||S.fhp<0.15);
+    btns.forEach(bb=>bb.disabled=dps<=0||curFleet().hp<0.15);
     if(auto){ btns[0].onclick=()=>autoEngage(i); btns[1].onclick=()=>engage(i); }
     else btns[0].onclick=()=>engage(i);
     th.appendChild(d);
@@ -10428,7 +10489,7 @@ function renderRaids(){
    summarised into one bool per sub-tab. Runs every dirty frame, so kept O(rows). */
 function raidSubFlags(){
   const f={targets:false,fleet:false,loadout:false,crew:false};
-  f.targets = S.tg.length>0 && fleetCount()>0 && S.fhp>=0.15;
+  f.targets = S.tg.length>0 && fleetCount()>0 && curFleet().hp>=0.15;
   f.fleet   = SHIPS.some((sp,i)=> sp.pw<=capLeft() && S.ore>=shipCost(i,1));
   f.loadout = wepSlots().some(s=>!s) && WEAPONS.some(w=>wepOwned(w.id)&&wepSlots().indexOf(w.id)<0)
            || WEAPONS.some(w=>!wepOwned(w.id)&&S.sv>=w.cost)
@@ -10477,8 +10538,28 @@ function adopt(o){
   const f=fresh();
   for(const k in f) if(k in o) f[k]=o[k];
   if(f.site!=null&&!SITE[f.site])f.site=null;
-  if(!Array.isArray(f.sh)||f.sh.length!==3)f.sh=[0,0,0];
-  f.sh=f.sh.map(x=>Math.max(0,Math.floor(x||0)));
+  /* PLAN-fleets run 1: S.fl replaces the old flat S.sh/S.fhp pair. A save (or test
+     fixture) carrying o.sh/o.fhp - anything from before this patch - always wins as
+     the legacy hint and becomes Fleet 1, even over a stray o.fl a `{...fresh()}`
+     spread incidentally carries (fresh() itself now seeds one). A save already
+     carrying S.fl (and no o.sh/o.fhp) is sanitised fleet-by-fleet instead; neither
+     present self-heals to a single fresh Fleet 1, same as fleets() does live. */
+  if(Array.isArray(o.sh) || o.fhp!==undefined){
+    const sh=Array.isArray(o.sh)&&o.sh.length===3?o.sh.slice():[0,0,0];
+    f.fl=[{id:1,n:"1st Fleet",sh,hp:o.fhp===undefined?1:o.fhp,at:"home",to:null,eta:0}];
+  }
+  if(!Array.isArray(f.fl)||!f.fl.length)f.fl=[mkFleet(1)];
+  f.fl=f.fl.map((fl,i)=>{
+    const id=Math.max(1,Math.floor((fl&&fl.id)||i+1));
+    const n=(fl&&typeof fl.n==="string"&&fl.n)||mkFleet(id).n;
+    let sh=(fl&&Array.isArray(fl.sh)&&fl.sh.length===3)?fl.sh:[0,0,0];
+    sh=sh.map(x=>Math.max(0,Math.floor(x||0)));
+    const hpRaw=(fl&&fl.hp!==undefined)?fl.hp:1;
+    const hp=Math.max(0,Math.min(1,hpRaw));
+    const at=(fl&&typeof fl.at==="string"&&(fl.at==="home"||SYSMAP[fl.at]))?fl.at:"home";
+    return {id,n,sh,hp,at,to:null,eta:0};
+  });
+  if(f.flSel==null || !f.fl.some(fl=>fl.id===f.flSel))f.flSel=f.fl[0].id;
   if(!Array.isArray(f.tg))f.tg=[];
   f.sv=Math.max(0,Math.floor(f.sv||0)); f.svAll=Math.max(0,Math.floor(f.svAll||0));
   if(!f.rf||typeof f.rf!=="object")f.rf={};
@@ -10498,7 +10579,6 @@ function adopt(o){
     for(let i=0;i<Math.min(3,dk.length);i++) f.bridge[i]=dk[i].id;
   }
   f.cseed=f.cseed||((Date.now()^0x5bf03635)&0x7fffffff)||1;
-  f.fhp=Math.max(0,Math.min(1,f.fhp===undefined?1:f.fhp));
   if(!f.exoSeen||typeof f.exoSeen!=="object")f.exoSeen={};
   if(!f.mkt||typeof f.mkt!=="object")f.mkt={};
   if(!f.mkt.heat||typeof f.mkt.heat!=="object")f.mkt.heat={};
@@ -10789,23 +10869,27 @@ function adopt(o){
      whatever game was running before this load. An entry naming a system that is
      not currently held, or that carries no built+armed Hangar (never reachable from
      the real UI - stationHan() itself checks both) is not deleted outright: its
-     counts fold straight back into S.sh instead, the same "never actually destroy a
-     ship over a save/sanitiser edge case" kindness occupySystem()'s own
-     recallHanAll() already applies during ordinary play. */
+     counts fold straight back into Fleet 1 instead (PLAN-fleets run 1: S.sh is gone,
+     and this fold-back is not "the fleet you happen to be looking at" territory -
+     it is a load-time sanitiser, so it always lands on Fleet 1, same as every other
+     fold-back this function does), the same "never actually destroy a ship over a
+     save/sanitiser edge case" kindness occupySystem()'s own recallHanAll() already
+     applies during ordinary play. */
   if(!S.han||typeof S.han!=="object")S.han={};
+  const homeFl=fleet(1);
   for(const k in S.han){
     const raw=S.han[k];
     const arr=(Array.isArray(raw)&&raw.length===3) ? raw.map(x=>Math.max(0,Math.floor(x||0))) : [0,0,0];
     const ok = SYSMAP[k] && !SYSMAP[k].home && sysHeld(k) && dmodLv(k,"han")>0;
     if(!ok){
-      for(let i=0;i<3;i++) if(arr[i]>0) S.sh[i]=(S.sh[i]||0)+arr[i];
+      for(let i=0;i<3;i++) if(arr[i]>0) homeFl.sh[i]=(homeFl.sh[i]||0)+arr[i];
       delete S.han[k];
       continue;
     }
     let total=arr[0]+arr[1]+arr[2];
     for(let i=0;i<3&&total>HAN_CAP;i++){
       const cut=Math.min(arr[i], total-HAN_CAP);
-      arr[i]-=cut; S.sh[i]=(S.sh[i]||0)+cut; total-=cut;
+      arr[i]-=cut; homeFl.sh[i]=(homeFl.sh[i]||0)+cut; total-=cut;
     }
     S.han[k]=arr;
   }
@@ -12209,8 +12293,9 @@ window.__SD={get S(){return S},NEXUS,buyNex,openSite,SITE,siteSlots,
   MISSIONS,ACHS,claimMission,claimAllMissions,misDone,misReady,renderMis,checkMissions,render,flag,
   MISFX,misClaimFx,get misFxUntil(){return misFxUntil},
   SHIPS,RAIDS,newTarget,fleetDPS,fleetHPMax,fleetCount,buyShip,raidReward,engage,
+  FLEET_COL,mkFleet,fleets,fleet,curFleet,fleetAtSys,shipTotal,allFleetShips,
   WEAPONS,WEPMAP,parDPS,parHP,parFleet,hardpoints,wepOwned,wepSlots,equipped,buyWeapon,equipWeapon,
-  fleetEvade,repairCost,repairNow,ammoCost,buyAmmo,AMMO_LOT,refDPS,refHP,PAR_BLEND,
+  fleetEvade,repairCost,repairFleet,ammoCost,buyAmmo,AMMO_LOT,refDPS,refHP,PAR_BLEND,
   fightOdds,riskOf,blendPar,
   PWR_SYS,PWR_MAX,ENG_EV,SHD_T,powerTotal,pwrOf,pwrUsed,pwrFree,setPower,addPower,wepOnline,
   fireFx,bPwrBar,bWepBar,armWeapon,armedCount,
