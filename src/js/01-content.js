@@ -1342,7 +1342,7 @@ function nearestIdleFleetTo(sysId){
    crossing sectors ignores that distance entirely and charges TRAVEL_PER_RING per
    ring boundary crossed instead - a lane between neighbouring sectors, not a
    straight-line flight. */
-const TRAVEL_BASE=20, TRAVEL_PER_UNIT=0.4, TRAVEL_PER_RING=45;
+const TRAVEL_BASE=20, TRAVEL_PER_UNIT=0.4, TRAVEL_PER_RING=30;
 function travelSecs(fromId,toId){
   const A=SYSMAP[fromId], B=SYSMAP[toId];
   if(!A||!B)return Infinity;
