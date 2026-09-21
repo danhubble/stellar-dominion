@@ -2609,7 +2609,10 @@ function renderRaids(){
   renderEndCard(); renderThreat(); renderRivalBars(); renderFleetTabs();
   const cf=curFleet();
   const st=$("#flStat");
-  const pw=shipPower(), cp=fleetCap(), over=pw>cp;
+  /* PLAN-fleets follow-up: the strip reads the SELECTED fleet's own power now, not
+     the empire-wide total - fleetCap() applies per fleet, so "112/60" is cf's own
+     onboard+attributed-hangar power against the one cap every fleet gets. */
+  const pw=fleetTotalPower(cf), cp=fleetCap(), over=pw>cp;
   const thinCap=cp>0&&pw<cp*0.7;
   st.innerHTML=fmt(fleetDPS(cf))+" dps · "+fmt(fleetHPMax(cf))+" hull"
     +` <b class="flcap${over?" over":thinCap?" thin":""}">⚡${pw}/${cp}</b>`;
@@ -2628,7 +2631,7 @@ function renderRaids(){
   /* the single most useful thing the page can say to someone losing every fight */
   const wn=$("#flWarn");
   if(wn){
-    const pw=shipPower(), cp=fleetCap(), thin=cp>0&&pw<cp*0.7;
+    const pw=fleetTotalPower(cf), cp=fleetCap(), thin=cp>0&&pw<cp*0.7;
     wn.classList.toggle("on",thin);
     if(thin)wn.innerHTML=`Your fleet is using <b>${pw} of ${cp}</b> command capacity.
       Hostiles are sized against a full one, so raids will go badly until you build more

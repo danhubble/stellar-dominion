@@ -474,6 +474,61 @@ const { chromium } = require('playwright-core');
  ok('...and writes the post-fight integrity back to every one of the three fleets',
    Math.abs(finalThree.hp1-0.4)<1e-9 && Math.abs(finalThree.hp2-0.4)<1e-9 && Math.abs(finalThree.hp3-0.4)<1e-9, finalThree);
 
+ // ---------------- PLAN-fleets follow-up (shipped with governors): per-fleet cap ----------------
+ // each fleet may reach fleetCap() alone - the cap is no longer one empire-wide pool
+ // shared by all three.
+ const perFleetCap=await p.evaluate(()=>{
+   const G=window.__SD;
+   G.adopt({...G.fresh(), all:1e30, lvl:20, lvSeen:20, ore:1e30});
+   const cap=G.fleetCap();
+   const cheapest=G.SHIPS.reduce((bi,sp,i)=>sp.pw<G.SHIPS[bi].pw?i:bi,0), pw=G.SHIPS[cheapest].pw;
+   const k=Math.floor(cap/pw);
+   G.S.flSel=1;
+   const bought1=G.buyShip(cheapest,k);
+   const f1Left=G.capLeft(G.fleet(1));
+   const f2Before=G.capLeft(G.fleet(2));   // untouched by fleet 1's own spend
+   G.S.flSel=2;
+   const bought2=G.buyShip(cheapest,k);    // fleet 2 fills its OWN cap independently
+   const f2Left=G.capLeft(G.fleet(2));
+   return { cap, pw, k, bought1, bought2, f1Left, f2Before, f2Left };
+ });
+ ok('fleet 1 can fill its own fleetCap() power', perFleetCap.bought1 && perFleetCap.f1Left<perFleetCap.pw, perFleetCap);
+ ok("fleet 1 spending its cap leaves fleet 2's own cap completely untouched",
+   perFleetCap.f2Before===perFleetCap.cap, perFleetCap);
+ ok('fleet 2 can independently fill its own fleetCap() power too (three separate pools, not one shared)',
+   perFleetCap.bought2 && perFleetCap.f2Left<perFleetCap.pw, perFleetCap);
+
+ // hangar round-trip keeps the attribution: stationing moves power from a fleet's
+ // onboard bucket to its own hangar bucket (net unchanged for THAT fleet), and never
+ // touches another fleet's capacity; recalling returns it exactly.
+ const hangarAttr=await p.evaluate(()=>{
+   const G=window.__SD;
+   G.adopt({...G.fresh(), all:1e30, lvl:20, lvSeen:20, ore:1e30, exo:{ir:1e9}});
+   G.claimSystem(G.SYSMAP.kor);
+   G.dmodBuild(G.SYSMAP.kor,0,'han'); G.S.def.kor.s[0].q.dueAt=Date.now()-1; G.dmodComplete();
+   G.S.fl[0].sh=[10,0,0]; G.S.fl[1].sh=[5,0,0];
+   const f1Before=G.capLeft(G.fleet(1)), f2Before0=G.capLeft(G.fleet(2));
+   G.S.flSel=1;
+   const stationed1=G.stationHan('kor',0,4);           // fleet 1 stations 4 Interceptors
+   const f1AfterStation=G.capLeft(G.fleet(1)), f2AfterFleet1Station=G.capLeft(G.fleet(2));
+   const recalled1=G.recallHan('kor',0,4);
+   const f1AfterRecall=G.capLeft(G.fleet(1));
+   G.S.flSel=2;
+   const stationed2=G.stationHan('kor',0,3);           // now fleet 2 stations into the same hangar
+   const f1AfterFleet2Station=G.capLeft(G.fleet(1)), f2AfterStation=G.capLeft(G.fleet(2));
+   return { f1Before, f2Before0, stationed1, f1AfterStation, f2AfterFleet1Station, recalled1, f1AfterRecall,
+     stationed2, f1AfterFleet2Station, f2AfterStation };
+ });
+ ok('stationing from fleet 1 leaves ITS OWN capacity unchanged (power just moves onboard->hangar, same fleet)',
+   hangarAttr.stationed1 && hangarAttr.f1Before===hangarAttr.f1AfterStation, hangarAttr);
+ ok("...and never touches fleet 2's own capacity", hangarAttr.f2Before0===hangarAttr.f2AfterFleet1Station, hangarAttr);
+ ok('recalling returns capacity accounting to exactly where it started',
+   hangarAttr.recalled1 && hangarAttr.f1Before===hangarAttr.f1AfterRecall, hangarAttr);
+ ok("re-stationing from fleet 2 attributes the hangar to fleet 2 now, not fleet 1 (fleet 1's cap stays at its recalled value)",
+   hangarAttr.stationed2 && hangarAttr.f1AfterRecall===hangarAttr.f1AfterFleet2Station, hangarAttr);
+ ok("...and fleet 2's own capacity is unchanged too (same rule: stationing never frees or costs capacity, only relocates it)",
+   hangarAttr.f2Before0===hangarAttr.f2AfterStation, hangarAttr);
+
  if(errs.length)ok('no page errors', false, errs);
  console.log(out.join('\n'));
  console.log(out.filter(l=>l.startsWith('FAIL')).length+' failures');

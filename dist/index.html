@@ -3818,7 +3818,9 @@ function loadoutDPS(foes){ let d=0;
 }
 /* capacity: what the fleet costs you in command, and what you have to spend -
    empire-wide, every fleet plus every garrisoned Hangar summed exactly as the old
-   single S.sh+hangar total was. */
+   single S.sh+hangar total was. Still used empire-wide by cpTotal()/hardpoints() -
+   PLAN-fleets follow-up ("per-fleet cap") only changes capLeft()/capMax()/shipMax(),
+   below. */
 /* run 3: a queued-but-not-yet-delivered hull (S.flQ) still costs command capacity -
    it is a real, paid-for hull, just not aboard a fleet yet. Left out here, buyShip()'s
    own capLeft() check would never see it and capacity could be bypassed entirely by
@@ -3828,6 +3830,22 @@ function loadoutDPS(foes){ let d=0;
 function shipPower(){ let p=0; for(const f of fleets())for(let i=0;i<SHIPS.length;i++)p+=f.sh[i]*SHIPS[i].pw;
   if(Array.isArray(S.flQ))for(let i=0;i<SHIPS.length;i++)p+=(S.flQ[i]||0)*SHIPS[i].pw;
   return p+hanTotalPower() }
+/* PLAN-fleets follow-up ("per-fleet cap", shipped with governors): a fleet's own
+   onboard power only - no hangar, no queue - the building block fleetTotalPower()
+   below adds those back in, attributed to whichever fleet they actually count
+   against. */
+function fleetPower(f){ f=f||curFleet(); let p=0; for(let i=0;i<SHIPS.length;i++)p+=f.sh[i]*SHIPS[i].pw; return p }
+/* S.flQ (decision 6: a purchase with no fleet home queues, landing on Fleet 1 the
+   moment one next reaches home) counts against Fleet 1's own cap the moment it is
+   bought - it is already paid for, just not aboard yet, same reasoning shipPower()'s
+   own comment gives for including it in the empire-wide total. */
+function flQPower(){ let p=0; if(Array.isArray(S.flQ))for(let i=0;i<SHIPS.length;i++)p+=(S.flQ[i]||0)*SHIPS[i].pw; return p }
+/* everything that counts against ONE fleet's own share of fleetCap(): its onboard
+   hulls, whatever Hangar power is attributed to it (hanPowerFor(), 03-defence.js -
+   "hangar hulls count against the fleet they were stationed from"), and the
+   delivery queue if this is Fleet 1. */
+function fleetTotalPower(f){ f=f||curFleet();
+  return fleetPower(f) + hanPowerFor(f.id) + (f.id===1 ? flQPower() : 0) }
 /* how hard a fleet is to hit. Weighted by capacity rather than hull count, so this
    is a real composition choice: light hulls dodge, heavy hulls simply endure. */
 function fleetEvade(f){
@@ -3838,33 +3856,42 @@ function fleetEvade(f){
   /* engines are a live choice on top of what you fly */
   return Math.min(0.75, hull + ENG_EV*pwrOf("eng"));
 }
+/* the cap itself is still one empire-wide number, from level - PLAN-fleets follow-up
+   (owner, 21 Sep) makes it apply PER FLEET now: "each fleet may hold fleetCap()
+   power", not the three of them sharing one pool. */
 function fleetCap(){ return level()<RAIDLV ? 0 : FCAP0+FCAPK*(level()-RAIDLV)+Math.min(CORE_ADD_MAX,6*xlv("core")) }
-function capLeft(){ return fleetCap()-shipPower() }
-/* how many of tier i the remaining capacity allows (may be 0, never negative) */
-function capMax(i){ return Math.max(0,Math.floor(capLeft()/SHIPS[i].pw)) }
+/* f defaults to curFleet() so every existing no-arg call site (raidSubFlags(),
+   the Raids strip, etc) already reads "this fleet's own room" with no call-site
+   change - only buyShip() (below) needs to pass an explicit fleet, since what it
+   is buying into is not always curFleet(). */
+function capLeft(f){ f=f||curFleet(); return fleetCap()-fleetTotalPower(f) }
+/* how many of tier i the remaining capacity on fleet f allows (may be 0, never negative) */
+function capMax(i,f){ return Math.max(0,Math.floor(capLeft(f)/SHIPS[i].pw)) }
 /* priced off the empire-wide owned count of class i (summed across every fleet),
    so the cost curve is unchanged whichever fleet is actually buying. */
 function shipCost(i,k){ const S1=SHIPS[i]; return S1.b*Math.pow(S1.g,shipTotal(i))*(Math.pow(S1.g,k)-1)/(S1.g-1) }
-function shipMax(i){ const S1=SHIPS[i];
+function shipMax(i,f){ const S1=SHIPS[i];
   const inner=1+S.ore*(S1.g-1)/(S1.b*Math.pow(S1.g,shipTotal(i))); if(inner<=1)return 0;
   const byOre=Math.max(0,Math.floor(Math.log(inner)/Math.log(S1.g)));
-  return Math.min(byOre, capMax(i));          /* whichever runs out first */ }
+  return Math.min(byOre, capMax(i,f));          /* whichever runs out first */ }
 /* run 3 (decision 6, PLAN-fleets.md): adds to curFleet() when it is idle and at
    home; else the first idle fleet at home; else queues on S.flQ (counts per class)
    and lands into the first fleet that next reaches home idle - drained by
    tryDrainFleetQueue(), called from fleetTravelTick() on every arrival and once
    from adopt() so a save loaded with a fleet already idle at home clears the
    queue immediately rather than waiting for a fleet to arrive that is already
-   there. Capacity/price are still checked once, up front, against the
-   empire-wide total either way (shipTotal()/shipPower() both already count the
-   queue - see their own comments) - queuing never lets a purchase dodge either
-   check. */
+   there. PLAN-fleets follow-up: capacity is now checked against whichever fleet the
+   purchase actually LANDS on (tgt, or Fleet 1 if it queues - flQPower() counts
+   against Fleet 1, see fleetTotalPower()) rather than an empire-wide total, since
+   the cap itself is per fleet now - price is still off the empire-wide cost curve
+   (shipCost() unchanged). */
 function buyShip(i,k){ if(k<1)return false;
-  if(k*SHIPS[i].pw>capLeft())return false;    /* capacity is checked before price */
-  const c=shipCost(i,k); if(S.ore<c)return false;
   const cf=curFleet();
   const idleHome=fl=>!fl.to&&fl.at==="home";
   const tgt = idleHome(cf) ? cf : fleets().find(idleHome);
+  const capFleet = tgt || fleet(1);
+  if(k*SHIPS[i].pw>capLeft(capFleet))return false;    /* capacity is checked before price */
+  const c=shipCost(i,k); if(S.ore<c)return false;
   S.ore-=c;
   if(tgt){ tgt.sh[i]+=k; }
   else {
@@ -4126,17 +4153,32 @@ const HAN_CAP=8;   /* TUNING-PENDING: ship COUNT per Hangar, any mix of hull cla
    not a power-unit cap (a single Frigate's pw alone would already exceed a power cap
    this size, excluding two of the three hulls outright), and the picker's own
    "pick hull class, +/- counts... capacity used/left" wants one simple number. */
-function hanFleet(id){ const h=S.han&&S.han[id]; return (Array.isArray(h)&&h.length===3)?h:[0,0,0]; }
+/* PLAN-fleets follow-up (shipped with governors): S.han[sysId] carries a `from` -
+   the fleet id its hulls count against for capacity purposes - alongside the counts
+   themselves, now {n:[n0,n1,n2], from:fleetId} rather than a bare array. hanFleet()
+   stays the one true reader of the counts (n) - every existing caller (hanCount,
+   hanDPS, hanHP, render, combat) is unaffected by the shape change underneath it. */
+function hanFleet(id){ const h=S.han&&S.han[id]; const n=h&&h.n; return (Array.isArray(n)&&n.length===3)?n:[0,0,0]; }
+function hanFrom(id){ const h=S.han&&S.han[id]; return (h&&h.from>0)?h.from:1; }
 function hanCount(id){ const h=hanFleet(id); return h[0]+h[1]+h[2]; }
 function hanLeft(id){ return Math.max(0,HAN_CAP-hanCount(id)); }
 function hanDPS(id){ const h=hanFleet(id); let d=0; for(let i=0;i<SHIPS.length;i++)d+=h[i]*SHIPS[i].dps; return d; }
 function hanHP(id){  const h=hanFleet(id); let d=0; for(let i=0;i<SHIPS.length;i++)d+=h[i]*SHIPS[i].hp;  return d; }
 /* every hull stationed ANYWHERE, summed once for shipPower()'s own cap accounting -
-   see the header note above. */
+   see the header note above. Empire-wide, unaffected by per-fleet attribution. */
 function hanTotalPower(){
   let p=0;
-  if(S.han)for(const id in S.han){ const hh=S.han[id]; if(!Array.isArray(hh))continue;
-    for(let i=0;i<SHIPS.length;i++)p+=(hh[i]||0)*SHIPS[i].pw; }
+  if(S.han)for(const id in S.han){ const n=hanFleet(id);
+    for(let i=0;i<SHIPS.length;i++)p+=(n[i]||0)*SHIPS[i].pw; }
+  return p;
+}
+/* PLAN-fleets follow-up: "hangar hulls count against the fleet they were stationed
+   from" - summed across every system whose hangar entry names this fleet as `from`.
+   Old entries (pre-follow-up saves, sanitised in adopt()) default to Fleet 1. */
+function hanPowerFor(fleetId){
+  let p=0;
+  if(S.han)for(const id in S.han){ if(hanFrom(id)!==fleetId)continue;
+    const n=hanFleet(id); for(let i=0;i<SHIPS.length;i++)p+=(n[i]||0)*SHIPS[i].pw; }
   return p;
 }
 /* TUNING-PENDING: garrison-strength coefficient. Blended against PAR, not the
@@ -4167,19 +4209,29 @@ function stationHan(sysId,hullIdx,n){
   f.sh[hullIdx]-=n;
   const arr=hanFleet(sysId).slice(); arr[hullIdx]=(arr[hullIdx]||0)+n;
   if(!S.han||typeof S.han!=="object")S.han={};
-  S.han[sysId]=arr;
+  /* PLAN-fleets follow-up: the whole entry's `from` is whichever fleet most
+     recently stationed into it - simplest reading of "the fleet they were
+     stationed from" for one hangar shared by one fleet at a time in the normal
+     flow (you can only station from curFleet()). Re-stationing from a DIFFERENT
+     fleet while hulls from an earlier one are still here reattributes the whole
+     entry - an edge case the plan does not spell out further; accepted rather
+     than tracking per-class attribution for one hangar. */
+  S.han[sysId]={n:arr, from:f.id};
   dirty=true; return true;
 }
 /* recalls n hulls of class hullIdx back into the fleet - the first fleet already
    sitting at this system, else the fleet at home, else Fleet 1 (PLAN-fleets run 1
-   decision 6). n omitted (or too large) recalls everything of that class stationed. */
+   decision 6) - NOT necessarily the `from` fleet; capacity accounting simply follows
+   wherever the hulls physically end up, same as it does for a fleet that was never
+   stationed at all. n omitted (or too large) recalls everything of that class
+   stationed. */
 function recallHan(sysId,hullIdx,n){
   const arr=hanFleet(sysId).slice(); const have=arr[hullIdx]||0;
   n = n===undefined ? have : Math.min(Math.max(0,Math.floor(n)), have);
   if(n<=0)return false;
   arr[hullIdx]=have-n;
   if(!S.han||typeof S.han!=="object")S.han={};
-  S.han[sysId]=arr;
+  S.han[sysId]={n:arr, from:hanFrom(sysId)};
   const tgt = fleetAtSys(sysId) || fleets().find(fl=>fl.at==="home") || fleet(1);
   tgt.sh[hullIdx]=(tgt.sh[hullIdx]||0)+n;
   dirty=true; return true;
@@ -11163,7 +11215,10 @@ function renderRaids(){
   renderEndCard(); renderThreat(); renderRivalBars(); renderFleetTabs();
   const cf=curFleet();
   const st=$("#flStat");
-  const pw=shipPower(), cp=fleetCap(), over=pw>cp;
+  /* PLAN-fleets follow-up: the strip reads the SELECTED fleet's own power now, not
+     the empire-wide total - fleetCap() applies per fleet, so "112/60" is cf's own
+     onboard+attributed-hangar power against the one cap every fleet gets. */
+  const pw=fleetTotalPower(cf), cp=fleetCap(), over=pw>cp;
   const thinCap=cp>0&&pw<cp*0.7;
   st.innerHTML=fmt(fleetDPS(cf))+" dps · "+fmt(fleetHPMax(cf))+" hull"
     +` <b class="flcap${over?" over":thinCap?" thin":""}">⚡${pw}/${cp}</b>`;
@@ -11182,7 +11237,7 @@ function renderRaids(){
   /* the single most useful thing the page can say to someone losing every fight */
   const wn=$("#flWarn");
   if(wn){
-    const pw=shipPower(), cp=fleetCap(), thin=cp>0&&pw<cp*0.7;
+    const pw=fleetTotalPower(cf), cp=fleetCap(), thin=cp>0&&pw<cp*0.7;
     wn.classList.toggle("on",thin);
     if(thin)wn.innerHTML=`Your fleet is using <b>${pw} of ${cp}</b> command capacity.
       Hostiles are sized against a full one, so raids will go badly until you build more
@@ -11795,7 +11850,16 @@ function adopt(o){
   const homeFl=fleet(1);
   for(const k in S.han){
     const raw=S.han[k];
-    const arr=(Array.isArray(raw)&&raw.length===3) ? raw.map(x=>Math.max(0,Math.floor(x||0))) : [0,0,0];
+    /* PLAN-fleets follow-up: S.han[id] is now {n:[..], from:fleetId}, not a bare
+       array - a save from before the follow-up (still a bare array) becomes
+       from:1 ("old entries default to fleet 1", the plan's own words); `from`
+       naming a fleet that no longer exists (a slot never opened, or - impossible
+       today, but defensive - one somehow removed) also falls back to 1. */
+    const isOld=Array.isArray(raw)&&raw.length===3;
+    const nRaw=isOld ? raw : (raw&&Array.isArray(raw.n)&&raw.n.length===3?raw.n:[0,0,0]);
+    const arr=nRaw.map(x=>Math.max(0,Math.floor(x||0)));
+    const fromRaw=isOld?1:(raw&&raw.from);
+    const from=fleet(Math.floor(fromRaw))?Math.floor(fromRaw):1;
     const ok = SYSMAP[k] && !SYSMAP[k].home && sysHeld(k) && dmodLv(k,"han")>0;
     if(!ok){
       for(let i=0;i<3;i++) if(arr[i]>0) homeFl.sh[i]=(homeFl.sh[i]||0)+arr[i];
@@ -11807,7 +11871,7 @@ function adopt(o){
       const cut=Math.min(arr[i], total-HAN_CAP);
       arr[i]-=cut; homeFl.sh[i]=(homeFl.sh[i]||0)+cut; total-=cut;
     }
-    S.han[k]=arr;
+    S.han[k]={n:arr, from};
   }
   /* patch609 (PLAN-pacing: level moved to unlockLv("p-map")): an old save can carry
      S.msel naming a system that sysInSec() no longer draws a node for below the map
@@ -13277,7 +13341,7 @@ window.__SD={get S(){return S},NEXUS,buyNex,openSite,SITE,siteSlots,
   PWR_SYS,PWR_MAX,ENG_EV,SHD_T,powerTotal,pwrOf,pwrUsed,pwrFree,setPower,addPower,wepOnline,
   fireFx,bPwrBar,bWepBar,armWeapon,armedCount,
   wepDPS,loadoutDPS,
-  RAIDLV,FCAP0,FCAPK,shipPower,fleetCap,capLeft,capMax,shipMax,shipCost,sellShip,get BT(){return BT},nexCost,resourceModal,RESDEF,
+  RAIDLV,FCAP0,FCAPK,shipPower,fleetPower,flQPower,fleetTotalPower,fleetCap,capLeft,capMax,shipMax,shipCost,sellShip,get BT(){return BT},nexCost,resourceModal,RESDEF,
   REFIT,rfl,refitCost,buyRefit,ROLES,RAR,rollCrew,hireCrew,dismissCrew,assignCrew,
   hitEnemy,bUpdate,bDraw,get bScale(){return bScale},
   hireCost,dismissValue,bridgeSlots,crewUnlocked,onBridge,crewMul,svReward,EK,EMIX,comboMul,bTapAt,
@@ -13302,7 +13366,7 @@ window.__SD={get S(){return S},NEXUS,buyNex,openSite,SITE,siteSlots,
   dmodBuild,dmodUpgrade,dmodRearm,dmodSwap,dmodLv,dmodSummary,dmodConsumeMines,
   renderSysDef,renderSysOdds,defCardPct,defBalanceLabel,defClearSel,get defSel(){return defSel},openDefPicker,
   DEF_ICON,DEF_COLOR,DEF_GLYPH,defIconHTML,hasSensorMast,defBestPreview,
-  HAN_CAP,HAN_STR_MULT,hanFleet,hanCount,hanLeft,hanDPS,hanHP,hanTotalPower,hanStrength,
+  HAN_CAP,HAN_STR_MULT,hanFleet,hanFrom,hanCount,hanLeft,hanDPS,hanHP,hanTotalPower,hanPowerFor,hanStrength,
   stationHan,recallHan,recallHanAll,renderSysHan,hanModal,hanModalHTML,
   defStrength,bestHeldDefStrength,bestHeldDefSys,defRate,defAutoFire,
   holdOdds,holdLine,holdResolve,thq,thqAt,thqAtSys,thqDrop,thqTick,thqPrune,thqClock,

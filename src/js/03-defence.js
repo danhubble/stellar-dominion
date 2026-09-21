@@ -53,17 +53,32 @@ const HAN_CAP=8;   /* TUNING-PENDING: ship COUNT per Hangar, any mix of hull cla
    not a power-unit cap (a single Frigate's pw alone would already exceed a power cap
    this size, excluding two of the three hulls outright), and the picker's own
    "pick hull class, +/- counts... capacity used/left" wants one simple number. */
-function hanFleet(id){ const h=S.han&&S.han[id]; return (Array.isArray(h)&&h.length===3)?h:[0,0,0]; }
+/* PLAN-fleets follow-up (shipped with governors): S.han[sysId] carries a `from` -
+   the fleet id its hulls count against for capacity purposes - alongside the counts
+   themselves, now {n:[n0,n1,n2], from:fleetId} rather than a bare array. hanFleet()
+   stays the one true reader of the counts (n) - every existing caller (hanCount,
+   hanDPS, hanHP, render, combat) is unaffected by the shape change underneath it. */
+function hanFleet(id){ const h=S.han&&S.han[id]; const n=h&&h.n; return (Array.isArray(n)&&n.length===3)?n:[0,0,0]; }
+function hanFrom(id){ const h=S.han&&S.han[id]; return (h&&h.from>0)?h.from:1; }
 function hanCount(id){ const h=hanFleet(id); return h[0]+h[1]+h[2]; }
 function hanLeft(id){ return Math.max(0,HAN_CAP-hanCount(id)); }
 function hanDPS(id){ const h=hanFleet(id); let d=0; for(let i=0;i<SHIPS.length;i++)d+=h[i]*SHIPS[i].dps; return d; }
 function hanHP(id){  const h=hanFleet(id); let d=0; for(let i=0;i<SHIPS.length;i++)d+=h[i]*SHIPS[i].hp;  return d; }
 /* every hull stationed ANYWHERE, summed once for shipPower()'s own cap accounting -
-   see the header note above. */
+   see the header note above. Empire-wide, unaffected by per-fleet attribution. */
 function hanTotalPower(){
   let p=0;
-  if(S.han)for(const id in S.han){ const hh=S.han[id]; if(!Array.isArray(hh))continue;
-    for(let i=0;i<SHIPS.length;i++)p+=(hh[i]||0)*SHIPS[i].pw; }
+  if(S.han)for(const id in S.han){ const n=hanFleet(id);
+    for(let i=0;i<SHIPS.length;i++)p+=(n[i]||0)*SHIPS[i].pw; }
+  return p;
+}
+/* PLAN-fleets follow-up: "hangar hulls count against the fleet they were stationed
+   from" - summed across every system whose hangar entry names this fleet as `from`.
+   Old entries (pre-follow-up saves, sanitised in adopt()) default to Fleet 1. */
+function hanPowerFor(fleetId){
+  let p=0;
+  if(S.han)for(const id in S.han){ if(hanFrom(id)!==fleetId)continue;
+    const n=hanFleet(id); for(let i=0;i<SHIPS.length;i++)p+=(n[i]||0)*SHIPS[i].pw; }
   return p;
 }
 /* TUNING-PENDING: garrison-strength coefficient. Blended against PAR, not the
@@ -94,19 +109,29 @@ function stationHan(sysId,hullIdx,n){
   f.sh[hullIdx]-=n;
   const arr=hanFleet(sysId).slice(); arr[hullIdx]=(arr[hullIdx]||0)+n;
   if(!S.han||typeof S.han!=="object")S.han={};
-  S.han[sysId]=arr;
+  /* PLAN-fleets follow-up: the whole entry's `from` is whichever fleet most
+     recently stationed into it - simplest reading of "the fleet they were
+     stationed from" for one hangar shared by one fleet at a time in the normal
+     flow (you can only station from curFleet()). Re-stationing from a DIFFERENT
+     fleet while hulls from an earlier one are still here reattributes the whole
+     entry - an edge case the plan does not spell out further; accepted rather
+     than tracking per-class attribution for one hangar. */
+  S.han[sysId]={n:arr, from:f.id};
   dirty=true; return true;
 }
 /* recalls n hulls of class hullIdx back into the fleet - the first fleet already
    sitting at this system, else the fleet at home, else Fleet 1 (PLAN-fleets run 1
-   decision 6). n omitted (or too large) recalls everything of that class stationed. */
+   decision 6) - NOT necessarily the `from` fleet; capacity accounting simply follows
+   wherever the hulls physically end up, same as it does for a fleet that was never
+   stationed at all. n omitted (or too large) recalls everything of that class
+   stationed. */
 function recallHan(sysId,hullIdx,n){
   const arr=hanFleet(sysId).slice(); const have=arr[hullIdx]||0;
   n = n===undefined ? have : Math.min(Math.max(0,Math.floor(n)), have);
   if(n<=0)return false;
   arr[hullIdx]=have-n;
   if(!S.han||typeof S.han!=="object")S.han={};
-  S.han[sysId]=arr;
+  S.han[sysId]={n:arr, from:hanFrom(sysId)};
   const tgt = fleetAtSys(sysId) || fleets().find(fl=>fl.at==="home") || fleet(1);
   tgt.sh[hullIdx]=(tgt.sh[hullIdx]||0)+n;
   dirty=true; return true;

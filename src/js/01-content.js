@@ -1548,7 +1548,9 @@ function loadoutDPS(foes){ let d=0;
 }
 /* capacity: what the fleet costs you in command, and what you have to spend -
    empire-wide, every fleet plus every garrisoned Hangar summed exactly as the old
-   single S.sh+hangar total was. */
+   single S.sh+hangar total was. Still used empire-wide by cpTotal()/hardpoints() -
+   PLAN-fleets follow-up ("per-fleet cap") only changes capLeft()/capMax()/shipMax(),
+   below. */
 /* run 3: a queued-but-not-yet-delivered hull (S.flQ) still costs command capacity -
    it is a real, paid-for hull, just not aboard a fleet yet. Left out here, buyShip()'s
    own capLeft() check would never see it and capacity could be bypassed entirely by
@@ -1558,6 +1560,22 @@ function loadoutDPS(foes){ let d=0;
 function shipPower(){ let p=0; for(const f of fleets())for(let i=0;i<SHIPS.length;i++)p+=f.sh[i]*SHIPS[i].pw;
   if(Array.isArray(S.flQ))for(let i=0;i<SHIPS.length;i++)p+=(S.flQ[i]||0)*SHIPS[i].pw;
   return p+hanTotalPower() }
+/* PLAN-fleets follow-up ("per-fleet cap", shipped with governors): a fleet's own
+   onboard power only - no hangar, no queue - the building block fleetTotalPower()
+   below adds those back in, attributed to whichever fleet they actually count
+   against. */
+function fleetPower(f){ f=f||curFleet(); let p=0; for(let i=0;i<SHIPS.length;i++)p+=f.sh[i]*SHIPS[i].pw; return p }
+/* S.flQ (decision 6: a purchase with no fleet home queues, landing on Fleet 1 the
+   moment one next reaches home) counts against Fleet 1's own cap the moment it is
+   bought - it is already paid for, just not aboard yet, same reasoning shipPower()'s
+   own comment gives for including it in the empire-wide total. */
+function flQPower(){ let p=0; if(Array.isArray(S.flQ))for(let i=0;i<SHIPS.length;i++)p+=(S.flQ[i]||0)*SHIPS[i].pw; return p }
+/* everything that counts against ONE fleet's own share of fleetCap(): its onboard
+   hulls, whatever Hangar power is attributed to it (hanPowerFor(), 03-defence.js -
+   "hangar hulls count against the fleet they were stationed from"), and the
+   delivery queue if this is Fleet 1. */
+function fleetTotalPower(f){ f=f||curFleet();
+  return fleetPower(f) + hanPowerFor(f.id) + (f.id===1 ? flQPower() : 0) }
 /* how hard a fleet is to hit. Weighted by capacity rather than hull count, so this
    is a real composition choice: light hulls dodge, heavy hulls simply endure. */
 function fleetEvade(f){
@@ -1568,33 +1586,42 @@ function fleetEvade(f){
   /* engines are a live choice on top of what you fly */
   return Math.min(0.75, hull + ENG_EV*pwrOf("eng"));
 }
+/* the cap itself is still one empire-wide number, from level - PLAN-fleets follow-up
+   (owner, 21 Sep) makes it apply PER FLEET now: "each fleet may hold fleetCap()
+   power", not the three of them sharing one pool. */
 function fleetCap(){ return level()<RAIDLV ? 0 : FCAP0+FCAPK*(level()-RAIDLV)+Math.min(CORE_ADD_MAX,6*xlv("core")) }
-function capLeft(){ return fleetCap()-shipPower() }
-/* how many of tier i the remaining capacity allows (may be 0, never negative) */
-function capMax(i){ return Math.max(0,Math.floor(capLeft()/SHIPS[i].pw)) }
+/* f defaults to curFleet() so every existing no-arg call site (raidSubFlags(),
+   the Raids strip, etc) already reads "this fleet's own room" with no call-site
+   change - only buyShip() (below) needs to pass an explicit fleet, since what it
+   is buying into is not always curFleet(). */
+function capLeft(f){ f=f||curFleet(); return fleetCap()-fleetTotalPower(f) }
+/* how many of tier i the remaining capacity on fleet f allows (may be 0, never negative) */
+function capMax(i,f){ return Math.max(0,Math.floor(capLeft(f)/SHIPS[i].pw)) }
 /* priced off the empire-wide owned count of class i (summed across every fleet),
    so the cost curve is unchanged whichever fleet is actually buying. */
 function shipCost(i,k){ const S1=SHIPS[i]; return S1.b*Math.pow(S1.g,shipTotal(i))*(Math.pow(S1.g,k)-1)/(S1.g-1) }
-function shipMax(i){ const S1=SHIPS[i];
+function shipMax(i,f){ const S1=SHIPS[i];
   const inner=1+S.ore*(S1.g-1)/(S1.b*Math.pow(S1.g,shipTotal(i))); if(inner<=1)return 0;
   const byOre=Math.max(0,Math.floor(Math.log(inner)/Math.log(S1.g)));
-  return Math.min(byOre, capMax(i));          /* whichever runs out first */ }
+  return Math.min(byOre, capMax(i,f));          /* whichever runs out first */ }
 /* run 3 (decision 6, PLAN-fleets.md): adds to curFleet() when it is idle and at
    home; else the first idle fleet at home; else queues on S.flQ (counts per class)
    and lands into the first fleet that next reaches home idle - drained by
    tryDrainFleetQueue(), called from fleetTravelTick() on every arrival and once
    from adopt() so a save loaded with a fleet already idle at home clears the
    queue immediately rather than waiting for a fleet to arrive that is already
-   there. Capacity/price are still checked once, up front, against the
-   empire-wide total either way (shipTotal()/shipPower() both already count the
-   queue - see their own comments) - queuing never lets a purchase dodge either
-   check. */
+   there. PLAN-fleets follow-up: capacity is now checked against whichever fleet the
+   purchase actually LANDS on (tgt, or Fleet 1 if it queues - flQPower() counts
+   against Fleet 1, see fleetTotalPower()) rather than an empire-wide total, since
+   the cap itself is per fleet now - price is still off the empire-wide cost curve
+   (shipCost() unchanged). */
 function buyShip(i,k){ if(k<1)return false;
-  if(k*SHIPS[i].pw>capLeft())return false;    /* capacity is checked before price */
-  const c=shipCost(i,k); if(S.ore<c)return false;
   const cf=curFleet();
   const idleHome=fl=>!fl.to&&fl.at==="home";
   const tgt = idleHome(cf) ? cf : fleets().find(idleHome);
+  const capFleet = tgt || fleet(1);
+  if(k*SHIPS[i].pw>capLeft(capFleet))return false;    /* capacity is checked before price */
+  const c=shipCost(i,k); if(S.ore<c)return false;
   S.ore-=c;
   if(tgt){ tgt.sh[i]+=k; }
   else {

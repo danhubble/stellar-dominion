@@ -416,7 +416,16 @@ function adopt(o){
   const homeFl=fleet(1);
   for(const k in S.han){
     const raw=S.han[k];
-    const arr=(Array.isArray(raw)&&raw.length===3) ? raw.map(x=>Math.max(0,Math.floor(x||0))) : [0,0,0];
+    /* PLAN-fleets follow-up: S.han[id] is now {n:[..], from:fleetId}, not a bare
+       array - a save from before the follow-up (still a bare array) becomes
+       from:1 ("old entries default to fleet 1", the plan's own words); `from`
+       naming a fleet that no longer exists (a slot never opened, or - impossible
+       today, but defensive - one somehow removed) also falls back to 1. */
+    const isOld=Array.isArray(raw)&&raw.length===3;
+    const nRaw=isOld ? raw : (raw&&Array.isArray(raw.n)&&raw.n.length===3?raw.n:[0,0,0]);
+    const arr=nRaw.map(x=>Math.max(0,Math.floor(x||0)));
+    const fromRaw=isOld?1:(raw&&raw.from);
+    const from=fleet(Math.floor(fromRaw))?Math.floor(fromRaw):1;
     const ok = SYSMAP[k] && !SYSMAP[k].home && sysHeld(k) && dmodLv(k,"han")>0;
     if(!ok){
       for(let i=0;i<3;i++) if(arr[i]>0) homeFl.sh[i]=(homeFl.sh[i]||0)+arr[i];
@@ -428,7 +437,7 @@ function adopt(o){
       const cut=Math.min(arr[i], total-HAN_CAP);
       arr[i]-=cut; homeFl.sh[i]=(homeFl.sh[i]||0)+cut; total-=cut;
     }
-    S.han[k]=arr;
+    S.han[k]={n:arr, from};
   }
   /* patch609 (PLAN-pacing: level moved to unlockLv("p-map")): an old save can carry
      S.msel naming a system that sysInSec() no longer draws a node for below the map

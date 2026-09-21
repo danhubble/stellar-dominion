@@ -163,9 +163,12 @@ const URL=GAME_URL;
        ghost:[1,1,1]             // unknown system - folded back
      }
    });
-   return { kor:G.S.han.kor, hasDra:'dra' in G.S.han, hasGhost:'ghost' in G.S.han, sh:G.S.fl[0].sh.slice() };
+   return { kor:G.S.han.kor.n, from:G.S.han.kor.from, hasDra:'dra' in G.S.han, hasGhost:'ghost' in G.S.han, sh:G.S.fl[0].sh.slice() };
  });
+ // PLAN-fleets follow-up: S.han[id] is now {n:[...],from:fleetId} - fixture reads
+ // .n for the counts (from:1, the save's own "old entries default to fleet 1").
  ok('adopt() clamps negative/fractional stationed counts', sanitised.kor[0]===3&&sanitised.kor[1]===0&&sanitised.kor[2]===2, sanitised);
+ ok('adopt() defaults a bare-array (pre-follow-up) hangar entry\'s attribution to Fleet 1', sanitised.from===1, sanitised);
  // both the "dra" (no Hangar) and "ghost" (unknown system) entries refund into
  // S.sh in the SAME adopt() call, so check the combined effect rather than
  // attributing sh[0] to only one of them: dra refunds [1,0,0], ghost [1,1,1].
@@ -181,7 +184,7 @@ const URL=GAME_URL;
      def:{ kor:{ s:[ {m:'han',lv:1,armed:true,q:null}, null, null ] } },
      han:{ kor:[20,20,20] }
    });
-   return { kor:G.S.han.kor, total:G.hanCount('kor'), HAN_CAP:G.HAN_CAP, sh:G.S.fl[0].sh.slice() };
+   return { kor:G.S.han.kor.n, total:G.hanCount('kor'), HAN_CAP:G.HAN_CAP, sh:G.S.fl[0].sh.slice() };
  });
  ok('adopt() clamps a save claiming more than HAN_CAP stationed, refunding the surplus to S.sh',
    overCapSave.total===overCapSave.HAN_CAP && (overCapSave.sh[0]+overCapSave.sh[1]+overCapSave.sh[2])===60-overCapSave.HAN_CAP,
