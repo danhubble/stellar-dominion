@@ -21,6 +21,7 @@ out = skel.replace("@@CSS@@\n", cat("styles"), 1).replace("@@JS@@\n", js, 1)
 os.makedirs(os.path.join(ROOT, "dist"), exist_ok=True)
 dst = os.path.join(ROOT, "dist", "stellar-dominion.html")
 open(dst, "w", encoding="utf-8", newline="\n").write(out)
+open(os.path.join(ROOT, "dist", "index.html"), "w", encoding="utf-8", newline="\n").write(out)   # GitHub Pages entry, same bytes
 print(f"built {dst} b{BUILD} {len(out)} bytes")
 if len(sys.argv) > 2 and sys.argv[1] == "--check":
     same = filecmp.cmp(dst, sys.argv[2], shallow=False)

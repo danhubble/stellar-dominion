@@ -41,3 +41,11 @@ Tests take the game from `dist/`, so build before testing. Chromium path default
 
 Habits unchanged: mocks before layout changes, verify at 390x667 AND 390x844, one
 purpose per commit, no dead-code or rename passes mixed into feature commits.
+
+## Hosting (GitHub Pages)
+
+`.github/workflows/pages.yml` deploys `dist/` on every push to `main`. `build.py`
+writes `dist/index.html` (same bytes as `dist/stellar-dominion.html`) so the Pages
+URL opens the game directly; `dist/manifest.json` + `icon-*.png` make it installable
+("Add to Home Screen"). One-time setup on GitHub: repo → Settings → Pages → Source:
+"GitHub Actions". The claude.ai artifact stays as a fallback link.
