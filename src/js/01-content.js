@@ -581,9 +581,15 @@ const RESH=[
  {id:"cold",  n:"Cryo Storage",       max:10, c:18, cg:3.2, col:"#79c6ef", req:{id:"amp",lv:2},
   ic:`<g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M24 5v38M8 14l32 20M40 14L8 34"/><path d="M18 9l6 5 6-5M18 39l6-5 6 5"/></g>`,
   d:lv=>"Offline cap "+(2+lv*2)+"h", t:"Frozen buffers keep production banked while you are away."},
- {id:"auto",  n:"Automation Cores",   max:10, c:25, cg:3.2, col:"#ffd166", req:{id:"drill",lv:4},
+ /* PLAN-governors: renamed in copy only - id stays "auto" so saves and Void
+    Cartography's req:{id:"auto",lv:2} are untouched. max 10->3 (a save with
+    S.rs.auto>3 is clamped in adopt()); cost curve (c/cg) unchanged. The node's old
+    per-tier auto-buy effect was retired in patch403 - see the comment at govTick()'s
+    call site in tick() (06-progress.js) for what actually spends these levels now. */
+ {id:"auto",  n:"Governors",   max:3, c:25, cg:3.2, col:"#ffd166", req:{id:"drill",lv:4},
   ic:`<rect x="14" y="14" width="20" height="20" rx="3" fill="none" stroke="currentColor" stroke-width="3"/><rect x="21" y="21" width="6" height="6" fill="currentColor"/><g stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M19 14V7M29 14V7M19 41v-7M29 41v-7M14 19H7M14 29H7M41 19h-7M41 29h-7"/></g>`,
-  d:lv=>lv?("Auto-buy tiers 1\u2013"+lv):"No auto-buy yet", t:"Each level hands one more structure tier to the machines."},
+  d:lv=>lv?("Appoint up to "+lv+" governor"+(lv>1?"s":"")):"No governors yet",
+  t:"Each level hands one more system's buildings to a governor who buys on their own."}, /* PLACEHOLDER */
  {id:"void",  n:"Void Cartography",   max:8,  c:60, cg:3.6, col:"#ff8fd0", req:{id:"auto",lv:2},
   ic:`<circle cx="24" cy="24" r="17" fill="none" stroke="currentColor" stroke-width="3"/><path d="M31 17l-4 10-10 4 4-10z" fill="currentColor"/><path d="M24 3v5M24 40v5M3 24h5M40 24h5" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>`,
   d:lv=>"+"+(lv*12)+"% Dark Matter from raids", t:"Charted deep-space routes turn up richer prizes."},

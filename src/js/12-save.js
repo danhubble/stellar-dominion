@@ -257,6 +257,13 @@ function adopt(o){
   f.miq=[...new Set(f.miq.map(x=>Math.floor(x)).filter(x=>x>=0&&x<f.mi))].sort((a,b)=>a-b);
   if(!f.nx||typeof f.nx!=="object")f.nx={};
   for(const k in f.nx) if(!NEXUS.some(x=>x.id===k)) delete f.nx[k];
+  /* PLAN-governors: the "auto" research node's max dropped 10->3 in copy (Governors).
+     A save from before that (still legitimately at levels 4-10, bought under the old
+     max) is clamped down - "a save with S.rs.auto>3 is clamped to 3" (owner decision
+     1). Nothing else about S.rs needs sanitising - buyRes() itself already refuses
+     past a node's own max going forward, this only guards an existing save. */
+  if(!f.rs||typeof f.rs!=="object")f.rs={};
+  if((f.rs.auto||0)>3)f.rs.auto=3;
   if(!f.sys||typeof f.sys!=="object")f.sys={};
   for(const k in f.sys){
     if(!SYSMAP[k]){ delete f.sys[k]; continue }
