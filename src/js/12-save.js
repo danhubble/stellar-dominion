@@ -68,6 +68,9 @@ function adopt(o){
     return {id,n,sh,hp,at,to,eta,from,tot};
   });
   if(f.flSel==null || !f.fl.some(fl=>fl.id===f.flSel))f.flSel=f.fl[0].id;
+  /* run 3: the delivery queue (S.flQ, decision 6) - three non-negative counts,
+     same shape as a fleet's own sh. */
+  f.flQ=(Array.isArray(f.flQ)&&f.flQ.length===3) ? f.flQ.map(x=>Math.max(0,Math.floor(x||0))) : [0,0,0];
   if(!Array.isArray(f.tg))f.tg=[];
   /* PLAN-fleets run 2: a target from before t.sys existed becomes "home" - the one
      system every save always has, so ENGAGE never has to invent a location for it. */
@@ -438,6 +441,11 @@ function adopt(o){
      its own comment (01-content.js) for why an old save opening both at once never
      queues either vega:fleet2/3 card. */
   ensureFleets();
+  /* run 3: a fleet can already be idle at home the instant a save with a queued
+     purchase loads (nothing has to "arrive" for that) - drain it now rather than
+     waiting on the next travel tick. Quiet: a load is not the moment to toast a
+     delivery that landed between sessions. */
+  tryDrainFleetQueue(true);
   if(crewUnlocked())S.seen["vega:crew"]=true;
   if(unlockedAt("p-nex"))S.seen["vega:nexus"]=true;
   if(level()>=23)S.seen["vega:ring2"]=true;

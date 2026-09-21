@@ -1356,6 +1356,13 @@ function curFleet(){
 /* run 2: the first idle (not travelling) fleet sitting at sysId - every fleet is
    idle at home in run 1, so this is unused until travel exists. */
 function fleetAtSys(sysId){ return fleets().find(f=>!f.to&&f.at===sysId)||null }
+/* run 3: every OTHER idle fleet sitting at f's own system - what TRANSFER needs to
+   offer (the fleet card, and the Raids pane strip). Empty for a travelling f (there
+   is nowhere for it to transfer right now) or when f is the only one there. */
+function otherIdleFleetsAt(f){
+  if(!f||f.to)return [];
+  return fleets().filter(x=>x.id!==f.id&&!x.to&&x.at===f.at);
+}
 /* a fleet already en route to sysId, if any - so a raid card (or the fleet bar)
    can show "ARRIVING" instead of offering to send a second fleet on top of it. */
 function fleetTravelingTo(sysId){ return fleets().find(f=>f.to===sysId)||null }
@@ -1421,7 +1428,22 @@ function fleetTravelTick(dt, quiet){
       flag("p-map"); dirty=true;
     }
   }
+  tryDrainFleetQueue(quiet);
   return arrived;
+}
+/* run 3 (decision 6): lands a purchase that had to queue (buyShip(), no fleet was
+   idle at home at the time) the moment any fleet next sits idle at home - called
+   after every arrival above (an arriving fleet may itself be the one that just
+   reached home) and once from adopt() (a fleet can already be sitting idle at home
+   when a save with a non-empty queue loads, with nothing due to "arrive"). `quiet`
+   mirrors fleetTravelTick()'s own - no toast during an offline catch-up or a load,
+   same reasoning as a quiet arrival. */
+function tryDrainFleetQueue(quiet){
+  if(!Array.isArray(S.flQ)||!(S.flQ[0]||S.flQ[1]||S.flQ[2]))return false;
+  const f=fleets().find(fl=>!fl.to&&fl.at==="home"); if(!f)return false;
+  for(let i=0;i<3;i++){ if(S.flQ[i]){ f.sh[i]+=S.flQ[i]; S.flQ[i]=0; } }
+  if(!quiet)toast("Delivery arrived — "+f.n,"g");
+  dirty=true; return true;
 }
 function fleetDPS(f){ f=f||curFleet(); let d=0; for(let i=0;i<SHIPS.length;i++)d+=f.sh[i]*SHIPS[i].dps;
   return d*shipCountMul()*fleetMult()*Math.pow(1.25,rfl("gun"))*crewMul("cap") }
@@ -1430,13 +1452,19 @@ function fleetHPMax(f){ f=f||curFleet(); let h=0; for(let i=0;i<SHIPS.length;i++
 function fleetCount(f){ f=f||curFleet(); return f.sh.reduce((a,b)=>a+b,0) }
 /* every hull owned, empire-wide, of class i - buy/sell/max price off this total
    (summed across every fleet, same shape the single S.sh total used to give) so the
-   cost curve is unchanged whichever fleet you are actually buying into. */
-function shipTotal(i){ let n=0; for(const f of fleets())n+=f.sh[i]||0; return n }
-/* every warship any fleet on a given state object owns - missions/achievements take
-   an arbitrary state (s), never necessarily the live S, so this reads s.fl directly
-   rather than going through fleets()/S. */
+   cost curve is unchanged whichever fleet you are actually buying into. Run 3: a
+   hull sitting in the delivery queue (S.flQ - bought while no fleet was home) is
+   already paid for, so it counts here too - the cost curve must not reset the
+   moment a purchase queues instead of landing directly. */
+function shipTotal(i){ let n=0; for(const f of fleets())n+=f.sh[i]||0;
+  if(Array.isArray(S.flQ))n+=S.flQ[i]||0; return n }
+/* every warship any fleet (plus the delivery queue) on a given state object owns -
+   missions/achievements take an arbitrary state (s), never necessarily the live S,
+   so this reads s.fl/s.flQ directly rather than going through fleets()/S. */
 function allFleetShips(s){
-  return ((s&&s.fl)||[]).reduce((a,f)=>a+(f.sh||[]).reduce((x,y)=>x+y,0),0);
+  const fl=((s&&s.fl)||[]).reduce((a,f)=>a+(f.sh||[]).reduce((x,y)=>x+y,0),0);
+  const q=((s&&s.flQ)||[]).reduce((a,x)=>a+(x||0),0);
+  return fl+q;
 }
 /* a full patch-up is about three minutes of production, pro-rata to the damage. Ore is
    the one thing you always have, so this is a soft gate, not a wall. */
@@ -1515,7 +1543,15 @@ function loadoutDPS(foes){ let d=0;
 /* capacity: what the fleet costs you in command, and what you have to spend -
    empire-wide, every fleet plus every garrisoned Hangar summed exactly as the old
    single S.sh+hangar total was. */
-function shipPower(){ let p=0; for(const f of fleets())for(let i=0;i<SHIPS.length;i++)p+=f.sh[i]*SHIPS[i].pw; return p+hanTotalPower() }
+/* run 3: a queued-but-not-yet-delivered hull (S.flQ) still costs command capacity -
+   it is a real, paid-for hull, just not aboard a fleet yet. Left out here, buyShip()'s
+   own capLeft() check would never see it and capacity could be bypassed entirely by
+   queuing purchases while every fleet is away (deviation from BRIEF-fleets-run3.md's
+   literal text, which only calls out shipCost/shipTotal - not covering this leaves a
+   real exploit, see the commit message). */
+function shipPower(){ let p=0; for(const f of fleets())for(let i=0;i<SHIPS.length;i++)p+=f.sh[i]*SHIPS[i].pw;
+  if(Array.isArray(S.flQ))for(let i=0;i<SHIPS.length;i++)p+=(S.flQ[i]||0)*SHIPS[i].pw;
+  return p+hanTotalPower() }
 /* how hard a fleet is to hit. Weighted by capacity rather than hull count, so this
    is a real composition choice: light hulls dodge, heavy hulls simply endure. */
 function fleetEvade(f){
@@ -1537,19 +1573,34 @@ function shipMax(i){ const S1=SHIPS[i];
   const inner=1+S.ore*(S1.g-1)/(S1.b*Math.pow(S1.g,shipTotal(i))); if(inner<=1)return 0;
   const byOre=Math.max(0,Math.floor(Math.log(inner)/Math.log(S1.g)));
   return Math.min(byOre, capMax(i));          /* whichever runs out first */ }
-/* adds to curFleet() when it is at home, else to the first fleet at home; if none is
-   home, the purchase would need to queue (decision 6, PLAN-fleets.md) and land when
-   that fleet next reaches home - not reachable in run 1 (every fleet is at home), so
-   left as this comment rather than real queueing code. TODO(run 2): queue to Fleet 1,
-   "delivers at Sol Reach" placeholder copy on the button. */
+/* run 3 (decision 6, PLAN-fleets.md): adds to curFleet() when it is idle and at
+   home; else the first idle fleet at home; else queues on S.flQ (counts per class)
+   and lands into the first fleet that next reaches home idle - drained by
+   tryDrainFleetQueue(), called from fleetTravelTick() on every arrival and once
+   from adopt() so a save loaded with a fleet already idle at home clears the
+   queue immediately rather than waiting for a fleet to arrive that is already
+   there. Capacity/price are still checked once, up front, against the
+   empire-wide total either way (shipTotal()/shipPower() both already count the
+   queue - see their own comments) - queuing never lets a purchase dodge either
+   check. */
 function buyShip(i,k){ if(k<1)return false;
   if(k*SHIPS[i].pw>capLeft())return false;    /* capacity is checked before price */
   const c=shipCost(i,k); if(S.ore<c)return false;
   const cf=curFleet();
-  const tgt = cf.at==="home" ? cf : fleets().find(fl=>fl.at==="home");
-  if(!tgt)return false;
-  S.ore-=c; tgt.sh[i]+=k; blip(300+i*60,.1,"triangle",.05); dirty=true; return true }
-function sellShip(i,k){ const f=curFleet(); k=Math.min(k,f.sh[i]); if(k<1)return false; const S1=SHIPS[i];
+  const idleHome=fl=>!fl.to&&fl.at==="home";
+  const tgt = idleHome(cf) ? cf : fleets().find(idleHome);
+  S.ore-=c;
+  if(tgt){ tgt.sh[i]+=k; }
+  else {
+    if(!Array.isArray(S.flQ)||S.flQ.length!==3)S.flQ=[0,0,0];
+    S.flQ[i]+=k;
+  }
+  blip(300+i*60,.1,"triangle",.05); dirty=true; return true }
+/* the fleet is away or mid-fight is fine to buy into (it queues), but not to sell
+   from: a hull already travelling can't be un-sold out from under an in-flight
+   fleet, so a travelling curFleet() simply can't sell until it lands. */
+function sellShip(i,k){ const f=curFleet(); if(f.to)return false;
+  k=Math.min(k,f.sh[i]); if(k<1)return false; const S1=SHIPS[i];
   S.ore+=0.5*S1.b*Math.pow(S1.g,shipTotal(i)-k)*(Math.pow(S1.g,k)-1)/(S1.g-1);
   f.sh[i]-=k; blip(150,.09,"square",.04); dirty=true; return true }
 function pick(a){ return a[Math.floor(Math.random()*a.length)] }

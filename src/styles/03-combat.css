@@ -62,11 +62,27 @@
 .fl-hp.crit i{background:linear-gradient(90deg,#ff6b8a,#ff9a6b)}
 .fl-hp span{position:absolute;inset:0;display:grid;place-items:center;
   font:700 9.5px/1 ui-monospace,monospace;letter-spacing:.1em;color:#04050d}
-#flFix{width:100%;margin-top:6px;border:1px solid rgba(92,230,165,.5);
+/* run 3: REPAIR gained a neighbour (TRANSFER), so both now sit in a flex row
+   instead of REPAIR alone taking the full width. */
+.flbtns{display:flex;gap:8px;margin-top:6px}
+#flFix{flex:1;border:1px solid rgba(92,230,165,.5);
   background:rgba(92,230,165,.11);color:var(--gr);border-radius:9px;padding:8px;
   font:700 10.5px/1 system-ui;letter-spacing:.08em;cursor:pointer}
 #flFix:disabled{opacity:.35;cursor:not-allowed}
 #flFix.hide{display:none}
+/* TRANSFER - violet, same family as the fleet card modal's own #fcTransfer below */
+.transfer{flex:1;border:1px solid rgba(168,120,255,.5);
+  background:rgba(168,120,255,.11);color:var(--vi);border-radius:9px;padding:8px;
+  font:700 10.5px/1 system-ui;letter-spacing:.08em;cursor:pointer}
+.transfer:disabled{opacity:.35;cursor:not-allowed}
+/* TRANSFER modal's +/- rows - same shape as hanModal's hanrow/hanstep */
+.trow{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--line);font-size:11px}
+.trow:last-child{border-bottom:none}
+.trlab{flex:1;color:var(--mut);font:700 11px/1.2 system-ui}
+.trval{min-width:56px;text-align:center;font:700 12px/1 ui-monospace,monospace;color:var(--txt)}
+.trbtn{width:28px;height:28px;border-radius:8px;border:1px solid var(--line2);
+  background:rgba(72,226,255,.09);color:var(--txt);font:800 15px/1 system-ui;cursor:pointer}
+.trbtn:disabled{opacity:.35;cursor:not-allowed}
 #flWarn{display:none;margin:10px 0 2px;padding:10px 12px;border-radius:10px;
   border:1px solid rgba(255,180,92,.45);background:rgba(255,180,92,.08);
   font:12px/1.5 system-ui;color:#ffd7a8}

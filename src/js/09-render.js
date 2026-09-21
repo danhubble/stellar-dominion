@@ -472,12 +472,61 @@ function openFleetCard(id){
   const hulls=SHIPS.map((sp,i)=>f.sh[i]?f.sh[i]+" "+sp.n+(f.sh[i]===1?"":"s"):null).filter(Boolean).join(" · ")||"No ships";
   const rc=repairCost(f);
   const canRepair=fleetCount(f)>0 && f.hp<1 && S.ore>=rc;
+  /* run 3: TRANSFER only makes sense with another idle fleet standing right here -
+     otherIdleFleetsAt() is empty while travelling too, so this never shows for a
+     fleet mid-flight. */
+  const mates=otherIdleFleetsAt(f);
+  const canTransfer=mates.length>0;
   showModal(`<h3 style="color:${col}">${f.n}</h3>
     <p class="fcloc">${status}</p>
     <div class="fchulls">${hulls}</div>
     <div class="fcint">Integrity <b>${Math.round(f.hp*100)}%</b></div>
-    <div class="row"><button id="fcRepair" ${canRepair?"":"disabled"}>REPAIR · ${fmt(rc)} ORE</button></div>`,
-    ()=>{ const rb=$("#fcRepair"); if(rb)rb.onclick=()=>{ if(repairFleet(f)){ hideModal(); render(); save(); } }; });
+    <div class="row">
+      <button id="fcRepair" ${canRepair?"":"disabled"}>REPAIR · ${fmt(rc)} ORE</button>
+      <button id="fcTransfer" class="transfer" ${canTransfer?"":"disabled"}>TRANSFER</button>
+    </div>`,
+    ()=>{
+      const rb=$("#fcRepair"); if(rb)rb.onclick=()=>{ if(repairFleet(f)){ hideModal(); render(); save(); } };
+      const tb=$("#fcTransfer");
+      if(tb&&!tb.disabled)tb.onclick=()=>{ hideModal(); transferModal(f, mates[0]); };
+    });
+}
+/* run 3 (decision 6, PLAN-fleets.md): both fleets must already be idle at the same
+   system - checked again here, not just by the callers, since a modal can sit open
+   for a while and either fleet could have been sent off in the meantime (a repaint
+   underneath does not close this modal). Moving one hull per tap, same idiom every
+   other +/- stepper in the game uses (hanModal's hanstep). */
+function transferModal(a,b){
+  const live=()=>!!(a&&b&&!a.to&&!b.to&&a.at===b.at);
+  const rowsHTML=()=>SHIPS.map((sp,i)=>`<div class="trow">
+      <span class="trlab">${sp.n}</span>
+      <button type="button" class="trbtn" data-i="${i}" data-d="-1" ${a.sh[i]>0?"":"disabled"}>−</button>
+      <b class="trval">${a.sh[i]} / ${b.sh[i]}</b>
+      <button type="button" class="trbtn" data-i="${i}" data-d="1" ${b.sh[i]>0?"":"disabled"}>+</button>
+    </div>`).join("");
+  const wire=()=>{
+    $$("#trRows .trbtn").forEach(bt=>{
+      bt.onclick=()=>{
+        const i=+bt.dataset.i, d=+bt.dataset.d;
+        if(d<0){ if(a.sh[i]>0){ a.sh[i]--; b.sh[i]++ } }
+        else { if(b.sh[i]>0){ b.sh[i]--; a.sh[i]++ } }
+        dirty=true;
+        const rows=$("#trRows"); if(rows)rows.innerHTML=rowsHTML();
+        wire();
+      };
+    });
+  };
+  const body = live()
+    ? `<h3>TRANSFER</h3>
+       <p class="fcloc">${a.n} ↔ ${b.n} at ${(SYSMAP[a.at]||{}).n||a.at}</p>
+       <div id="trRows">${rowsHTML()}</div>
+       <div class="row" style="margin-top:10px"><button id="trDone">DONE</button></div>`
+    : `<h3>TRANSFER</h3><p class="fcloc">One of these fleets is no longer here.</p>
+       <div class="row"><button id="trDone">CLOSE</button></div>`;
+  showModal(body, ()=>{
+    if(live())wire();
+    const done=$("#trDone"); if(done)done.onclick=()=>{ hideModal(); dirty=true; render(); save(); };
+  });
 }
 /* run on the SAME 3-slot layout run 3 will fill in - a slot with no real fleet
    object yet (2/3, this run) always renders LOCKED regardless of level; run 3
