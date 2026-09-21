@@ -11838,3 +11838,10 @@ arrival, drains on load, counted by shipTotal() immediately), three stacked
 markers, autoResolveTarget() picking the fleet at the target over the selected
 tab, and the final-battle merge/unmerge with three fleets. tchurn2 clean. Suite
 clean end to end (including tsabotage2 run alone).
+
+## release b642 — PLAN-fleets run 3 (fleets 2 and 3, transfer, purchase routing)
+
+Coordinator verification: an old level-22 one-fleet save gains 2nd and 3rd Fleet at
+Sol Reach on load (one combined toast); bar shows three real buttons; markers stack
+at a shared node; transfer modal; Raids tabs show the selected fleet's location.
+Suite clean, sim identical. Published Version 42. PLAN-fleets complete.

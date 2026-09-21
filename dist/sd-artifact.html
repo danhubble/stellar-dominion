@@ -596,6 +596,9 @@ button.ghost{background:transparent;border-color:var(--line);color:var(--mut)}
 .fl-h{display:flex;align-items:baseline;gap:10px}
 .fl-t{font:700 10px/1 system-ui;letter-spacing:.2em;color:#ff8fd0}
 .fl-st{margin-left:auto;font:600 11px/1 ui-monospace,monospace;color:var(--mut)}
+/* PLAN-fleets run 3: the selected tab's own "AT X"/"-> X . Ns" line - same idiom
+   the fleet bar's .fstat span uses, one size down since this sits under a header. */
+.fl-loc{font:600 10px/1 ui-monospace,monospace;color:var(--mut);margin:3px 0 0}
 .flcap{color:#ffb45c;font-weight:700}
 .flcap.thin{color:#ffb45c}
 .flcap.over{color:var(--rd)}
@@ -606,11 +609,27 @@ button.ghost{background:transparent;border-color:var(--line);color:var(--mut)}
 .fl-hp.crit i{background:linear-gradient(90deg,#ff6b8a,#ff9a6b)}
 .fl-hp span{position:absolute;inset:0;display:grid;place-items:center;
   font:700 9.5px/1 ui-monospace,monospace;letter-spacing:.1em;color:#04050d}
-#flFix{width:100%;margin-top:6px;border:1px solid rgba(92,230,165,.5);
+/* run 3: REPAIR gained a neighbour (TRANSFER), so both now sit in a flex row
+   instead of REPAIR alone taking the full width. */
+.flbtns{display:flex;gap:8px;margin-top:6px}
+#flFix{flex:1;border:1px solid rgba(92,230,165,.5);
   background:rgba(92,230,165,.11);color:var(--gr);border-radius:9px;padding:8px;
   font:700 10.5px/1 system-ui;letter-spacing:.08em;cursor:pointer}
 #flFix:disabled{opacity:.35;cursor:not-allowed}
 #flFix.hide{display:none}
+/* TRANSFER - violet, same family as the fleet card modal's own #fcTransfer below */
+.transfer{flex:1;border:1px solid rgba(168,120,255,.5);
+  background:rgba(168,120,255,.11);color:var(--vi);border-radius:9px;padding:8px;
+  font:700 10.5px/1 system-ui;letter-spacing:.08em;cursor:pointer}
+.transfer:disabled{opacity:.35;cursor:not-allowed}
+/* TRANSFER modal's +/- rows - same shape as hanModal's hanrow/hanstep */
+.trow{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--line);font-size:11px}
+.trow:last-child{border-bottom:none}
+.trlab{flex:1;color:var(--mut);font:700 11px/1.2 system-ui}
+.trval{min-width:56px;text-align:center;font:700 12px/1 ui-monospace,monospace;color:var(--txt)}
+.trbtn{width:28px;height:28px;border-radius:8px;border:1px solid var(--line2);
+  background:rgba(72,226,255,.09);color:var(--txt);font:800 15px/1 system-ui;cursor:pointer}
+.trbtn:disabled{opacity:.35;cursor:not-allowed}
 #flWarn{display:none;margin:10px 0 2px;padding:10px 12px;border-radius:10px;
   border:1px solid rgba(255,180,92,.45);background:rgba(255,180,92,.08);
   font:12px/1.5 system-ui;color:#ffd7a8}
@@ -1662,8 +1681,14 @@ body.syspage #toasts{bottom:calc(var(--sysbarh) + 8px + env(safe-area-inset-bott
             <div class="fl-h"><span class="fl-t">FLEET</span>
               <span class="fl-st" id="flStat"></span>
               <button class="svchip" id="svChip" title="Salvage — tap for detail"></button></div>
+            <!-- PLAN-fleets run 3 (BRIEF commit 2): where the selected tab's own fleet is -->
+            <div class="fl-loc" id="flLoc"></div>
             <div class="fl-hp"><i id="flHp"></i><span id="flHpT"></span></div>
-            <button id="flFix">REPAIR</button>
+            <div class="flbtns">
+              <button id="flFix">REPAIR</button>
+              <!-- PLAN-fleets run 3: same TRANSFER the fleet card modal offers -->
+              <button id="flTransfer" class="transfer">TRANSFER</button>
+            </div>
           </div>
         </div>
         <div id="rpTargets">
@@ -1897,7 +1922,7 @@ body.syspage #toasts{bottom:calc(var(--sysbarh) + 8px + env(safe-area-inset-bott
 "use strict";
 /* bumped by hand, one per patch that ships - shown in the dev panel so the owner
    can tell which build a report/screenshot came from. */
-const BUILD=641;
+const BUILD=642;
 /* ============================ storage (safe) ============================ */
 const Store=(()=>{let mem={},ok=false;
   try{const k="__sd";window.localStorage.setItem(k,"1");window.localStorage.removeItem(k);ok=true}catch(e){ok=false}
@@ -3532,8 +3557,42 @@ const FLEET_NAMES=["1st Fleet","2nd Fleet","3rd Fleet"];
    this with it) - run 2 never actually renders slot 1 locked, since the whole bar
    is hidden below RAIDLV anyway. */
 const FLEET_UNLOCK=[unlockLv("p-raid"),14,20];
+/* single place every fleet display name is read from, so run 3's level-up modal
+   line, the commissioning toast and mkFleet() itself never drift from each other. */
+function ordFleet(id){ return FLEET_NAMES[id-1]||("Fleet "+id) }
 function mkFleet(id){
-  return { id, n:FLEET_NAMES[id-1]||("Fleet "+id), sh:[0,0,0], hp:1, at:"home", to:null, eta:0 };
+  return { id, n:ordFleet(id), sh:[0,0,0], hp:1, at:"home", to:null, eta:0 };
+}
+/* run 3: how many fleet slots the player's level has opened - Fleet 1 always exists
+   (fleets() self-heals to it) regardless of this count; it only gates slots 2/3. */
+function fleetSlots(){ return FLEET_UNLOCK.filter(lv=>level()>=lv).length }
+/* run 3 (PLAN-fleets decision 1): pushes a fresh Fleet 2/3 the moment the player's
+   level opens its slot. Called every tick from checkUnlocks() (same idiom every
+   other level-gated unlock in that function uses) and once from adopt() right after
+   the fleet array is sanitised, so a save loaded straight at a level past 14/20 (an
+   old save from before this run, or one restored from a backup) gets caught up
+   immediately rather than waiting for the next tick.
+   Normal play only ever crosses one threshold per call (checkUnlocks runs ~11x/s,
+   far more often than a level-up), so the single-notice branch is what a live game
+   sees; adopt() catching an old save up past BOTH thresholds in the same call is the
+   one place two slots can open at once - collapsed into one combined toast instead
+   of firing two VEGA cards back to back for something that happened between saves,
+   not during this session (decided per BRIEF-fleets-run3.md commit 1). */
+function ensureFleets(){
+  const added=[];
+  while(fleets().length<fleetSlots()){
+    const id=fleets().length+1;
+    S.fl.push(mkFleet(id));
+    added.push(id);
+  }
+  if(added.length===1){
+    queueNotice("vega:fleet"+added[0]);
+  } else if(added.length>1){
+    if(!S.seen||typeof S.seen!=="object")S.seen={};
+    for(const id of added)S.seen["vega:fleet"+id]=true;
+    toast(added.map(id=>ordFleet(id).split(" ")[0]).join(" and ")+" Fleet commissioned at Sol Reach","g");
+  }
+  return added;
 }
 /* self-healing: a save that somehow lost S.fl (or never had one past adopt()'s own
    sanitiser - defensive only, adopt() should never actually hand this an empty
@@ -3552,6 +3611,13 @@ function curFleet(){
 /* run 2: the first idle (not travelling) fleet sitting at sysId - every fleet is
    idle at home in run 1, so this is unused until travel exists. */
 function fleetAtSys(sysId){ return fleets().find(f=>!f.to&&f.at===sysId)||null }
+/* run 3: every OTHER idle fleet sitting at f's own system - what TRANSFER needs to
+   offer (the fleet card, and the Raids pane strip). Empty for a travelling f (there
+   is nowhere for it to transfer right now) or when f is the only one there. */
+function otherIdleFleetsAt(f){
+  if(!f||f.to)return [];
+  return fleets().filter(x=>x.id!==f.id&&!x.to&&x.at===f.at);
+}
 /* a fleet already en route to sysId, if any - so a raid card (or the fleet bar)
    can show "ARRIVING" instead of offering to send a second fleet on top of it. */
 function fleetTravelingTo(sysId){ return fleets().find(f=>f.to===sysId)||null }
@@ -3617,7 +3683,22 @@ function fleetTravelTick(dt, quiet){
       flag("p-map"); dirty=true;
     }
   }
+  tryDrainFleetQueue(quiet);
   return arrived;
+}
+/* run 3 (decision 6): lands a purchase that had to queue (buyShip(), no fleet was
+   idle at home at the time) the moment any fleet next sits idle at home - called
+   after every arrival above (an arriving fleet may itself be the one that just
+   reached home) and once from adopt() (a fleet can already be sitting idle at home
+   when a save with a non-empty queue loads, with nothing due to "arrive"). `quiet`
+   mirrors fleetTravelTick()'s own - no toast during an offline catch-up or a load,
+   same reasoning as a quiet arrival. */
+function tryDrainFleetQueue(quiet){
+  if(!Array.isArray(S.flQ)||!(S.flQ[0]||S.flQ[1]||S.flQ[2]))return false;
+  const f=fleets().find(fl=>!fl.to&&fl.at==="home"); if(!f)return false;
+  for(let i=0;i<3;i++){ if(S.flQ[i]){ f.sh[i]+=S.flQ[i]; S.flQ[i]=0; } }
+  if(!quiet)toast("Delivery arrived — "+f.n,"g");
+  dirty=true; return true;
 }
 function fleetDPS(f){ f=f||curFleet(); let d=0; for(let i=0;i<SHIPS.length;i++)d+=f.sh[i]*SHIPS[i].dps;
   return d*shipCountMul()*fleetMult()*Math.pow(1.25,rfl("gun"))*crewMul("cap") }
@@ -3626,13 +3707,19 @@ function fleetHPMax(f){ f=f||curFleet(); let h=0; for(let i=0;i<SHIPS.length;i++
 function fleetCount(f){ f=f||curFleet(); return f.sh.reduce((a,b)=>a+b,0) }
 /* every hull owned, empire-wide, of class i - buy/sell/max price off this total
    (summed across every fleet, same shape the single S.sh total used to give) so the
-   cost curve is unchanged whichever fleet you are actually buying into. */
-function shipTotal(i){ let n=0; for(const f of fleets())n+=f.sh[i]||0; return n }
-/* every warship any fleet on a given state object owns - missions/achievements take
-   an arbitrary state (s), never necessarily the live S, so this reads s.fl directly
-   rather than going through fleets()/S. */
+   cost curve is unchanged whichever fleet you are actually buying into. Run 3: a
+   hull sitting in the delivery queue (S.flQ - bought while no fleet was home) is
+   already paid for, so it counts here too - the cost curve must not reset the
+   moment a purchase queues instead of landing directly. */
+function shipTotal(i){ let n=0; for(const f of fleets())n+=f.sh[i]||0;
+  if(Array.isArray(S.flQ))n+=S.flQ[i]||0; return n }
+/* every warship any fleet (plus the delivery queue) on a given state object owns -
+   missions/achievements take an arbitrary state (s), never necessarily the live S,
+   so this reads s.fl/s.flQ directly rather than going through fleets()/S. */
 function allFleetShips(s){
-  return ((s&&s.fl)||[]).reduce((a,f)=>a+(f.sh||[]).reduce((x,y)=>x+y,0),0);
+  const fl=((s&&s.fl)||[]).reduce((a,f)=>a+(f.sh||[]).reduce((x,y)=>x+y,0),0);
+  const q=((s&&s.flQ)||[]).reduce((a,x)=>a+(x||0),0);
+  return fl+q;
 }
 /* a full patch-up is about three minutes of production, pro-rata to the damage. Ore is
    the one thing you always have, so this is a soft gate, not a wall. */
@@ -3711,7 +3798,15 @@ function loadoutDPS(foes){ let d=0;
 /* capacity: what the fleet costs you in command, and what you have to spend -
    empire-wide, every fleet plus every garrisoned Hangar summed exactly as the old
    single S.sh+hangar total was. */
-function shipPower(){ let p=0; for(const f of fleets())for(let i=0;i<SHIPS.length;i++)p+=f.sh[i]*SHIPS[i].pw; return p+hanTotalPower() }
+/* run 3: a queued-but-not-yet-delivered hull (S.flQ) still costs command capacity -
+   it is a real, paid-for hull, just not aboard a fleet yet. Left out here, buyShip()'s
+   own capLeft() check would never see it and capacity could be bypassed entirely by
+   queuing purchases while every fleet is away (deviation from BRIEF-fleets-run3.md's
+   literal text, which only calls out shipCost/shipTotal - not covering this leaves a
+   real exploit, see the commit message). */
+function shipPower(){ let p=0; for(const f of fleets())for(let i=0;i<SHIPS.length;i++)p+=f.sh[i]*SHIPS[i].pw;
+  if(Array.isArray(S.flQ))for(let i=0;i<SHIPS.length;i++)p+=(S.flQ[i]||0)*SHIPS[i].pw;
+  return p+hanTotalPower() }
 /* how hard a fleet is to hit. Weighted by capacity rather than hull count, so this
    is a real composition choice: light hulls dodge, heavy hulls simply endure. */
 function fleetEvade(f){
@@ -3733,19 +3828,34 @@ function shipMax(i){ const S1=SHIPS[i];
   const inner=1+S.ore*(S1.g-1)/(S1.b*Math.pow(S1.g,shipTotal(i))); if(inner<=1)return 0;
   const byOre=Math.max(0,Math.floor(Math.log(inner)/Math.log(S1.g)));
   return Math.min(byOre, capMax(i));          /* whichever runs out first */ }
-/* adds to curFleet() when it is at home, else to the first fleet at home; if none is
-   home, the purchase would need to queue (decision 6, PLAN-fleets.md) and land when
-   that fleet next reaches home - not reachable in run 1 (every fleet is at home), so
-   left as this comment rather than real queueing code. TODO(run 2): queue to Fleet 1,
-   "delivers at Sol Reach" placeholder copy on the button. */
+/* run 3 (decision 6, PLAN-fleets.md): adds to curFleet() when it is idle and at
+   home; else the first idle fleet at home; else queues on S.flQ (counts per class)
+   and lands into the first fleet that next reaches home idle - drained by
+   tryDrainFleetQueue(), called from fleetTravelTick() on every arrival and once
+   from adopt() so a save loaded with a fleet already idle at home clears the
+   queue immediately rather than waiting for a fleet to arrive that is already
+   there. Capacity/price are still checked once, up front, against the
+   empire-wide total either way (shipTotal()/shipPower() both already count the
+   queue - see their own comments) - queuing never lets a purchase dodge either
+   check. */
 function buyShip(i,k){ if(k<1)return false;
   if(k*SHIPS[i].pw>capLeft())return false;    /* capacity is checked before price */
   const c=shipCost(i,k); if(S.ore<c)return false;
   const cf=curFleet();
-  const tgt = cf.at==="home" ? cf : fleets().find(fl=>fl.at==="home");
-  if(!tgt)return false;
-  S.ore-=c; tgt.sh[i]+=k; blip(300+i*60,.1,"triangle",.05); dirty=true; return true }
-function sellShip(i,k){ const f=curFleet(); k=Math.min(k,f.sh[i]); if(k<1)return false; const S1=SHIPS[i];
+  const idleHome=fl=>!fl.to&&fl.at==="home";
+  const tgt = idleHome(cf) ? cf : fleets().find(idleHome);
+  S.ore-=c;
+  if(tgt){ tgt.sh[i]+=k; }
+  else {
+    if(!Array.isArray(S.flQ)||S.flQ.length!==3)S.flQ=[0,0,0];
+    S.flQ[i]+=k;
+  }
+  blip(300+i*60,.1,"triangle",.05); dirty=true; return true }
+/* the fleet is away or mid-fight is fine to buy into (it queues), but not to sell
+   from: a hull already travelling can't be un-sold out from under an in-flight
+   fleet, so a travelling curFleet() simply can't sell until it lands. */
+function sellShip(i,k){ const f=curFleet(); if(f.to)return false;
+  k=Math.min(k,f.sh[i]); if(k<1)return false; const S1=SHIPS[i];
   S.ore+=0.5*S1.b*Math.pow(S1.g,shipTotal(i)-k)*(Math.pow(S1.g,k)-1)/(S1.g-1);
   f.sh[i]-=k; blip(150,.09,"square",.04); dirty=true; return true }
 function pick(a){ return a[Math.floor(Math.random()*a.length)] }
@@ -3805,7 +3915,13 @@ function fresh(){
     /* PLAN-fleets run 1: S.fl replaces the old flat S.sh/S.fhp pair - see mkFleet()/
        fleets()/curFleet() next to fleetDPS() in 01-content.js. S.flSel is the id of
        the fleet the Raids pane is showing (run 3 adds more than one to pick from). */
-    fl:[mkFleet(1)], flSel:1, tg:[], tgT:0, wins:0, losses:0, plunder:0, flawless:0,
+    /* run 3: the delivery queue (S.flQ) must be seeded here too, not just sanitised
+       in adopt() - adopt()'s copy loop is `for(const k in f) if(k in o) f[k]=o[k]`,
+       keyed on fresh()'s OWN keys, so a key fresh() never mentions is silently
+       dropped from every incoming save even when the save carries it (found while
+       testing the queue surviving a reload - a real save-loss bug, not just a
+       fixture gap). */
+    fl:[mkFleet(1)], flSel:1, flQ:[0,0,0], tg:[], tgT:0, wins:0, losses:0, plunder:0, flawless:0,
     sv:0, svAll:0, rf:{}, crew:makeDeckhands(), bridge:makeDeckhands().map(c=>c.id), crewPool:[],
     cseed:1, bestCmb:0, flags:0, end:0,
     rs:{}, nx:{}, ac:{}, mi:0, miq:[], lvSeen:1, lvl:1, pk:{}, pkLog:[], lvOffer:null,
@@ -5322,8 +5438,13 @@ function lvModal(){
   /* PLAN-pacing: Research and Map now tie at lv 5 - UNLOCK can carry more than one
      entry for the same lv, so this must list all of them, not just the first find(). */
   const opens=UNLOCK.filter(u=>u.lv===nextL);
+  /* PLAN-fleets run 3: FLEET_UNLOCK index 0 (Fleet 1) is the same level as the
+     p-raid UNLOCK row above and already gets its own line there - only index >=1
+     (Fleet 2/3, levels 14/20) needs a line here, same styling as an UNLOCK row. */
+  const fleetIdx=FLEET_UNLOCK.findIndex((lv,i)=>i>=1&&lv===nextL);
   showModal(`<h3 class="lvup">Level ${nextL}</h3>
     ${opens.map(un=>`<p class="lvun">This one also opens <b class="lvup">${un.n}</b> \u2014 ${un.d}</p>`).join("")}
+    ${fleetIdx>=0?`<p class="lvun">This one also opens <b class="lvup">${ordFleet(fleetIdx+1)}</b></p>`:""}
     <p>Choose one. It is permanent.</p>
     <div id="lvPicks">${offer.map(id=>{
       const p=PERKS.find(x=>x.id===id), have=pkl(id);
@@ -5591,7 +5712,13 @@ const VEGA={
  drift55:   {t:"Every system out there pulls at the same thread. I do not think that is a coincidence.", go:null}, /* PLACEHOLDER */
  drift65:   {t:"I need you to hold Nyx. I cannot explain why yet. I will.", go:"p-map"},                          /* PLACEHOLDER */
  /* fires the first time Exotic Nodes are banked - inert until Batch B adds S.en */
- project:   {t:"Exotic Nodes. I do not have a better name for them yet. Bank everything you find.", go:"p-nex"}   /* PLACEHOLDER */
+ project:   {t:"Exotic Nodes. I do not have a better name for them yet. Bank everything you find.", go:"p-nex"},  /* PLACEHOLDER */
+ /* PLAN-fleets run 3: fired by ensureFleets() (01-content.js) the moment level 14/20
+    opens the slot - PLACEHOLDER TEXT. Only reached when exactly one fleet is added
+    in a single call; an old save that opens both at once gets a combined toast
+    instead and never queues either card (see ensureFleets()'s own comment). */
+ fleet2:    {t:"Second hull group is fitted out. Command splits, coverage doesn't.", go:"p-map"},   /* PLACEHOLDER */
+ fleet3:    {t:"Third fleet is yours. Three fronts, if you can hold them.", go:"p-map"}             /* PLACEHOLDER */
 };
 /* ---------------- RIVAL_MSG · intercepted transmissions ----------------
    Same rule as VEGA: PLACEHOLDER TEXT, the owner edits it here and nowhere else.
@@ -5744,6 +5871,7 @@ function checkUnlocks(){
   if(SYS.some(s=>!s.home&&sysOpen(s)))queueNotice("vega:claimable");
   if(EXO.some(e=>exoEverBanked(e.id)))queueNotice("vega:exoBanked");
   if(unlockedAt("p-raid"))queueNotice("vega:raids");
+  ensureFleets();   /* PLAN-fleets run 3: pushes Fleet 2/3 the moment level 14/20 opens */
   if(crewUnlocked())queueNotice("vega:crew");
   if(unlockedAt("p-nex"))queueNotice("vega:nexus");
   if(level()>=23)queueNotice("vega:ring2");
@@ -6209,12 +6337,61 @@ function openFleetCard(id){
   const hulls=SHIPS.map((sp,i)=>f.sh[i]?f.sh[i]+" "+sp.n+(f.sh[i]===1?"":"s"):null).filter(Boolean).join(" · ")||"No ships";
   const rc=repairCost(f);
   const canRepair=fleetCount(f)>0 && f.hp<1 && S.ore>=rc;
+  /* run 3: TRANSFER only makes sense with another idle fleet standing right here -
+     otherIdleFleetsAt() is empty while travelling too, so this never shows for a
+     fleet mid-flight. */
+  const mates=otherIdleFleetsAt(f);
+  const canTransfer=mates.length>0;
   showModal(`<h3 style="color:${col}">${f.n}</h3>
     <p class="fcloc">${status}</p>
     <div class="fchulls">${hulls}</div>
     <div class="fcint">Integrity <b>${Math.round(f.hp*100)}%</b></div>
-    <div class="row"><button id="fcRepair" ${canRepair?"":"disabled"}>REPAIR · ${fmt(rc)} ORE</button></div>`,
-    ()=>{ const rb=$("#fcRepair"); if(rb)rb.onclick=()=>{ if(repairFleet(f)){ hideModal(); render(); save(); } }; });
+    <div class="row">
+      <button id="fcRepair" ${canRepair?"":"disabled"}>REPAIR · ${fmt(rc)} ORE</button>
+      <button id="fcTransfer" class="transfer" ${canTransfer?"":"disabled"}>TRANSFER</button>
+    </div>`,
+    ()=>{
+      const rb=$("#fcRepair"); if(rb)rb.onclick=()=>{ if(repairFleet(f)){ hideModal(); render(); save(); } };
+      const tb=$("#fcTransfer");
+      if(tb&&!tb.disabled)tb.onclick=()=>{ hideModal(); transferModal(f, mates[0]); };
+    });
+}
+/* run 3 (decision 6, PLAN-fleets.md): both fleets must already be idle at the same
+   system - checked again here, not just by the callers, since a modal can sit open
+   for a while and either fleet could have been sent off in the meantime (a repaint
+   underneath does not close this modal). Moving one hull per tap, same idiom every
+   other +/- stepper in the game uses (hanModal's hanstep). */
+function transferModal(a,b){
+  const live=()=>!!(a&&b&&!a.to&&!b.to&&a.at===b.at);
+  const rowsHTML=()=>SHIPS.map((sp,i)=>`<div class="trow">
+      <span class="trlab">${sp.n}</span>
+      <button type="button" class="trbtn" data-i="${i}" data-d="-1" ${a.sh[i]>0?"":"disabled"}>−</button>
+      <b class="trval">${a.sh[i]} / ${b.sh[i]}</b>
+      <button type="button" class="trbtn" data-i="${i}" data-d="1" ${b.sh[i]>0?"":"disabled"}>+</button>
+    </div>`).join("");
+  const wire=()=>{
+    $$("#trRows .trbtn").forEach(bt=>{
+      bt.onclick=()=>{
+        const i=+bt.dataset.i, d=+bt.dataset.d;
+        if(d<0){ if(a.sh[i]>0){ a.sh[i]--; b.sh[i]++ } }
+        else { if(b.sh[i]>0){ b.sh[i]--; a.sh[i]++ } }
+        dirty=true;
+        const rows=$("#trRows"); if(rows)rows.innerHTML=rowsHTML();
+        wire();
+      };
+    });
+  };
+  const body = live()
+    ? `<h3>TRANSFER</h3>
+       <p class="fcloc">${a.n} ↔ ${b.n} at ${(SYSMAP[a.at]||{}).n||a.at}</p>
+       <div id="trRows">${rowsHTML()}</div>
+       <div class="row" style="margin-top:10px"><button id="trDone">DONE</button></div>`
+    : `<h3>TRANSFER</h3><p class="fcloc">One of these fleets is no longer here.</p>
+       <div class="row"><button id="trDone">CLOSE</button></div>`;
+  showModal(body, ()=>{
+    if(live())wire();
+    const done=$("#trDone"); if(done)done.onclick=()=>{ hideModal(); dirty=true; render(); save(); };
+  });
 }
 /* run on the SAME 3-slot layout run 3 will fill in - a slot with no real fleet
    object yet (2/3, this run) always renders LOCKED regardless of level; run 3
@@ -6280,6 +6457,12 @@ function renderFleetMarkers(){
   if(host.dataset.h!==key){
     host.dataset.h=key;
     svg.innerHTML=""; host.innerHTML="";
+    /* run 3: with three fleets, two can idle at the same node at once (most often
+       home) - stacked exactly on top of each other they'd read as one marker. Each
+       additional one at a node already claimed steps 14px further right, added on
+       top of the badge offset below via calc() (a plain % offset can't express a
+       fixed pixel step independent of the map's own on-screen size). */
+    const stackAt={};
     fls.forEach(f=>{
       const col=FLEET_COL[f.id-1]||FLEET_COL[0];
       if(f.to){
@@ -6303,10 +6486,13 @@ function renderFleetMarkers(){
       } else {
         const s=byId[f.at];
         if(s){
+          const stack=stackAt[f.at]=(stackAt[f.at]||0)+1;
           const m=document.createElement("div");
           m.className="flmark"+(flSel===f.id?" sel":""); m.dataset.fl=f.id;
           m.style.background=col; m.textContent=f.id;
-          m.style.left=(s.sx+6)+"%"; m.style.top=(s.sy-6)+"%";  /* badge offset - see mkfleetmock.py's own note */
+          /* badge offset - see mkfleetmock.py's own note - plus a 14px step right
+             for every marker already stacked at this node. */
+          m.style.left="calc("+(s.sx+6)+"% + "+((stack-1)*14)+"px)"; m.style.top=(s.sy-6)+"%";
           host.appendChild(m);
         }
       }
@@ -10740,6 +10926,13 @@ $("#abFocus").onclick=()=>{ if(BT&&!BT.done&&BT.cd.f<=0){BT.buf.f=5;BT.cd.f=16;b
 $("#abFlak").onclick=()=>{ if(BT&&!BT.done&&BT.cd.k<=0){BT.buf.k=5;BT.cd.k=22;blip(420,.15,"sine",.05)} };
 $("#bRetreat").onclick=()=>{ if(BT&&!BT.done)endBattle("timeout") };
 $("#flFix").onclick=()=>{ if(repairFleet()){ renderAll(); save() } };
+/* run 3: same TRANSFER the fleet card modal offers, reachable from the Raids pane's
+   own fleet strip too - always against curFleet() (the tab currently selected) and
+   the nearest idle fleet sitting at its own system. */
+$("#flTransfer").onclick=()=>{
+  const cf=curFleet(), mates=otherIdleFleetsAt(cf);
+  if(mates.length)transferModal(cf, mates[0]);
+};
 $("#bPause").onclick=()=>{ if(BT&&!BT.done){ BT.paused=!BT.paused; dirty=true } };
 $("#trScr").onclick=()=>{ if(addOrder("scr"))dirty=true };
 $("#trRep").onclick=()=>{ if(addOrder("rep"))dirty=true };
@@ -10771,6 +10964,14 @@ function renderRaids(){
   const thinCap=cp>0&&pw<cp*0.7;
   st.innerHTML=fmt(fleetDPS(cf))+" dps · "+fmt(fleetHPMax(cf))+" hull"
     +` <b class="flcap${over?" over":thinCap?" thin":""}">⚡${pw}/${cp}</b>`;
+  /* PLAN-fleets run 3 (BRIEF commit 2): where the selected tab's own fleet actually
+     is - independent of the ENGAGE/AUTO fleet a target card uses (that is always
+     fleetAtSys(t.sys), never this tab). Plain textContent, same idiom the fleet
+     bar's .fstat span uses - no churn key needed, it is not a DOM rebuild. */
+  const loc=$("#flLoc");
+  if(loc)loc.textContent = cf.to
+    ? "→ "+((SYSMAP[cf.to]||{}).n||cf.to).toUpperCase()+" · "+Math.max(0,Math.ceil(cf.eta))+"s"
+    : "AT "+((SYSMAP[cf.at]||{}).n||cf.at).toUpperCase();
   const hp=cf.hp, bar=$(".fl-hp");
   bar.classList.toggle("hurt",hp<=.6&&hp>.3); bar.classList.toggle("crit",hp<=.3);
   $("#flHp").style.width=(hp*100)+"%";
@@ -10788,20 +10989,29 @@ function renderRaids(){
   fx.classList.toggle("hide", !fleetCount(cf) || hp>=1);
   fx.disabled = S.ore<rc || hp>=1;
   fx.textContent = "REPAIR \u00b7 "+fmt(rc)+" ORE";
+  /* run 3: TRANSFER next to REPAIR - only meaningful with another idle fleet at
+     curFleet()'s own system, same rule the fleet card modal's button uses. */
+  const ftBtn=$("#flTransfer");
+  if(ftBtn)ftBtn.disabled = otherIdleFleetsAt(cf).length===0;
   const host=$("#flShips"); host.innerHTML="";
+  /* run 3 (decision 6): no idle fleet at home right now - a BUY still queues (see
+     buyShip()'s own comment), it just doesn't land in curFleet() immediately. Said
+     plainly on the button rather than silently landing somewhere the player can't
+     see yet. */
+  const noHomeIdle=!fleets().some(fl=>!fl.to&&fl.at==="home");
   SHIPS.forEach((sp,i)=>{
     const d=document.createElement("div"); d.className="shp"; d.style.setProperty("--a",sp.col);
     const k=S.sell?Math.min(S.buy==="max"?cf.sh[i]:S.buy,cf.sh[i]):(S.buy==="max"?Math.max(1,shipMax(i)):S.buy);
     const c=S.sell?(k>0?0.5*sp.b*Math.pow(sp.g,shipTotal(i)-k)*(Math.pow(sp.g,k)-1)/(sp.g-1):0):shipCost(i,k);
     const fits=k*sp.pw<=capLeft();
-    const can=S.sell?k>0:(S.ore>=c&&fits);
+    const can=S.sell?(k>0&&!cf.to):(S.ore>=c&&fits);
     d.innerHTML=`<div class="si"><svg viewBox="0 0 48 48">${sp.ic}</svg></div>
       <div><div class="sn">${sp.n}</div>
         <div class="sd">${fmt(sp.dps*fleetMult())} dps · ${fmt(sp.hp*fleetMult())} hull · ⚡${sp.pw}</div></div>
       <div style="display:flex;align-items:center;gap:10px">
         <div class="sc">${cf.sh[i]}</div>
         <button class="gb"><b>${S.sell||fits?fmt(c)+" ore":"NO CAPACITY"}</b><i>${
-          S.sell?"SCRAP ×"+k:"BUY ×"+k}</i></button>
+          S.sell?"SCRAP ×"+k:(noHomeIdle?"DELIVERS AT SOL REACH":"BUY ×"+k)}</i></button>
       </div>`;
     const bt=d.querySelector("button"); bt.disabled=!can;
     bt.onclick=()=>{ if(S.sell)sellShip(i,k); else buyShip(i,k); render(); };
@@ -11034,6 +11244,9 @@ function adopt(o){
     return {id,n,sh,hp,at,to,eta,from,tot};
   });
   if(f.flSel==null || !f.fl.some(fl=>fl.id===f.flSel))f.flSel=f.fl[0].id;
+  /* run 3: the delivery queue (S.flQ, decision 6) - three non-negative counts,
+     same shape as a fleet's own sh. */
+  f.flQ=(Array.isArray(f.flQ)&&f.flQ.length===3) ? f.flQ.map(x=>Math.max(0,Math.floor(x||0))) : [0,0,0];
   if(!Array.isArray(f.tg))f.tg=[];
   /* PLAN-fleets run 2: a target from before t.sys existed becomes "home" - the one
      system every save always has, so ENGAGE never has to invent a location for it. */
@@ -11397,6 +11610,18 @@ function adopt(o){
   if(SYS.some(s=>!s.home&&sysOpen(s)))S.seen["vega:claimable"]=true;
   if(EXO.some(e=>exoEverBanked(e.id)))S.seen["vega:exoBanked"]=true;
   if(unlockedAt("p-raid"))S.seen["vega:raids"]=true;
+  /* PLAN-fleets run 3: catches an old save up on Fleet 2/3 the instant it loads,
+     same reasoning as every backfill around it - a level-22 save from before this
+     run existed should not wait for the next tick to gain fleets it has clearly
+     earned. ensureFleets() itself decides one notice vs. one combined toast; see
+     its own comment (01-content.js) for why an old save opening both at once never
+     queues either vega:fleet2/3 card. */
+  ensureFleets();
+  /* run 3: a fleet can already be idle at home the instant a save with a queued
+     purchase loads (nothing has to "arrive" for that) - drain it now rather than
+     waiting on the next travel tick. Quiet: a load is not the moment to toast a
+     delivery that landed between sessions. */
+  tryDrainFleetQueue(true);
   if(crewUnlocked())S.seen["vega:crew"]=true;
   if(unlockedAt("p-nex"))S.seen["vega:nexus"]=true;
   if(level()>=23)S.seen["vega:ring2"]=true;
@@ -12811,6 +13036,7 @@ window.__SD={get S(){return S},NEXUS,buyNex,openSite,SITE,siteSlots,
   MISFX,misClaimFx,get misFxUntil(){return misFxUntil},
   SHIPS,RAIDS,newTarget,fleetDPS,fleetHPMax,fleetCount,buyShip,raidReward,engage,
   FLEET_COL,mkFleet,fleets,fleet,curFleet,fleetAtSys,shipTotal,allFleetShips,
+  ordFleet,fleetSlots,ensureFleets,otherIdleFleetsAt,transferModal,tryDrainFleetQueue,
   mergeFleetsForFinal,unmergeAfterFinal,
   TRAVEL_BASE,TRAVEL_PER_UNIT,TRAVEL_PER_RING,travelSecs,fleetSend,fleetTravelTick,
   FLEET_UNLOCK,fleetTravelingTo,nearestIdleFleetTo,
