@@ -119,4 +119,5 @@ window.__SD={get S(){return S},NEXUS,buyNex,openSite,SITE,siteSlots,
   mktSvKinds,exoModal,exoEverBanked,exoEverBankedAny,
   renderSysBuild,
   /* PLAN-governors */
-  GOV_EVERY,GOV_SHARE,govSystems,govCount,govPickTier,govBuyStep,govTick,offlineGovCatchup};
+  GOV_EVERY,GOV_SHARE,govSystems,govCount,govPickTier,govBuyStep,govTick,offlineGovCatchup,
+  govSetAppointed,renderSysGov};

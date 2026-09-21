@@ -263,6 +263,16 @@ body.syspage #sysSheet{display:block}
 #sysBuild[hidden]{display:none}
 #sysBuildHead{font:600 9.5px/1 system-ui;letter-spacing:.18em;color:var(--dim);text-transform:uppercase;
   margin:2px 0 7px;display:flex;justify-content:space-between;gap:8px}
+/* PLAN-governors: the GOVERNOR chip, own row under BUILDINGS' header, same .chip
+   base every buy-amount button already uses (01-empire.css) - .gov just gives it
+   its own accent so it doesn't read as one of the x1/x10/MAX/scrap group. */
+#sysGov[hidden]{display:none}
+#sysGov{margin:0 0 9px}
+#sysGov .chip.gov{width:100%;border-color:var(--line2);color:var(--dim)}
+#sysGov .chip.gov.on{border-color:#ffd166;color:#ffd166;background:rgba(255,209,102,.10)}
+.sysGovLast{margin-top:5px;font:600 10px/1.3 system-ui;color:var(--dim2)}
+.sysGovLast[hidden]{display:none}
+.govmark{color:#ffd166;font-size:.85em}
 #sysDefRow{display:flex;gap:7px}
 #sysDefRow .sc{flex:1 1 0;min-width:0;border:1px solid var(--line);border-radius:11px;
   background:rgba(255,255,255,.02);padding:9px 6px 8px;display:flex;flex-direction:column;

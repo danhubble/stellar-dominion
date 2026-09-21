@@ -1110,6 +1110,53 @@ function renderSysBuild(s,held){
     if(viewEl)viewEl.scrollTop=prevTop;
   }
 }
+/* PLAN-governors owner decision 3: the GOVERNOR toggle chip, under the BUILDINGS
+   header. The button itself is churn-guarded the same way every other rebuilt row in
+   this file is (dataset.h); the last-buy line under it is plain textContent, updated
+   every render() pass with no rebuild - same idiom #flLoc (09-render.js) already
+   uses for a coarse, always-live clock, never itself a churn risk since tchurn2 only
+   fingerprints <button> elements. */
+function renderSysGov(s,held){
+  const wrap=$("#sysGov"); if(!wrap)return;
+  if(!held){
+    if(!wrap.hidden){ wrap.hidden=true; wrap.dataset.h=""; wrap.innerHTML=""; }
+    return;
+  }
+  const st=sysState(s.id);
+  if(!st){
+    if(!wrap.hidden){ wrap.hidden=true; wrap.dataset.h=""; wrap.innerHTML=""; }
+    return;
+  }
+  const cap=lv(S.rs,"auto"), cnt=govCount(), on=!!st.gov;
+  /* hidden until at least one Governors level is researched - same "nothing to show
+     yet" gate exoEverBankedAny()/the PROGRAMMES tab use, and what keeps a brand-new
+     save's first BUY row exactly where it was before this feature existed
+     (topen2.js's own pinned-scan-bar layout assertion). */
+  if(cap<=0 && !on){
+    if(!wrap.hidden){ wrap.hidden=true; wrap.dataset.h=""; wrap.innerHTML=""; }
+    return;
+  }
+  wrap.hidden=false;
+  const key=s.id+"|"+on+"|"+cap+"|"+cnt;
+  if(wrap.dataset.h!==key){
+    wrap.dataset.h=key;
+    const label = on ? "GOVERNOR · ON" : (cnt>=cap ? "GOVERNOR · "+cnt+"/"+cap : "GOVERNOR · OFF");
+    wrap.innerHTML=`<button type="button" class="chip gov${on?" on":""}" id="sysGovBtn">${label}</button>
+      <div id="sysGovLast" class="sysGovLast" hidden></div>`;
+    $("#sysGovBtn").onclick=()=>{
+      if(govSetAppointed(s.id,!on)){ save(); render(); }
+      else { blip(140,.08,"sine",.03); render(); }
+    };
+  }
+  const lastEl=$("#sysGovLast");
+  if(lastEl){
+    if(st.gl && GENS[st.gl.gi]){
+      const agoS=Math.max(0,(Date.now()-st.gl.t)/1000);
+      lastEl.hidden=false;
+      lastEl.textContent="Governor bought "+GENS[st.gl.gi].n+" · "+fmtT2(agoS)+" ago";
+    } else if(!lastEl.hidden){ lastEl.hidden=true; lastEl.textContent=""; }
+  }
+}
 function renderSysDef(s){
   const wrap=$("#sysDefWrap"), head=$("#sysDefHead"), row=$("#sysDefRow");
   if(!wrap)return;
@@ -1328,8 +1375,9 @@ function listHeldRow(s){
   el.style.setProperty("--a-wash-body","rgba("+kind.rgb+",.06)");
   el.style.setProperty("--a-border","rgba("+kind.rgb+",.55)");
   el.style.setProperty("--a-text",kind.txt);
+  const gov=sysState(id)&&sysState(id).gov;
   el.innerHTML=`<div class="sysrow2-main">
-      <span class="sysname">${s.n}</span>
+      <span class="sysname">${s.n}${gov?' <span class="govmark" title="Governed">\u25c6</span>':''}</span>
       <span class="kindbadge" style="--a:${kind.col}">${kind.n}</span>
       <span class="kindbadge ready" style="--a:var(--gr)" hidden>\u25cf NEXT TIER READY</span></div>
     <div class="sysrow2-stats">
@@ -1356,7 +1404,8 @@ function renderMapList(){
   const key=mapSec+"|"+list.map(s=>{
     if(s.home||sysHeld(s.id)){
       const ladder=sysLadder(s.id);
-      return s.id+"h"+ladder.map(gi=>sysTierCount(s.id,gi)>0?1:0).join("");
+      const gov=sysState(s.id)&&sysState(s.id).gov?1:0;
+      return s.id+"h"+ladder.map(gi=>sysTierCount(s.id,gi)>0?1:0).join("")+"g"+gov;
     }
     const claimable=sysOpen(s), contested=sysContested(s)&&level()>=s.lvl;
     return s.id+(claimable?"c":contested?"w"+(sysOccupied(s.id)?1:0):"l");
@@ -1434,6 +1483,8 @@ function renderMap(){
       buildWrap.hidden=true;
       const rowsHost=$("#sysBuildRows"); if(rowsHost){ rowsHost.dataset.h=""; rowsHost.innerHTML=""; }
     }
+    const govWrap=$("#sysGov");
+    if(govWrap&&!govWrap.hidden){ govWrap.hidden=true; govWrap.dataset.h=""; govWrap.innerHTML=""; }
     if(thrBox&&thrBox.dataset.h!==""){ thrBox.dataset.h=""; thrBox.innerHTML=""; thrBox.hidden=true }
     defClearSel();
     const oddsBox=$("#sysOdds"); if(oddsBox&&oddsBox.dataset.h!==""){ oddsBox.dataset.h=""; oddsBox.innerHTML=""; oddsBox.hidden=true }
@@ -1452,6 +1503,7 @@ function renderMap(){
   }
   const held=s.home||sysHeld(s.id), e=s.res?exoDef(s.res):null;
   renderSysBuild(s,held);
+  renderSysGov(s,held);
   let rows="";
   if(s.home){
     rows=`<div class="sysrow"><span>Structures</span><b>${fmt(tot())}</b></div>
@@ -1645,7 +1697,8 @@ const RESDEF={
              ...PERKS.filter(p=>pkl(p.id)>0).map(p=>[p.n+" \u00d7"+pkl(p.id), p.d(pkl(p.id))]),
              ["Structures",fmt(tot())],
              ["Systems held",String(heldSystems().length)+" / "+String(SYS.length-1)],
-             ["Manual scan","+"+fmt(clickPow())]],
+             ["Manual scan","+"+fmt(clickPow())],
+             ["Bought by governors",String(S.govBuys||0)]],
    f:"Ore is never reset. Prices are fixed — what a structure costs today is what it costs forever."},
  cry:{n:"Crystal", cur:"var(--vi)", ic:"cry",
    d:"Shed as slag by your smelters. Crystal buys Research \u2014 and nothing else.",

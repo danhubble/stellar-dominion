@@ -38,6 +38,29 @@ function ladderBuy(id,gi,kOverride){
   blip(240+gi*38,.09,"triangle",.05);
   dirty=true; return true;
 }
+/* PLAN-governors owner decision 3 (Appointing): the GOVERNOR chip's own click handler.
+   Turning ON is refused past govCount()<lv(S.rs,"auto") - toast names the reason, same
+   shape every other refused action in this game explains itself. Turning OFF is always
+   allowed (a save that is over-appointed because research levels can never actually
+   drop is not a real case, but nothing here depends on that not changing later). Free
+   either way - "the research is the cost" (owner decision 4), so this never touches
+   ore/crystal. queueNotice("vega:governor") fires once, on the FIRST appointment ever
+   made (S.seen itself is the idempotency guard queueNotice() already has), not on
+   every buy - see govBuyStep() (06-progress.js), which used to fire it per-purchase
+   before this function existed to fire it at the actual moment of appointing. */
+function govSetAppointed(id,on){
+  const st=sysState(id); if(!st)return false;
+  if(on){
+    if(st.gov)return false;
+    if(govCount()>=lv(S.rs,"auto")){ toast("Research Governors for another","y"); return false; }
+    st.gov=1;
+    queueNotice("vega:governor");
+  } else {
+    if(!st.gov)return false;
+    delete st.gov;
+  }
+  dirty=true; return true;
+}
 /* Returns whether anything was actually bought. Every other purchase in the game does
    (buyGen, buyNex, buyRefit, buySysDef, claimSystem); this one silently returned undefined
    either way, which is how a caller could ask for the same refused node twenty times a

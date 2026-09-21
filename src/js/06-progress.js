@@ -249,7 +249,6 @@ function govBuyStep(id, st){
   st.gb-=cost;
   st.gl={gi,t:Date.now()};
   S.govBuys=(S.govBuys||0)+1;
-  if(!S.seen||!S.seen["vega:governor"])queueNotice("vega:governor");
   dirty=true;
   return true;
 }

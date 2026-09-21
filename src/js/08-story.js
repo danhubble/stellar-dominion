@@ -41,7 +41,10 @@ const VEGA={
     in a single call; an old save that opens both at once gets a combined toast
     instead and never queues either card (see ensureFleets()'s own comment). */
  fleet2:    {t:"Second hull group is fitted out. Command splits, coverage doesn't.", go:"p-map"},   /* PLACEHOLDER */
- fleet3:    {t:"Third fleet is yours. Three fronts, if you can hold them.", go:"p-map"}             /* PLACEHOLDER */
+ fleet3:    {t:"Third fleet is yours. Three fronts, if you can hold them.", go:"p-map"},            /* PLACEHOLDER */
+ /* PLAN-governors: fired by govSetAppointed() (04-actions.js) the moment a system's
+    GOVERNOR chip is first switched ON - PLACEHOLDER TEXT. */
+ governor:  {t:"A governor is running that system now. It will spend what it earns and nothing more.", go:"p-map"} /* PLACEHOLDER */
 };
 /* ---------------- RIVAL_MSG · intercepted transmissions ----------------
    Same rule as VEGA: PLACEHOLDER TEXT, the owner edits it here and nowhere else.
