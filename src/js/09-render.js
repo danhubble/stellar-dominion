@@ -592,6 +592,12 @@ function renderFleetMarkers(){
   if(host.dataset.h!==key){
     host.dataset.h=key;
     svg.innerHTML=""; host.innerHTML="";
+    /* run 3: with three fleets, two can idle at the same node at once (most often
+       home) - stacked exactly on top of each other they'd read as one marker. Each
+       additional one at a node already claimed steps 14px further right, added on
+       top of the badge offset below via calc() (a plain % offset can't express a
+       fixed pixel step independent of the map's own on-screen size). */
+    const stackAt={};
     fls.forEach(f=>{
       const col=FLEET_COL[f.id-1]||FLEET_COL[0];
       if(f.to){
@@ -615,10 +621,13 @@ function renderFleetMarkers(){
       } else {
         const s=byId[f.at];
         if(s){
+          const stack=stackAt[f.at]=(stackAt[f.at]||0)+1;
           const m=document.createElement("div");
           m.className="flmark"+(flSel===f.id?" sel":""); m.dataset.fl=f.id;
           m.style.background=col; m.textContent=f.id;
-          m.style.left=(s.sx+6)+"%"; m.style.top=(s.sy-6)+"%";  /* badge offset - see mkfleetmock.py's own note */
+          /* badge offset - see mkfleetmock.py's own note - plus a 14px step right
+             for every marker already stacked at this node. */
+          m.style.left="calc("+(s.sx+6)+"% + "+((stack-1)*14)+"px)"; m.style.top=(s.sy-6)+"%";
           host.appendChild(m);
         }
       }
