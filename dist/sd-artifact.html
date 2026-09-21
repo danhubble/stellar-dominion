@@ -1319,6 +1319,16 @@ body.syspage #sysSheet{display:block}
 #sysBuild[hidden]{display:none}
 #sysBuildHead{font:600 9.5px/1 system-ui;letter-spacing:.18em;color:var(--dim);text-transform:uppercase;
   margin:2px 0 7px;display:flex;justify-content:space-between;gap:8px}
+/* PLAN-governors: the GOVERNOR chip, own row under BUILDINGS' header, same .chip
+   base every buy-amount button already uses (01-empire.css) - .gov just gives it
+   its own accent so it doesn't read as one of the x1/x10/MAX/scrap group. */
+#sysGov[hidden]{display:none}
+#sysGov{margin:0 0 9px}
+#sysGov .chip.gov{width:100%;border-color:var(--line2);color:var(--dim)}
+#sysGov .chip.gov.on{border-color:#ffd166;color:#ffd166;background:rgba(255,209,102,.10)}
+.sysGovLast{margin-top:5px;font:600 10px/1.3 system-ui;color:var(--dim2)}
+.sysGovLast[hidden]{display:none}
+.govmark{color:#ffd166;font-size:.85em}
 #sysDefRow{display:flex;gap:7px}
 #sysDefRow .sc{flex:1 1 0;min-width:0;border:1px solid var(--line);border-radius:11px;
   background:rgba(255,255,255,.02);padding:9px 6px 8px;display:flex;flex-direction:column;
@@ -1772,6 +1782,9 @@ body.syspage #toasts{bottom:calc(var(--sysbarh) + 8px + env(safe-area-inset-bott
           <div id="sysAct"></div>
           <div id="sysBuild" hidden>
             <div id="sysBuildHead"><span>Buildings</span><span id="sysBuildCount"></span></div>
+            <!-- PLAN-governors owner decision 3: the GOVERNOR toggle, under the
+                 BUILDINGS header, above the buy-amount chips. renderSysGov(). -->
+            <div id="sysGov" hidden></div>
             <div class="buybar">
               <button class="chip on" data-b="1">×1</button>
               <button class="chip" data-b="10">×10</button>
@@ -1922,7 +1935,7 @@ body.syspage #toasts{bottom:calc(var(--sysbarh) + 8px + env(safe-area-inset-bott
 "use strict";
 /* bumped by hand, one per patch that ships - shown in the dev panel so the owner
    can tell which build a report/screenshot came from. */
-const BUILD=642;
+const BUILD=643;
 /* ============================ storage (safe) ============================ */
 const Store=(()=>{let mem={},ok=false;
   try{const k="__sd";window.localStorage.setItem(k,"1");window.localStorage.removeItem(k);ok=true}catch(e){ok=false}
@@ -1947,7 +1960,13 @@ function fmtT(s){ s=Math.max(0,Math.floor(s));
   const d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60),x=s%60;
   if(d)return d+"d "+h+"h"; if(h)return h+"h "+m+"m"; if(m)return m+"m "+x+"s"; return x+"s";
 }
+/* PLAN-governors: a governor purchase's normal toast/blip fire only while the
+   system's own page is open (owner decision 5) - govBuyStep() sets this around its
+   ladderBuy()/grantXp() call rather than teaching either function about governors.
+   Never set anywhere else; always false again before the next player-facing call. */
+let hush=false;
 function toast(msg,cls){
+  if(hush)return;
   const host=$("#toasts");
   const d=document.createElement("div"); d.className="toast "+(cls||""); d.textContent=msg;
   host.appendChild(d);
@@ -2104,7 +2123,7 @@ function noiseVoice(dur,o,G){
    signature as before, now voiced through the shared engine, always dry (never sent
    to the delay - that send is reserved for battle cues). */
 function blip(f,dur,type,vol){
-  if(S.muted)return;
+  if(S.muted||hush)return;
   try{
     const G=A(), t0=G.ctx.currentTime, D=dur||.12;
     const o1=G.ctx.createOscillator(), g=G.ctx.createGain();
@@ -2836,9 +2855,15 @@ const RESH=[
  {id:"cold",  n:"Cryo Storage",       max:10, c:18, cg:3.2, col:"#79c6ef", req:{id:"amp",lv:2},
   ic:`<g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M24 5v38M8 14l32 20M40 14L8 34"/><path d="M18 9l6 5 6-5M18 39l6-5 6 5"/></g>`,
   d:lv=>"Offline cap "+(2+lv*2)+"h", t:"Frozen buffers keep production banked while you are away."},
- {id:"auto",  n:"Automation Cores",   max:10, c:25, cg:3.2, col:"#ffd166", req:{id:"drill",lv:4},
+ /* PLAN-governors: renamed in copy only - id stays "auto" so saves and Void
+    Cartography's req:{id:"auto",lv:2} are untouched. max 10->3 (a save with
+    S.rs.auto>3 is clamped in adopt()); cost curve (c/cg) unchanged. The node's old
+    per-tier auto-buy effect was retired in patch403 - see the comment at govTick()'s
+    call site in tick() (06-progress.js) for what actually spends these levels now. */
+ {id:"auto",  n:"Governors",   max:3, c:25, cg:3.2, col:"#ffd166", req:{id:"drill",lv:4},
   ic:`<rect x="14" y="14" width="20" height="20" rx="3" fill="none" stroke="currentColor" stroke-width="3"/><rect x="21" y="21" width="6" height="6" fill="currentColor"/><g stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M19 14V7M29 14V7M19 41v-7M29 41v-7M14 19H7M14 29H7M41 19h-7M41 29h-7"/></g>`,
-  d:lv=>lv?("Auto-buy tiers 1\u2013"+lv):"No auto-buy yet", t:"Each level hands one more structure tier to the machines."},
+  d:lv=>lv?("Appoint up to "+lv+" governor"+(lv>1?"s":"")):"No governors yet",
+  t:"Each level hands one more system's buildings to a governor who buys on their own."}, /* PLACEHOLDER */
  {id:"void",  n:"Void Cartography",   max:8,  c:60, cg:3.6, col:"#ff8fd0", req:{id:"auto",lv:2},
   ic:`<circle cx="24" cy="24" r="17" fill="none" stroke="currentColor" stroke-width="3"/><path d="M31 17l-4 10-10 4 4-10z" fill="currentColor"/><path d="M24 3v5M24 40v5M3 24h5M40 24h5" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>`,
   d:lv=>"+"+(lv*12)+"% Dark Matter from raids", t:"Charted deep-space routes turn up richer prizes."},
@@ -3797,7 +3822,9 @@ function loadoutDPS(foes){ let d=0;
 }
 /* capacity: what the fleet costs you in command, and what you have to spend -
    empire-wide, every fleet plus every garrisoned Hangar summed exactly as the old
-   single S.sh+hangar total was. */
+   single S.sh+hangar total was. Still used empire-wide by cpTotal()/hardpoints() -
+   PLAN-fleets follow-up ("per-fleet cap") only changes capLeft()/capMax()/shipMax(),
+   below. */
 /* run 3: a queued-but-not-yet-delivered hull (S.flQ) still costs command capacity -
    it is a real, paid-for hull, just not aboard a fleet yet. Left out here, buyShip()'s
    own capLeft() check would never see it and capacity could be bypassed entirely by
@@ -3807,6 +3834,22 @@ function loadoutDPS(foes){ let d=0;
 function shipPower(){ let p=0; for(const f of fleets())for(let i=0;i<SHIPS.length;i++)p+=f.sh[i]*SHIPS[i].pw;
   if(Array.isArray(S.flQ))for(let i=0;i<SHIPS.length;i++)p+=(S.flQ[i]||0)*SHIPS[i].pw;
   return p+hanTotalPower() }
+/* PLAN-fleets follow-up ("per-fleet cap", shipped with governors): a fleet's own
+   onboard power only - no hangar, no queue - the building block fleetTotalPower()
+   below adds those back in, attributed to whichever fleet they actually count
+   against. */
+function fleetPower(f){ f=f||curFleet(); let p=0; for(let i=0;i<SHIPS.length;i++)p+=f.sh[i]*SHIPS[i].pw; return p }
+/* S.flQ (decision 6: a purchase with no fleet home queues, landing on Fleet 1 the
+   moment one next reaches home) counts against Fleet 1's own cap the moment it is
+   bought - it is already paid for, just not aboard yet, same reasoning shipPower()'s
+   own comment gives for including it in the empire-wide total. */
+function flQPower(){ let p=0; if(Array.isArray(S.flQ))for(let i=0;i<SHIPS.length;i++)p+=(S.flQ[i]||0)*SHIPS[i].pw; return p }
+/* everything that counts against ONE fleet's own share of fleetCap(): its onboard
+   hulls, whatever Hangar power is attributed to it (hanPowerFor(), 03-defence.js -
+   "hangar hulls count against the fleet they were stationed from"), and the
+   delivery queue if this is Fleet 1. */
+function fleetTotalPower(f){ f=f||curFleet();
+  return fleetPower(f) + hanPowerFor(f.id) + (f.id===1 ? flQPower() : 0) }
 /* how hard a fleet is to hit. Weighted by capacity rather than hull count, so this
    is a real composition choice: light hulls dodge, heavy hulls simply endure. */
 function fleetEvade(f){
@@ -3817,33 +3860,42 @@ function fleetEvade(f){
   /* engines are a live choice on top of what you fly */
   return Math.min(0.75, hull + ENG_EV*pwrOf("eng"));
 }
+/* the cap itself is still one empire-wide number, from level - PLAN-fleets follow-up
+   (owner, 21 Sep) makes it apply PER FLEET now: "each fleet may hold fleetCap()
+   power", not the three of them sharing one pool. */
 function fleetCap(){ return level()<RAIDLV ? 0 : FCAP0+FCAPK*(level()-RAIDLV)+Math.min(CORE_ADD_MAX,6*xlv("core")) }
-function capLeft(){ return fleetCap()-shipPower() }
-/* how many of tier i the remaining capacity allows (may be 0, never negative) */
-function capMax(i){ return Math.max(0,Math.floor(capLeft()/SHIPS[i].pw)) }
+/* f defaults to curFleet() so every existing no-arg call site (raidSubFlags(),
+   the Raids strip, etc) already reads "this fleet's own room" with no call-site
+   change - only buyShip() (below) needs to pass an explicit fleet, since what it
+   is buying into is not always curFleet(). */
+function capLeft(f){ f=f||curFleet(); return fleetCap()-fleetTotalPower(f) }
+/* how many of tier i the remaining capacity on fleet f allows (may be 0, never negative) */
+function capMax(i,f){ return Math.max(0,Math.floor(capLeft(f)/SHIPS[i].pw)) }
 /* priced off the empire-wide owned count of class i (summed across every fleet),
    so the cost curve is unchanged whichever fleet is actually buying. */
 function shipCost(i,k){ const S1=SHIPS[i]; return S1.b*Math.pow(S1.g,shipTotal(i))*(Math.pow(S1.g,k)-1)/(S1.g-1) }
-function shipMax(i){ const S1=SHIPS[i];
+function shipMax(i,f){ const S1=SHIPS[i];
   const inner=1+S.ore*(S1.g-1)/(S1.b*Math.pow(S1.g,shipTotal(i))); if(inner<=1)return 0;
   const byOre=Math.max(0,Math.floor(Math.log(inner)/Math.log(S1.g)));
-  return Math.min(byOre, capMax(i));          /* whichever runs out first */ }
+  return Math.min(byOre, capMax(i,f));          /* whichever runs out first */ }
 /* run 3 (decision 6, PLAN-fleets.md): adds to curFleet() when it is idle and at
    home; else the first idle fleet at home; else queues on S.flQ (counts per class)
    and lands into the first fleet that next reaches home idle - drained by
    tryDrainFleetQueue(), called from fleetTravelTick() on every arrival and once
    from adopt() so a save loaded with a fleet already idle at home clears the
    queue immediately rather than waiting for a fleet to arrive that is already
-   there. Capacity/price are still checked once, up front, against the
-   empire-wide total either way (shipTotal()/shipPower() both already count the
-   queue - see their own comments) - queuing never lets a purchase dodge either
-   check. */
+   there. PLAN-fleets follow-up: capacity is now checked against whichever fleet the
+   purchase actually LANDS on (tgt, or Fleet 1 if it queues - flQPower() counts
+   against Fleet 1, see fleetTotalPower()) rather than an empire-wide total, since
+   the cap itself is per fleet now - price is still off the empire-wide cost curve
+   (shipCost() unchanged). */
 function buyShip(i,k){ if(k<1)return false;
-  if(k*SHIPS[i].pw>capLeft())return false;    /* capacity is checked before price */
-  const c=shipCost(i,k); if(S.ore<c)return false;
   const cf=curFleet();
   const idleHome=fl=>!fl.to&&fl.at==="home";
   const tgt = idleHome(cf) ? cf : fleets().find(idleHome);
+  const capFleet = tgt || fleet(1);
+  if(k*SHIPS[i].pw>capLeft(capFleet))return false;    /* capacity is checked before price */
+  const c=shipCost(i,k); if(S.ore<c)return false;
   S.ore-=c;
   if(tgt){ tgt.sh[i]+=k; }
   else {
@@ -4105,17 +4157,32 @@ const HAN_CAP=8;   /* TUNING-PENDING: ship COUNT per Hangar, any mix of hull cla
    not a power-unit cap (a single Frigate's pw alone would already exceed a power cap
    this size, excluding two of the three hulls outright), and the picker's own
    "pick hull class, +/- counts... capacity used/left" wants one simple number. */
-function hanFleet(id){ const h=S.han&&S.han[id]; return (Array.isArray(h)&&h.length===3)?h:[0,0,0]; }
+/* PLAN-fleets follow-up (shipped with governors): S.han[sysId] carries a `from` -
+   the fleet id its hulls count against for capacity purposes - alongside the counts
+   themselves, now {n:[n0,n1,n2], from:fleetId} rather than a bare array. hanFleet()
+   stays the one true reader of the counts (n) - every existing caller (hanCount,
+   hanDPS, hanHP, render, combat) is unaffected by the shape change underneath it. */
+function hanFleet(id){ const h=S.han&&S.han[id]; const n=h&&h.n; return (Array.isArray(n)&&n.length===3)?n:[0,0,0]; }
+function hanFrom(id){ const h=S.han&&S.han[id]; return (h&&h.from>0)?h.from:1; }
 function hanCount(id){ const h=hanFleet(id); return h[0]+h[1]+h[2]; }
 function hanLeft(id){ return Math.max(0,HAN_CAP-hanCount(id)); }
 function hanDPS(id){ const h=hanFleet(id); let d=0; for(let i=0;i<SHIPS.length;i++)d+=h[i]*SHIPS[i].dps; return d; }
 function hanHP(id){  const h=hanFleet(id); let d=0; for(let i=0;i<SHIPS.length;i++)d+=h[i]*SHIPS[i].hp;  return d; }
 /* every hull stationed ANYWHERE, summed once for shipPower()'s own cap accounting -
-   see the header note above. */
+   see the header note above. Empire-wide, unaffected by per-fleet attribution. */
 function hanTotalPower(){
   let p=0;
-  if(S.han)for(const id in S.han){ const hh=S.han[id]; if(!Array.isArray(hh))continue;
-    for(let i=0;i<SHIPS.length;i++)p+=(hh[i]||0)*SHIPS[i].pw; }
+  if(S.han)for(const id in S.han){ const n=hanFleet(id);
+    for(let i=0;i<SHIPS.length;i++)p+=(n[i]||0)*SHIPS[i].pw; }
+  return p;
+}
+/* PLAN-fleets follow-up: "hangar hulls count against the fleet they were stationed
+   from" - summed across every system whose hangar entry names this fleet as `from`.
+   Old entries (pre-follow-up saves, sanitised in adopt()) default to Fleet 1. */
+function hanPowerFor(fleetId){
+  let p=0;
+  if(S.han)for(const id in S.han){ if(hanFrom(id)!==fleetId)continue;
+    const n=hanFleet(id); for(let i=0;i<SHIPS.length;i++)p+=(n[i]||0)*SHIPS[i].pw; }
   return p;
 }
 /* TUNING-PENDING: garrison-strength coefficient. Blended against PAR, not the
@@ -4146,19 +4213,29 @@ function stationHan(sysId,hullIdx,n){
   f.sh[hullIdx]-=n;
   const arr=hanFleet(sysId).slice(); arr[hullIdx]=(arr[hullIdx]||0)+n;
   if(!S.han||typeof S.han!=="object")S.han={};
-  S.han[sysId]=arr;
+  /* PLAN-fleets follow-up: the whole entry's `from` is whichever fleet most
+     recently stationed into it - simplest reading of "the fleet they were
+     stationed from" for one hangar shared by one fleet at a time in the normal
+     flow (you can only station from curFleet()). Re-stationing from a DIFFERENT
+     fleet while hulls from an earlier one are still here reattributes the whole
+     entry - an edge case the plan does not spell out further; accepted rather
+     than tracking per-class attribution for one hangar. */
+  S.han[sysId]={n:arr, from:f.id};
   dirty=true; return true;
 }
 /* recalls n hulls of class hullIdx back into the fleet - the first fleet already
    sitting at this system, else the fleet at home, else Fleet 1 (PLAN-fleets run 1
-   decision 6). n omitted (or too large) recalls everything of that class stationed. */
+   decision 6) - NOT necessarily the `from` fleet; capacity accounting simply follows
+   wherever the hulls physically end up, same as it does for a fleet that was never
+   stationed at all. n omitted (or too large) recalls everything of that class
+   stationed. */
 function recallHan(sysId,hullIdx,n){
   const arr=hanFleet(sysId).slice(); const have=arr[hullIdx]||0;
   n = n===undefined ? have : Math.min(Math.max(0,Math.floor(n)), have);
   if(n<=0)return false;
   arr[hullIdx]=have-n;
   if(!S.han||typeof S.han!=="object")S.han={};
-  S.han[sysId]=arr;
+  S.han[sysId]={n:arr, from:hanFrom(sysId)};
   const tgt = fleetAtSys(sysId) || fleets().find(fl=>fl.at==="home") || fleet(1);
   tgt.sh[hullIdx]=(tgt.sh[hullIdx]||0)+n;
   dirty=true; return true;
@@ -4881,12 +4958,20 @@ function tierBuildable(id,gi){
   const s=SYSMAP[id]; if(!s||!GENS[gi]||GENS[gi].kind!==ladderKindOf(s))return false;
   return sysTierCount(id,gi)>0 || sysNextGi(id)===gi;
 }
-function ladderBuy(id,gi){
+/* kOverride (PLAN-governors "Watch for"): govBuyStep() passes an explicit 1 here so a
+   governor's purchase is never affected by the player's x1/x10/MAX chip (S.buy) -
+   default (undefined) keeps every other caller's behaviour exactly as it was. */
+function ladderBuy(id,gi,kOverride){
   if(!tierBuildable(id,gi))return false;
   const st=sysState(id); if(!st)return false;
   if(!st.b||typeof st.b!=="object")st.b={};
-  let k = S.buy==="max" ? ladderMaxAff(id,gi) : Math.min(S.buy, 1e9);
-  if(S.buy!=="max"){ if(S.ore<ladderCost(id,gi,k)) k=Math.min(k,ladderMaxAff(id,gi)); }
+  let k;
+  if(kOverride!==undefined){
+    k=Math.max(0,Math.floor(kOverride));
+  }else{
+    k = S.buy==="max" ? ladderMaxAff(id,gi) : Math.min(S.buy, 1e9);
+    if(S.buy!=="max"){ if(S.ore<ladderCost(id,gi,k)) k=Math.min(k,ladderMaxAff(id,gi)); }
+  }
   const xid=ladderExoId(gi);
   if(xid) k=Math.min(k, Math.floor(exo(xid)/GENS[gi].exoC));
   if(k<1)return false;
@@ -4899,6 +4984,29 @@ function ladderBuy(id,gi){
   if(t0===0&&tot()>0)queueNotice("vega:firstDrone");
   xpOnBuild(id,gi,st.b[gi]-k,st.b[gi]);
   blip(240+gi*38,.09,"triangle",.05);
+  dirty=true; return true;
+}
+/* PLAN-governors owner decision 3 (Appointing): the GOVERNOR chip's own click handler.
+   Turning ON is refused past govCount()<lv(S.rs,"auto") - toast names the reason, same
+   shape every other refused action in this game explains itself. Turning OFF is always
+   allowed (a save that is over-appointed because research levels can never actually
+   drop is not a real case, but nothing here depends on that not changing later). Free
+   either way - "the research is the cost" (owner decision 4), so this never touches
+   ore/crystal. queueNotice("vega:governor") fires once, on the FIRST appointment ever
+   made (S.seen itself is the idempotency guard queueNotice() already has), not on
+   every buy - see govBuyStep() (06-progress.js), which used to fire it per-purchase
+   before this function existed to fire it at the actual moment of appointing. */
+function govSetAppointed(id,on){
+  const st=sysState(id); if(!st)return false;
+  if(on){
+    if(st.gov)return false;
+    if(govCount()>=lv(S.rs,"auto")){ toast("Research Governors for another","y"); return false; }
+    st.gov=1;
+    queueNotice("vega:governor");
+  } else {
+    if(!st.gov)return false;
+    delete st.gov;
+  }
   dirty=true; return true;
 }
 /* Returns whether anything was actually bought. Every other purchase in the game does
@@ -5587,6 +5695,99 @@ function checkAchs(){
 }
 function flag(p){ const t=$$(".tab").find(t=>t.dataset.p===p); if(t&&!t.classList.contains("on"))t.classList.add("alert"); }
 
+/* ============================ governors (PLAN-governors) ============================
+   A system with S.sys[id].gov=1 buys the cheapest affordable next step on its own
+   ladder - tierBuildable() already defines exactly that set (an owned tier, or the
+   next reveal) - once every GOV_EVERY seconds of game time, one unit at a time
+   (ladderBuy's own k forced to 1, never S.buy's x1/x10/MAX), from a per-governor
+   budget (gb) that accrues GOV_SHARE of the empire's ore rate, split evenly across
+   every appointed governor, and is spent down by purchases - it never dips into ore
+   the player already had. TUNING-PENDING: both constants. */
+const GOV_EVERY=20, GOV_SHARE=0.5;
+/* every system currently appointed a governor - regardless of occupation, since
+   "suspends" (owner decision 3) means govTick() skips it this tick, not that it
+   stops being appointed; sysHeld() is what actually gates whether it can buy. */
+function govSystems(){
+  const out=[]; if(!S.sys)return out;
+  for(const id in S.sys){ const st=S.sys[id]; if(st&&st.gov)out.push(id); }
+  return out;
+}
+function govCount(){ return govSystems().length }
+/* the cheapest of: one more of an owned tier, or the next reveal - tierBuildable()
+   already is exactly that rule (see its own header comment), so this is nothing but
+   a cost-sort over it. Exotic-gated tiers are skipped unless the exotic is there
+   too, same rule ladderBuy() itself checks. */
+function govPickTier(id){
+  const ladder=sysLadder(id);
+  let best=null, bestCost=Infinity;
+  for(const gi of ladder){
+    if(!tierBuildable(id,gi))continue;
+    const xid=ladderExoId(gi);
+    if(xid && exo(xid)<GENS[gi].exoC)continue;
+    const c=ladderCost(id,gi,1);
+    if(c<bestCost){ bestCost=c; best=gi; }
+  }
+  return best;
+}
+/* one purchase attempt for one governed system - called once per GOV_EVERY of game
+   time that system's own timer (st.gt) accrues, from govTick() below. Silent (no
+   toast/blip) unless the system's own page is open (owner decision 5) - grantXp()'s
+   milestone toast inside ladderBuy()'s xpOnBuild() would otherwise spam every
+   closed-page buy (PLAN-governors "Watch for"). */
+function govBuyStep(id, st){
+  const gi=govPickTier(id); if(gi==null)return false;
+  const cost=ladderCost(id,gi,1);
+  if(cost>st.gb || S.ore<cost)return false;
+  const open = document.body.classList.contains("syspage") && S.msel===id;
+  hush=!open;
+  const bought=ladderBuy(id,gi,1);
+  hush=false;
+  if(!bought)return false;
+  st.gb-=cost;
+  st.gl={gi,t:Date.now()};
+  S.govBuys=(S.govBuys||0)+1;
+  dirty=true;
+  return true;
+}
+/* dt is game seconds elapsed (tick()'s own small dt, or GOV_EVERY repeated from
+   offlineGovCatchup() below). effMul scales the bank accrual down to match the
+   discounted ore offline already banked at (offlineEff()) - a governor never gets a
+   richer cut than the empire's own production did. capPerSys bounds how many buy
+   attempts a single call may make per system - only offlineGovCatchup() ever passes
+   it; live tick()'s dt is always far under GOV_EVERY, so the while loop below never
+   needs a cap during ordinary play. csim4.js never sets S.sys[id].gov anywhere, so
+   govSystems() is always empty there and this returns before touching rate() or
+   S.ore - the pacing baseline cannot move from this function. No Math.random(). */
+function govTick(dt, effMul, capPerSys){
+  if(!(dt>0))return;
+  effMul = effMul===undefined?1:effMul;
+  const ids=govSystems().filter(id=>sysHeld(id));
+  const n=ids.length; if(!n)return;
+  const share=GOV_SHARE/n, r=rate();
+  for(const id of ids){
+    const st=sysState(id); if(!st)continue;
+    st.gb=(st.gb||0)+r*dt*share*effMul;
+    st.gt=(st.gt||0)+dt;
+    let bought=0;
+    while(st.gt>=GOV_EVERY && (capPerSys===undefined || bought<capPerSys)){
+      st.gt-=GOV_EVERY;
+      govBuyStep(id, st);
+      bought++;
+    }
+  }
+}
+/* offline catch-up (PLAN-governors commit 2): offlineReport() does its own ore/cry/en
+   maths rather than calling tick(), so this is the one other place the bank accrues
+   and purchases fire while away. Capped at one purchase attempt per system per
+   GOV_EVERY of away time, max 50 calls overall - never O(days/GOV_EVERY) work for a
+   week-long absence. Called from offlineReport() (12-save.js), after S.ore already
+   has the away production folded in, so a purchase spends real, already-banked ore -
+   never money the player has not actually earned yet. */
+function offlineGovCatchup(awaySecs, effMul){
+  const steps=Math.min(50, Math.floor((awaySecs||0)/GOV_EVERY));
+  for(let i=0;i<steps;i++) govTick(GOV_EVERY, effMul, 1);
+}
+
 /* ============================ loop ============================ */
 let dirty=true, autoAcc=0;
 function tick(dt){
@@ -5598,9 +5799,11 @@ function tick(dt){
   const c=cryRate(); if(c>0)S.cry+=c*dt;
   const ov=nexLv("ovs");
   if(ov>0){ autoAcc+=dt*ov*3; while(autoAcc>=1){autoAcc-=1; const v=clickPow(); S.ore+=v;S.all+=v;S.clicks++;} }
-  /* EMPIRE2: the "auto" research node's buy-toggle is retired - see the note at the top
-     of patch403. The node itself still purchases and levels; this is just where its old
-     per-tier auto-purchase used to run. */
+  /* EMPIRE2: the "auto" research node's OLD buy-toggle is retired (patch403) - this is
+     where its per-tier auto-purchase used to run. PLAN-governors reuses the exact same
+     node (renamed Governors in copy, see 01-content.js) for a new, unrelated mechanic:
+     govTick() below, gated on a per-system S.sys[id].gov flag csim never sets. */
+  govTick(dt);
   raidTick(dt);
   rvTick(dt);
   histTick(dt);
@@ -5718,7 +5921,10 @@ const VEGA={
     in a single call; an old save that opens both at once gets a combined toast
     instead and never queues either card (see ensureFleets()'s own comment). */
  fleet2:    {t:"Second hull group is fitted out. Command splits, coverage doesn't.", go:"p-map"},   /* PLACEHOLDER */
- fleet3:    {t:"Third fleet is yours. Three fronts, if you can hold them.", go:"p-map"}             /* PLACEHOLDER */
+ fleet3:    {t:"Third fleet is yours. Three fronts, if you can hold them.", go:"p-map"},            /* PLACEHOLDER */
+ /* PLAN-governors: fired by govSetAppointed() (04-actions.js) the moment a system's
+    GOVERNOR chip is first switched ON - PLACEHOLDER TEXT. */
+ governor:  {t:"A governor is running that system now. It will spend what it earns and nothing more.", go:"p-map"} /* PLACEHOLDER */
 };
 /* ---------------- RIVAL_MSG · intercepted transmissions ----------------
    Same rule as VEGA: PLACEHOLDER TEXT, the owner edits it here and nowhere else.
@@ -6975,6 +7181,53 @@ function renderSysBuild(s,held){
     if(viewEl)viewEl.scrollTop=prevTop;
   }
 }
+/* PLAN-governors owner decision 3: the GOVERNOR toggle chip, under the BUILDINGS
+   header. The button itself is churn-guarded the same way every other rebuilt row in
+   this file is (dataset.h); the last-buy line under it is plain textContent, updated
+   every render() pass with no rebuild - same idiom #flLoc (09-render.js) already
+   uses for a coarse, always-live clock, never itself a churn risk since tchurn2 only
+   fingerprints <button> elements. */
+function renderSysGov(s,held){
+  const wrap=$("#sysGov"); if(!wrap)return;
+  if(!held){
+    if(!wrap.hidden){ wrap.hidden=true; wrap.dataset.h=""; wrap.innerHTML=""; }
+    return;
+  }
+  const st=sysState(s.id);
+  if(!st){
+    if(!wrap.hidden){ wrap.hidden=true; wrap.dataset.h=""; wrap.innerHTML=""; }
+    return;
+  }
+  const cap=lv(S.rs,"auto"), cnt=govCount(), on=!!st.gov;
+  /* hidden until at least one Governors level is researched - same "nothing to show
+     yet" gate exoEverBankedAny()/the PROGRAMMES tab use, and what keeps a brand-new
+     save's first BUY row exactly where it was before this feature existed
+     (topen2.js's own pinned-scan-bar layout assertion). */
+  if(cap<=0 && !on){
+    if(!wrap.hidden){ wrap.hidden=true; wrap.dataset.h=""; wrap.innerHTML=""; }
+    return;
+  }
+  wrap.hidden=false;
+  const key=s.id+"|"+on+"|"+cap+"|"+cnt;
+  if(wrap.dataset.h!==key){
+    wrap.dataset.h=key;
+    const label = on ? "GOVERNOR · ON" : (cnt>=cap ? "GOVERNOR · "+cnt+"/"+cap : "GOVERNOR · OFF");
+    wrap.innerHTML=`<button type="button" class="chip gov${on?" on":""}" id="sysGovBtn">${label}</button>
+      <div id="sysGovLast" class="sysGovLast" hidden></div>`;
+    $("#sysGovBtn").onclick=()=>{
+      if(govSetAppointed(s.id,!on)){ save(); render(); }
+      else { blip(140,.08,"sine",.03); render(); }
+    };
+  }
+  const lastEl=$("#sysGovLast");
+  if(lastEl){
+    if(st.gl && GENS[st.gl.gi]){
+      const agoS=Math.max(0,(Date.now()-st.gl.t)/1000);
+      lastEl.hidden=false;
+      lastEl.textContent="Governor bought "+GENS[st.gl.gi].n+" · "+fmtT2(agoS)+" ago";
+    } else if(!lastEl.hidden){ lastEl.hidden=true; lastEl.textContent=""; }
+  }
+}
 function renderSysDef(s){
   const wrap=$("#sysDefWrap"), head=$("#sysDefHead"), row=$("#sysDefRow");
   if(!wrap)return;
@@ -7193,8 +7446,9 @@ function listHeldRow(s){
   el.style.setProperty("--a-wash-body","rgba("+kind.rgb+",.06)");
   el.style.setProperty("--a-border","rgba("+kind.rgb+",.55)");
   el.style.setProperty("--a-text",kind.txt);
+  const gov=sysState(id)&&sysState(id).gov;
   el.innerHTML=`<div class="sysrow2-main">
-      <span class="sysname">${s.n}</span>
+      <span class="sysname">${s.n}${gov?' <span class="govmark" title="Governed">\u25c6</span>':''}</span>
       <span class="kindbadge" style="--a:${kind.col}">${kind.n}</span>
       <span class="kindbadge ready" style="--a:var(--gr)" hidden>\u25cf NEXT TIER READY</span></div>
     <div class="sysrow2-stats">
@@ -7221,7 +7475,8 @@ function renderMapList(){
   const key=mapSec+"|"+list.map(s=>{
     if(s.home||sysHeld(s.id)){
       const ladder=sysLadder(s.id);
-      return s.id+"h"+ladder.map(gi=>sysTierCount(s.id,gi)>0?1:0).join("");
+      const gov=sysState(s.id)&&sysState(s.id).gov?1:0;
+      return s.id+"h"+ladder.map(gi=>sysTierCount(s.id,gi)>0?1:0).join("")+"g"+gov;
     }
     const claimable=sysOpen(s), contested=sysContested(s)&&level()>=s.lvl;
     return s.id+(claimable?"c":contested?"w"+(sysOccupied(s.id)?1:0):"l");
@@ -7299,6 +7554,8 @@ function renderMap(){
       buildWrap.hidden=true;
       const rowsHost=$("#sysBuildRows"); if(rowsHost){ rowsHost.dataset.h=""; rowsHost.innerHTML=""; }
     }
+    const govWrap=$("#sysGov");
+    if(govWrap&&!govWrap.hidden){ govWrap.hidden=true; govWrap.dataset.h=""; govWrap.innerHTML=""; }
     if(thrBox&&thrBox.dataset.h!==""){ thrBox.dataset.h=""; thrBox.innerHTML=""; thrBox.hidden=true }
     defClearSel();
     const oddsBox=$("#sysOdds"); if(oddsBox&&oddsBox.dataset.h!==""){ oddsBox.dataset.h=""; oddsBox.innerHTML=""; oddsBox.hidden=true }
@@ -7317,6 +7574,7 @@ function renderMap(){
   }
   const held=s.home||sysHeld(s.id), e=s.res?exoDef(s.res):null;
   renderSysBuild(s,held);
+  renderSysGov(s,held);
   let rows="";
   if(s.home){
     rows=`<div class="sysrow"><span>Structures</span><b>${fmt(tot())}</b></div>
@@ -7510,7 +7768,8 @@ const RESDEF={
              ...PERKS.filter(p=>pkl(p.id)>0).map(p=>[p.n+" \u00d7"+pkl(p.id), p.d(pkl(p.id))]),
              ["Structures",fmt(tot())],
              ["Systems held",String(heldSystems().length)+" / "+String(SYS.length-1)],
-             ["Manual scan","+"+fmt(clickPow())]],
+             ["Manual scan","+"+fmt(clickPow())],
+             ["Bought by governors",String(S.govBuys||0)]],
    f:"Ore is never reset. Prices are fixed — what a structure costs today is what it costs forever."},
  cry:{n:"Crystal", cur:"var(--vi)", ic:"cry",
    d:"Shed as slag by your smelters. Crystal buys Research \u2014 and nothing else.",
@@ -10960,7 +11219,10 @@ function renderRaids(){
   renderEndCard(); renderThreat(); renderRivalBars(); renderFleetTabs();
   const cf=curFleet();
   const st=$("#flStat");
-  const pw=shipPower(), cp=fleetCap(), over=pw>cp;
+  /* PLAN-fleets follow-up: the strip reads the SELECTED fleet's own power now, not
+     the empire-wide total - fleetCap() applies per fleet, so "112/60" is cf's own
+     onboard+attributed-hangar power against the one cap every fleet gets. */
+  const pw=fleetTotalPower(cf), cp=fleetCap(), over=pw>cp;
   const thinCap=cp>0&&pw<cp*0.7;
   st.innerHTML=fmt(fleetDPS(cf))+" dps · "+fmt(fleetHPMax(cf))+" hull"
     +` <b class="flcap${over?" over":thinCap?" thin":""}">⚡${pw}/${cp}</b>`;
@@ -10979,7 +11241,7 @@ function renderRaids(){
   /* the single most useful thing the page can say to someone losing every fight */
   const wn=$("#flWarn");
   if(wn){
-    const pw=shipPower(), cp=fleetCap(), thin=cp>0&&pw<cp*0.7;
+    const pw=fleetTotalPower(cf), cp=fleetCap(), thin=cp>0&&pw<cp*0.7;
     wn.classList.toggle("on",thin);
     if(thin)wn.innerHTML=`Your fleet is using <b>${pw} of ${cp}</b> command capacity.
       Hostiles are sized against a full one, so raids will go badly until you build more
@@ -11433,6 +11695,13 @@ function adopt(o){
   f.miq=[...new Set(f.miq.map(x=>Math.floor(x)).filter(x=>x>=0&&x<f.mi))].sort((a,b)=>a-b);
   if(!f.nx||typeof f.nx!=="object")f.nx={};
   for(const k in f.nx) if(!NEXUS.some(x=>x.id===k)) delete f.nx[k];
+  /* PLAN-governors: the "auto" research node's max dropped 10->3 in copy (Governors).
+     A save from before that (still legitimately at levels 4-10, bought under the old
+     max) is clamped down - "a save with S.rs.auto>3 is clamped to 3" (owner decision
+     1). Nothing else about S.rs needs sanitising - buyRes() itself already refuses
+     past a node's own max going forward, this only guards an existing save. */
+  if(!f.rs||typeof f.rs!=="object")f.rs={};
+  if((f.rs.auto||0)>3)f.rs.auto=3;
   if(!f.sys||typeof f.sys!=="object")f.sys={};
   for(const k in f.sys){
     if(!SYSMAP[k]){ delete f.sys[k]; continue }
@@ -11447,7 +11716,19 @@ function adopt(o){
       const gi=Math.floor(gk), c=Math.max(0,Math.floor(bin[gk]||0));
       if(gi>=0 && GENS[gi] && c>0) b[gi]=c;
     }
-    f.sys[k]={b};
+    /* PLAN-governors: gov/gb/gt/gl live on the same per-system entry as b. gov is a
+       plain 1/0 flag (appointing past govCount()<lv(S.rs,"auto") is a UI gate, not a
+       save invariant - a save from a game that has since lost research levels is
+       left over-appointed rather than silently un-appointing something the player
+       chose; renderSysGov() just clamps what NEW appointments are offered). gb/gt
+       are never negative; gl (last buy) is dropped unless it names a real tier. */
+    const gin=f.sys[k]||{};
+    const gov=gin.gov?1:0;
+    const gb=Math.max(0,+gin.gb||0);
+    const gt=Math.max(0,+gin.gt||0);
+    const gl=(gin.gl&&typeof gin.gl==="object"&&GENS[Math.floor(gin.gl.gi)]&&+gin.gl.t>0)
+      ? {gi:Math.floor(gin.gl.gi), t:+gin.gl.t} : null;
+    f.sys[k]={b, ...(gov?{gov}:{}), ...(gb?{gb}:{}), ...(gt?{gt}:{}), ...(gl?{gl}:{})};
   }
   /* home is always held - a save that predates a claim, or one that simply never had
      home in S.sys, still needs its count map to exist */
@@ -11573,7 +11854,16 @@ function adopt(o){
   const homeFl=fleet(1);
   for(const k in S.han){
     const raw=S.han[k];
-    const arr=(Array.isArray(raw)&&raw.length===3) ? raw.map(x=>Math.max(0,Math.floor(x||0))) : [0,0,0];
+    /* PLAN-fleets follow-up: S.han[id] is now {n:[..], from:fleetId}, not a bare
+       array - a save from before the follow-up (still a bare array) becomes
+       from:1 ("old entries default to fleet 1", the plan's own words); `from`
+       naming a fleet that no longer exists (a slot never opened, or - impossible
+       today, but defensive - one somehow removed) also falls back to 1. */
+    const isOld=Array.isArray(raw)&&raw.length===3;
+    const nRaw=isOld ? raw : (raw&&Array.isArray(raw.n)&&raw.n.length===3?raw.n:[0,0,0]);
+    const arr=nRaw.map(x=>Math.max(0,Math.floor(x||0)));
+    const fromRaw=isOld?1:(raw&&raw.from);
+    const from=fleet(Math.floor(fromRaw))?Math.floor(fromRaw):1;
     const ok = SYSMAP[k] && !SYSMAP[k].home && sysHeld(k) && dmodLv(k,"han")>0;
     if(!ok){
       for(let i=0;i<3;i++) if(arr[i]>0) homeFl.sh[i]=(homeFl.sh[i]||0)+arr[i];
@@ -11585,7 +11875,7 @@ function adopt(o){
       const cut=Math.min(arr[i], total-HAN_CAP);
       arr[i]-=cut; homeFl.sh[i]=(homeFl.sh[i]||0)+cut; total-=cut;
     }
-    S.han[k]=arr;
+    S.han[k]={n:arr, from};
   }
   /* patch609 (PLAN-pacing: level moved to unlockLv("p-map")): an old save can carry
      S.msel naming a system that sysInSec() no longer draws a node for below the map
@@ -11711,6 +12001,13 @@ function offlineReport(){
   if(ore<=0&&cry<=0&&en<=0&&!fought.length&&!claims.length&&!occupied.length)return;
   S.ore+=ore;S.all+=ore;S.cry+=cry;S.en+=en;S.enAll+=en;
   for(const e of EXO){ const r=exoRate(e.id); if(r>0)S.exo[e.id]=exo(e.id)+r*t*eff }
+  /* PLAN-governors commit 2: offlineReport() never calls tick(), so governor bank
+     accrual/purchases need their own catch-up here - AFTER the away production above
+     has already landed in S.ore, so a governor purchase spends real, already-banked
+     ore. away (not the production-capped t) is what "one per GOV_EVERY of away time"
+     is measured against - a governor keeps checking in whether or not the offline
+     cap capped production. */
+  offlineGovCatchup(away, eff);
   showModal(`<h3>While you were away</h3>
    <p>Away for <b>${fmtT(away)}</b> — banked <b>${fmtT(t)}</b> at ${Math.round(eff*100)}% efficiency.</p>
    <div style="font:700 26px/1.2 ui-monospace,monospace;color:var(--cy);margin:10px 0">+${fmt(ore)} ${RI("ore")}</div>
@@ -13048,7 +13345,7 @@ window.__SD={get S(){return S},NEXUS,buyNex,openSite,SITE,siteSlots,
   PWR_SYS,PWR_MAX,ENG_EV,SHD_T,powerTotal,pwrOf,pwrUsed,pwrFree,setPower,addPower,wepOnline,
   fireFx,bPwrBar,bWepBar,armWeapon,armedCount,
   wepDPS,loadoutDPS,
-  RAIDLV,FCAP0,FCAPK,shipPower,fleetCap,capLeft,capMax,shipMax,shipCost,sellShip,get BT(){return BT},nexCost,resourceModal,RESDEF,
+  RAIDLV,FCAP0,FCAPK,shipPower,fleetPower,flQPower,fleetTotalPower,fleetCap,capLeft,capMax,shipMax,shipCost,sellShip,get BT(){return BT},nexCost,resourceModal,RESDEF,
   REFIT,rfl,refitCost,buyRefit,ROLES,RAR,rollCrew,hireCrew,dismissCrew,assignCrew,
   hitEnemy,bUpdate,bDraw,get bScale(){return bScale},
   hireCost,dismissValue,bridgeSlots,crewUnlocked,onBridge,crewMul,svReward,EK,EMIX,comboMul,bTapAt,
@@ -13073,7 +13370,7 @@ window.__SD={get S(){return S},NEXUS,buyNex,openSite,SITE,siteSlots,
   dmodBuild,dmodUpgrade,dmodRearm,dmodSwap,dmodLv,dmodSummary,dmodConsumeMines,
   renderSysDef,renderSysOdds,defCardPct,defBalanceLabel,defClearSel,get defSel(){return defSel},openDefPicker,
   DEF_ICON,DEF_COLOR,DEF_GLYPH,defIconHTML,hasSensorMast,defBestPreview,
-  HAN_CAP,HAN_STR_MULT,hanFleet,hanCount,hanLeft,hanDPS,hanHP,hanTotalPower,hanStrength,
+  HAN_CAP,HAN_STR_MULT,hanFleet,hanFrom,hanCount,hanLeft,hanDPS,hanHP,hanTotalPower,hanPowerFor,hanStrength,
   stationHan,recallHan,recallHanAll,renderSysHan,hanModal,hanModalHTML,
   defStrength,bestHeldDefStrength,bestHeldDefSys,defRate,defAutoFire,
   holdOdds,holdLine,holdResolve,thq,thqAt,thqAtSys,thqDrop,thqTick,thqPrune,thqClock,
@@ -13135,5 +13432,8 @@ window.__SD={get S(){return S},NEXUS,buyNex,openSite,SITE,siteSlots,
   sellRes,mktPrice,mktHeat,mktHeatMul,mktBasePrice,mktAmount,get mktBuy(){return mktBuy},mktBal,mktResLabel,
   svOrePrice,svCryPrice,svExoPrice,dmOrePrice,renderMarket,openStatsPane,
   mktSvKinds,exoModal,exoEverBanked,exoEverBankedAny,
-  renderSysBuild};
+  renderSysBuild,
+  /* PLAN-governors */
+  GOV_EVERY,GOV_SHARE,govSystems,govCount,govPickTier,govBuyStep,govTick,offlineGovCatchup,
+  govSetAppointed,renderSysGov};
 </script>

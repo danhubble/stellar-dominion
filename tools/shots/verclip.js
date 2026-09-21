@@ -1,0 +1,31 @@
+const SHOTS=require('path').resolve(__dirname,'../../shots')+'/';
+const GAME_URL='file://'+require('path').resolve(__dirname,'../../dist/stellar-dominion.html');
+const { chromium } = require('playwright-core');
+(async()=>{
+ const b=await chromium.launch({executablePath:process.env.SD_CHROME||'/opt/pw-browsers/chromium'});
+ const ctx=await b.newContext({viewport:{width:390,height:667},deviceScaleFactor:2,hasTouch:true});
+ const p=await ctx.newPage(); p.on('pageerror',e=>console.log('PAGEERROR',e.message));
+ await p.goto(GAME_URL); await p.waitForTimeout(600);
+ await p.evaluate(()=>{ if(window.__SD&&__SD.sceneOn)__SD.sceneFinish(); }); await p.waitForTimeout(400);
+ const setup=async()=>p.evaluate(()=>{const G=window.__SD;
+   G.adopt({...G.fresh(), all:1e30, lvl:99, lvSeen:99, ore:1e30, sh:[500,300,150], fhp:1, cmode:"wep", tg:[], rf:{gun:10,arm:10}, nx:{war:15}, xp:{casc:15,core:20}, notifyQueue:[]});
+   G.S.tg=[{ti:2,en:4,secs:30,dif:1.9,dmg:.74,name:"Corsair Wing",rw:"both"}];
+   G.render();
+   const t=G.S.tg[0]; const fhp0=G.S.fhp; const ok=G.autoResolveTarget(t,0);
+   return {ok, fhp0, cine:!!(G.BT&&G.BT.cine), en:G.BT?G.BT.en.length:0, res:document.getElementById('bRes').classList.contains('on'), cls:document.getElementById('battle').className};});
+ console.log('armed',JSON.stringify(await setup()));
+ await p.waitForTimeout(1250);
+ console.log('t~1.2',JSON.stringify(await p.evaluate(()=>({alive:__SD.BT.en.filter(e=>e.alive).length,fx:__SD.BT.fx.length,done:__SD.BT.done,res:document.getElementById('bRes').classList.contains('on'),retreat:getComputedStyle(document.getElementById('bRetreat')).display,wep:getComputedStyle(document.getElementById('bWep')).display}))));
+ await p.screenshot({path:SHOTS+'clipv-mid.png'});
+ await p.waitForTimeout(2200);
+ console.log('end',JSON.stringify(await p.evaluate(()=>({alive:__SD.BT.en.filter(e=>e.alive).length,done:__SD.BT.done,res:document.getElementById('bRes').classList.contains('on'),title:document.querySelector('#bRes h3')?.textContent,fhp:+__SD.S.fhp.toFixed(4),retreat:getComputedStyle(document.getElementById('bRetreat')).display}))));
+ await p.screenshot({path:SHOTS+'clipv-card.png'});
+ // skip path
+ await p.evaluate(()=>{document.getElementById('bDone').click();});
+ await p.waitForTimeout(300);
+ console.log('armed2',JSON.stringify(await setup()));
+ await p.waitForTimeout(120);
+ await p.click('#bcv'); await p.waitForTimeout(300);
+ console.log('skip',JSON.stringify(await p.evaluate(()=>({done:__SD.BT.done,res:document.getElementById('bRes').classList.contains('on'),fhp:+__SD.S.fhp.toFixed(4),kills:__SD.BT.kills,tot:__SD.BT.tot}))));
+ await b.close();
+})();

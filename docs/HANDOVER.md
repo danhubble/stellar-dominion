@@ -11845,3 +11845,12 @@ Coordinator verification: an old level-22 one-fleet save gains 2nd and 3rd Fleet
 Sol Reach on load (one combined toast); bar shows three real buttons; markers stack
 at a shared node; transfer modal; Raids tabs show the selected fleet's location.
 Suite clean, sim identical. Published Version 42. PLAN-fleets complete.
+
+## release b643 — PLAN-governors + per-fleet cap
+
+Coordinator verification: toggle ON/OFF, last-buy line, LIST ◆, research card, at
+667 and 844; tgov2/tfleets2 clean; suite clean. csim baseline replaced in commit 1
+(the sim's greedy research stops buying auto 4–10, so crystal is freed earlier —
+a sim-policy artefact, not a player-facing pacing change; documented exception).
+`.gitignore` now `/shots/` so `tools/shots/*.js` are tracked. First release pushed
+via git bundle (coordinator cannot run git on the owner's machine).
