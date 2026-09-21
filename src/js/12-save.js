@@ -431,6 +431,13 @@ function adopt(o){
   if(SYS.some(s=>!s.home&&sysOpen(s)))S.seen["vega:claimable"]=true;
   if(EXO.some(e=>exoEverBanked(e.id)))S.seen["vega:exoBanked"]=true;
   if(unlockedAt("p-raid"))S.seen["vega:raids"]=true;
+  /* PLAN-fleets run 3: catches an old save up on Fleet 2/3 the instant it loads,
+     same reasoning as every backfill around it - a level-22 save from before this
+     run existed should not wait for the next tick to gain fleets it has clearly
+     earned. ensureFleets() itself decides one notice vs. one combined toast; see
+     its own comment (01-content.js) for why an old save opening both at once never
+     queues either vega:fleet2/3 card. */
+  ensureFleets();
   if(crewUnlocked())S.seen["vega:crew"]=true;
   if(unlockedAt("p-nex"))S.seen["vega:nexus"]=true;
   if(level()>=23)S.seen["vega:ring2"]=true;

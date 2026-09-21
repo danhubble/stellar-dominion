@@ -49,8 +49,13 @@ function lvModal(){
   /* PLAN-pacing: Research and Map now tie at lv 5 - UNLOCK can carry more than one
      entry for the same lv, so this must list all of them, not just the first find(). */
   const opens=UNLOCK.filter(u=>u.lv===nextL);
+  /* PLAN-fleets run 3: FLEET_UNLOCK index 0 (Fleet 1) is the same level as the
+     p-raid UNLOCK row above and already gets its own line there - only index >=1
+     (Fleet 2/3, levels 14/20) needs a line here, same styling as an UNLOCK row. */
+  const fleetIdx=FLEET_UNLOCK.findIndex((lv,i)=>i>=1&&lv===nextL);
   showModal(`<h3 class="lvup">Level ${nextL}</h3>
     ${opens.map(un=>`<p class="lvun">This one also opens <b class="lvup">${un.n}</b> \u2014 ${un.d}</p>`).join("")}
+    ${fleetIdx>=0?`<p class="lvun">This one also opens <b class="lvup">${ordFleet(fleetIdx+1)}</b></p>`:""}
     <p>Choose one. It is permanent.</p>
     <div id="lvPicks">${offer.map(id=>{
       const p=PERKS.find(x=>x.id===id), have=pkl(id);

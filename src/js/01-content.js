@@ -1302,8 +1302,42 @@ const FLEET_NAMES=["1st Fleet","2nd Fleet","3rd Fleet"];
    this with it) - run 2 never actually renders slot 1 locked, since the whole bar
    is hidden below RAIDLV anyway. */
 const FLEET_UNLOCK=[unlockLv("p-raid"),14,20];
+/* single place every fleet display name is read from, so run 3's level-up modal
+   line, the commissioning toast and mkFleet() itself never drift from each other. */
+function ordFleet(id){ return FLEET_NAMES[id-1]||("Fleet "+id) }
 function mkFleet(id){
-  return { id, n:FLEET_NAMES[id-1]||("Fleet "+id), sh:[0,0,0], hp:1, at:"home", to:null, eta:0 };
+  return { id, n:ordFleet(id), sh:[0,0,0], hp:1, at:"home", to:null, eta:0 };
+}
+/* run 3: how many fleet slots the player's level has opened - Fleet 1 always exists
+   (fleets() self-heals to it) regardless of this count; it only gates slots 2/3. */
+function fleetSlots(){ return FLEET_UNLOCK.filter(lv=>level()>=lv).length }
+/* run 3 (PLAN-fleets decision 1): pushes a fresh Fleet 2/3 the moment the player's
+   level opens its slot. Called every tick from checkUnlocks() (same idiom every
+   other level-gated unlock in that function uses) and once from adopt() right after
+   the fleet array is sanitised, so a save loaded straight at a level past 14/20 (an
+   old save from before this run, or one restored from a backup) gets caught up
+   immediately rather than waiting for the next tick.
+   Normal play only ever crosses one threshold per call (checkUnlocks runs ~11x/s,
+   far more often than a level-up), so the single-notice branch is what a live game
+   sees; adopt() catching an old save up past BOTH thresholds in the same call is the
+   one place two slots can open at once - collapsed into one combined toast instead
+   of firing two VEGA cards back to back for something that happened between saves,
+   not during this session (decided per BRIEF-fleets-run3.md commit 1). */
+function ensureFleets(){
+  const added=[];
+  while(fleets().length<fleetSlots()){
+    const id=fleets().length+1;
+    S.fl.push(mkFleet(id));
+    added.push(id);
+  }
+  if(added.length===1){
+    queueNotice("vega:fleet"+added[0]);
+  } else if(added.length>1){
+    if(!S.seen||typeof S.seen!=="object")S.seen={};
+    for(const id of added)S.seen["vega:fleet"+id]=true;
+    toast(added.map(id=>ordFleet(id).split(" ")[0]).join(" and ")+" Fleet commissioned at Sol Reach","g");
+  }
+  return added;
 }
 /* self-healing: a save that somehow lost S.fl (or never had one past adopt()'s own
    sanitiser - defensive only, adopt() should never actually hand this an empty

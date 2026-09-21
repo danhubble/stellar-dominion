@@ -3523,8 +3523,42 @@ const FLEET_NAMES=["1st Fleet","2nd Fleet","3rd Fleet"];
    this with it) - run 2 never actually renders slot 1 locked, since the whole bar
    is hidden below RAIDLV anyway. */
 const FLEET_UNLOCK=[unlockLv("p-raid"),14,20];
+/* single place every fleet display name is read from, so run 3's level-up modal
+   line, the commissioning toast and mkFleet() itself never drift from each other. */
+function ordFleet(id){ return FLEET_NAMES[id-1]||("Fleet "+id) }
 function mkFleet(id){
-  return { id, n:FLEET_NAMES[id-1]||("Fleet "+id), sh:[0,0,0], hp:1, at:"home", to:null, eta:0 };
+  return { id, n:ordFleet(id), sh:[0,0,0], hp:1, at:"home", to:null, eta:0 };
+}
+/* run 3: how many fleet slots the player's level has opened - Fleet 1 always exists
+   (fleets() self-heals to it) regardless of this count; it only gates slots 2/3. */
+function fleetSlots(){ return FLEET_UNLOCK.filter(lv=>level()>=lv).length }
+/* run 3 (PLAN-fleets decision 1): pushes a fresh Fleet 2/3 the moment the player's
+   level opens its slot. Called every tick from checkUnlocks() (same idiom every
+   other level-gated unlock in that function uses) and once from adopt() right after
+   the fleet array is sanitised, so a save loaded straight at a level past 14/20 (an
+   old save from before this run, or one restored from a backup) gets caught up
+   immediately rather than waiting for the next tick.
+   Normal play only ever crosses one threshold per call (checkUnlocks runs ~11x/s,
+   far more often than a level-up), so the single-notice branch is what a live game
+   sees; adopt() catching an old save up past BOTH thresholds in the same call is the
+   one place two slots can open at once - collapsed into one combined toast instead
+   of firing two VEGA cards back to back for something that happened between saves,
+   not during this session (decided per BRIEF-fleets-run3.md commit 1). */
+function ensureFleets(){
+  const added=[];
+  while(fleets().length<fleetSlots()){
+    const id=fleets().length+1;
+    S.fl.push(mkFleet(id));
+    added.push(id);
+  }
+  if(added.length===1){
+    queueNotice("vega:fleet"+added[0]);
+  } else if(added.length>1){
+    if(!S.seen||typeof S.seen!=="object")S.seen={};
+    for(const id of added)S.seen["vega:fleet"+id]=true;
+    toast(added.map(id=>ordFleet(id).split(" ")[0]).join(" and ")+" Fleet commissioned at Sol Reach","g");
+  }
+  return added;
 }
 /* self-healing: a save that somehow lost S.fl (or never had one past adopt()'s own
    sanitiser - defensive only, adopt() should never actually hand this an empty
@@ -5313,8 +5347,13 @@ function lvModal(){
   /* PLAN-pacing: Research and Map now tie at lv 5 - UNLOCK can carry more than one
      entry for the same lv, so this must list all of them, not just the first find(). */
   const opens=UNLOCK.filter(u=>u.lv===nextL);
+  /* PLAN-fleets run 3: FLEET_UNLOCK index 0 (Fleet 1) is the same level as the
+     p-raid UNLOCK row above and already gets its own line there - only index >=1
+     (Fleet 2/3, levels 14/20) needs a line here, same styling as an UNLOCK row. */
+  const fleetIdx=FLEET_UNLOCK.findIndex((lv,i)=>i>=1&&lv===nextL);
   showModal(`<h3 class="lvup">Level ${nextL}</h3>
     ${opens.map(un=>`<p class="lvun">This one also opens <b class="lvup">${un.n}</b> \u2014 ${un.d}</p>`).join("")}
+    ${fleetIdx>=0?`<p class="lvun">This one also opens <b class="lvup">${ordFleet(fleetIdx+1)}</b></p>`:""}
     <p>Choose one. It is permanent.</p>
     <div id="lvPicks">${offer.map(id=>{
       const p=PERKS.find(x=>x.id===id), have=pkl(id);
@@ -5582,7 +5621,13 @@ const VEGA={
  drift55:   {t:"Every system out there pulls at the same thread. I do not think that is a coincidence.", go:null}, /* PLACEHOLDER */
  drift65:   {t:"I need you to hold Nyx. I cannot explain why yet. I will.", go:"p-map"},                          /* PLACEHOLDER */
  /* fires the first time Exotic Nodes are banked - inert until Batch B adds S.en */
- project:   {t:"Exotic Nodes. I do not have a better name for them yet. Bank everything you find.", go:"p-nex"}   /* PLACEHOLDER */
+ project:   {t:"Exotic Nodes. I do not have a better name for them yet. Bank everything you find.", go:"p-nex"},  /* PLACEHOLDER */
+ /* PLAN-fleets run 3: fired by ensureFleets() (01-content.js) the moment level 14/20
+    opens the slot - PLACEHOLDER TEXT. Only reached when exactly one fleet is added
+    in a single call; an old save that opens both at once gets a combined toast
+    instead and never queues either card (see ensureFleets()'s own comment). */
+ fleet2:    {t:"Second hull group is fitted out. Command splits, coverage doesn't.", go:"p-map"},   /* PLACEHOLDER */
+ fleet3:    {t:"Third fleet is yours. Three fronts, if you can hold them.", go:"p-map"}             /* PLACEHOLDER */
 };
 /* ---------------- RIVAL_MSG · intercepted transmissions ----------------
    Same rule as VEGA: PLACEHOLDER TEXT, the owner edits it here and nowhere else.
@@ -5735,6 +5780,7 @@ function checkUnlocks(){
   if(SYS.some(s=>!s.home&&sysOpen(s)))queueNotice("vega:claimable");
   if(EXO.some(e=>exoEverBanked(e.id)))queueNotice("vega:exoBanked");
   if(unlockedAt("p-raid"))queueNotice("vega:raids");
+  ensureFleets();   /* PLAN-fleets run 3: pushes Fleet 2/3 the moment level 14/20 opens */
   if(crewUnlocked())queueNotice("vega:crew");
   if(unlockedAt("p-nex"))queueNotice("vega:nexus");
   if(level()>=23)queueNotice("vega:ring2");
@@ -11388,6 +11434,13 @@ function adopt(o){
   if(SYS.some(s=>!s.home&&sysOpen(s)))S.seen["vega:claimable"]=true;
   if(EXO.some(e=>exoEverBanked(e.id)))S.seen["vega:exoBanked"]=true;
   if(unlockedAt("p-raid"))S.seen["vega:raids"]=true;
+  /* PLAN-fleets run 3: catches an old save up on Fleet 2/3 the instant it loads,
+     same reasoning as every backfill around it - a level-22 save from before this
+     run existed should not wait for the next tick to gain fleets it has clearly
+     earned. ensureFleets() itself decides one notice vs. one combined toast; see
+     its own comment (01-content.js) for why an old save opening both at once never
+     queues either vega:fleet2/3 card. */
+  ensureFleets();
   if(crewUnlocked())S.seen["vega:crew"]=true;
   if(unlockedAt("p-nex"))S.seen["vega:nexus"]=true;
   if(level()>=23)S.seen["vega:ring2"]=true;
@@ -12802,6 +12855,7 @@ window.__SD={get S(){return S},NEXUS,buyNex,openSite,SITE,siteSlots,
   MISFX,misClaimFx,get misFxUntil(){return misFxUntil},
   SHIPS,RAIDS,newTarget,fleetDPS,fleetHPMax,fleetCount,buyShip,raidReward,engage,
   FLEET_COL,mkFleet,fleets,fleet,curFleet,fleetAtSys,shipTotal,allFleetShips,
+  ordFleet,fleetSlots,ensureFleets,
   mergeFleetsForFinal,unmergeAfterFinal,
   TRAVEL_BASE,TRAVEL_PER_UNIT,TRAVEL_PER_RING,travelSecs,fleetSend,fleetTravelTick,
   FLEET_UNLOCK,fleetTravelingTo,nearestIdleFleetTo,

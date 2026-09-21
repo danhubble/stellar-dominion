@@ -35,7 +35,13 @@ const VEGA={
  drift55:   {t:"Every system out there pulls at the same thread. I do not think that is a coincidence.", go:null}, /* PLACEHOLDER */
  drift65:   {t:"I need you to hold Nyx. I cannot explain why yet. I will.", go:"p-map"},                          /* PLACEHOLDER */
  /* fires the first time Exotic Nodes are banked - inert until Batch B adds S.en */
- project:   {t:"Exotic Nodes. I do not have a better name for them yet. Bank everything you find.", go:"p-nex"}   /* PLACEHOLDER */
+ project:   {t:"Exotic Nodes. I do not have a better name for them yet. Bank everything you find.", go:"p-nex"},  /* PLACEHOLDER */
+ /* PLAN-fleets run 3: fired by ensureFleets() (01-content.js) the moment level 14/20
+    opens the slot - PLACEHOLDER TEXT. Only reached when exactly one fleet is added
+    in a single call; an old save that opens both at once gets a combined toast
+    instead and never queues either card (see ensureFleets()'s own comment). */
+ fleet2:    {t:"Second hull group is fitted out. Command splits, coverage doesn't.", go:"p-map"},   /* PLACEHOLDER */
+ fleet3:    {t:"Third fleet is yours. Three fronts, if you can hold them.", go:"p-map"}             /* PLACEHOLDER */
 };
 /* ---------------- RIVAL_MSG · intercepted transmissions ----------------
    Same rule as VEGA: PLACEHOLDER TEXT, the owner edits it here and nowhere else.
