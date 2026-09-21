@@ -26,7 +26,13 @@ function fmtT(s){ s=Math.max(0,Math.floor(s));
   const d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60),x=s%60;
   if(d)return d+"d "+h+"h"; if(h)return h+"h "+m+"m"; if(m)return m+"m "+x+"s"; return x+"s";
 }
+/* PLAN-governors: a governor purchase's normal toast/blip fire only while the
+   system's own page is open (owner decision 5) - govBuyStep() sets this around its
+   ladderBuy()/grantXp() call rather than teaching either function about governors.
+   Never set anywhere else; always false again before the next player-facing call. */
+let hush=false;
 function toast(msg,cls){
+  if(hush)return;
   const host=$("#toasts");
   const d=document.createElement("div"); d.className="toast "+(cls||""); d.textContent=msg;
   host.appendChild(d);
@@ -183,7 +189,7 @@ function noiseVoice(dur,o,G){
    signature as before, now voiced through the shared engine, always dry (never sent
    to the delay - that send is reserved for battle cues). */
 function blip(f,dur,type,vol){
-  if(S.muted)return;
+  if(S.muted||hush)return;
   try{
     const G=A(), t0=G.ctx.currentTime, D=dur||.12;
     const o1=G.ctx.createOscillator(), g=G.ctx.createGain();

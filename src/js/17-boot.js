@@ -117,4 +117,6 @@ window.__SD={get S(){return S},NEXUS,buyNex,openSite,SITE,siteSlots,
   sellRes,mktPrice,mktHeat,mktHeatMul,mktBasePrice,mktAmount,get mktBuy(){return mktBuy},mktBal,mktResLabel,
   svOrePrice,svCryPrice,svExoPrice,dmOrePrice,renderMarket,openStatsPane,
   mktSvKinds,exoModal,exoEverBanked,exoEverBankedAny,
-  renderSysBuild};
+  renderSysBuild,
+  /* PLAN-governors */
+  GOV_EVERY,GOV_SHARE,govSystems,govCount,govPickTier,govBuyStep,govTick,offlineGovCatchup};

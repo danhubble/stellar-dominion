@@ -10,12 +10,20 @@ function tierBuildable(id,gi){
   const s=SYSMAP[id]; if(!s||!GENS[gi]||GENS[gi].kind!==ladderKindOf(s))return false;
   return sysTierCount(id,gi)>0 || sysNextGi(id)===gi;
 }
-function ladderBuy(id,gi){
+/* kOverride (PLAN-governors "Watch for"): govBuyStep() passes an explicit 1 here so a
+   governor's purchase is never affected by the player's x1/x10/MAX chip (S.buy) -
+   default (undefined) keeps every other caller's behaviour exactly as it was. */
+function ladderBuy(id,gi,kOverride){
   if(!tierBuildable(id,gi))return false;
   const st=sysState(id); if(!st)return false;
   if(!st.b||typeof st.b!=="object")st.b={};
-  let k = S.buy==="max" ? ladderMaxAff(id,gi) : Math.min(S.buy, 1e9);
-  if(S.buy!=="max"){ if(S.ore<ladderCost(id,gi,k)) k=Math.min(k,ladderMaxAff(id,gi)); }
+  let k;
+  if(kOverride!==undefined){
+    k=Math.max(0,Math.floor(kOverride));
+  }else{
+    k = S.buy==="max" ? ladderMaxAff(id,gi) : Math.min(S.buy, 1e9);
+    if(S.buy!=="max"){ if(S.ore<ladderCost(id,gi,k)) k=Math.min(k,ladderMaxAff(id,gi)); }
+  }
   const xid=ladderExoId(gi);
   if(xid) k=Math.min(k, Math.floor(exo(xid)/GENS[gi].exoC));
   if(k<1)return false;

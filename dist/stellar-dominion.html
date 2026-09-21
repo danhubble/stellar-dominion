@@ -1943,7 +1943,13 @@ function fmtT(s){ s=Math.max(0,Math.floor(s));
   const d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60),x=s%60;
   if(d)return d+"d "+h+"h"; if(h)return h+"h "+m+"m"; if(m)return m+"m "+x+"s"; return x+"s";
 }
+/* PLAN-governors: a governor purchase's normal toast/blip fire only while the
+   system's own page is open (owner decision 5) - govBuyStep() sets this around its
+   ladderBuy()/grantXp() call rather than teaching either function about governors.
+   Never set anywhere else; always false again before the next player-facing call. */
+let hush=false;
 function toast(msg,cls){
+  if(hush)return;
   const host=$("#toasts");
   const d=document.createElement("div"); d.className="toast "+(cls||""); d.textContent=msg;
   host.appendChild(d);
@@ -2100,7 +2106,7 @@ function noiseVoice(dur,o,G){
    signature as before, now voiced through the shared engine, always dry (never sent
    to the delay - that send is reserved for battle cues). */
 function blip(f,dur,type,vol){
-  if(S.muted)return;
+  if(S.muted||hush)return;
   try{
     const G=A(), t0=G.ctx.currentTime, D=dur||.12;
     const o1=G.ctx.createOscillator(), g=G.ctx.createGain();
@@ -4883,12 +4889,20 @@ function tierBuildable(id,gi){
   const s=SYSMAP[id]; if(!s||!GENS[gi]||GENS[gi].kind!==ladderKindOf(s))return false;
   return sysTierCount(id,gi)>0 || sysNextGi(id)===gi;
 }
-function ladderBuy(id,gi){
+/* kOverride (PLAN-governors "Watch for"): govBuyStep() passes an explicit 1 here so a
+   governor's purchase is never affected by the player's x1/x10/MAX chip (S.buy) -
+   default (undefined) keeps every other caller's behaviour exactly as it was. */
+function ladderBuy(id,gi,kOverride){
   if(!tierBuildable(id,gi))return false;
   const st=sysState(id); if(!st)return false;
   if(!st.b||typeof st.b!=="object")st.b={};
-  let k = S.buy==="max" ? ladderMaxAff(id,gi) : Math.min(S.buy, 1e9);
-  if(S.buy!=="max"){ if(S.ore<ladderCost(id,gi,k)) k=Math.min(k,ladderMaxAff(id,gi)); }
+  let k;
+  if(kOverride!==undefined){
+    k=Math.max(0,Math.floor(kOverride));
+  }else{
+    k = S.buy==="max" ? ladderMaxAff(id,gi) : Math.min(S.buy, 1e9);
+    if(S.buy!=="max"){ if(S.ore<ladderCost(id,gi,k)) k=Math.min(k,ladderMaxAff(id,gi)); }
+  }
   const xid=ladderExoId(gi);
   if(xid) k=Math.min(k, Math.floor(exo(xid)/GENS[gi].exoC));
   if(k<1)return false;
@@ -5589,6 +5603,100 @@ function checkAchs(){
 }
 function flag(p){ const t=$$(".tab").find(t=>t.dataset.p===p); if(t&&!t.classList.contains("on"))t.classList.add("alert"); }
 
+/* ============================ governors (PLAN-governors) ============================
+   A system with S.sys[id].gov=1 buys the cheapest affordable next step on its own
+   ladder - tierBuildable() already defines exactly that set (an owned tier, or the
+   next reveal) - once every GOV_EVERY seconds of game time, one unit at a time
+   (ladderBuy's own k forced to 1, never S.buy's x1/x10/MAX), from a per-governor
+   budget (gb) that accrues GOV_SHARE of the empire's ore rate, split evenly across
+   every appointed governor, and is spent down by purchases - it never dips into ore
+   the player already had. TUNING-PENDING: both constants. */
+const GOV_EVERY=20, GOV_SHARE=0.5;
+/* every system currently appointed a governor - regardless of occupation, since
+   "suspends" (owner decision 3) means govTick() skips it this tick, not that it
+   stops being appointed; sysHeld() is what actually gates whether it can buy. */
+function govSystems(){
+  const out=[]; if(!S.sys)return out;
+  for(const id in S.sys){ const st=S.sys[id]; if(st&&st.gov)out.push(id); }
+  return out;
+}
+function govCount(){ return govSystems().length }
+/* the cheapest of: one more of an owned tier, or the next reveal - tierBuildable()
+   already is exactly that rule (see its own header comment), so this is nothing but
+   a cost-sort over it. Exotic-gated tiers are skipped unless the exotic is there
+   too, same rule ladderBuy() itself checks. */
+function govPickTier(id){
+  const ladder=sysLadder(id);
+  let best=null, bestCost=Infinity;
+  for(const gi of ladder){
+    if(!tierBuildable(id,gi))continue;
+    const xid=ladderExoId(gi);
+    if(xid && exo(xid)<GENS[gi].exoC)continue;
+    const c=ladderCost(id,gi,1);
+    if(c<bestCost){ bestCost=c; best=gi; }
+  }
+  return best;
+}
+/* one purchase attempt for one governed system - called once per GOV_EVERY of game
+   time that system's own timer (st.gt) accrues, from govTick() below. Silent (no
+   toast/blip) unless the system's own page is open (owner decision 5) - grantXp()'s
+   milestone toast inside ladderBuy()'s xpOnBuild() would otherwise spam every
+   closed-page buy (PLAN-governors "Watch for"). */
+function govBuyStep(id, st){
+  const gi=govPickTier(id); if(gi==null)return false;
+  const cost=ladderCost(id,gi,1);
+  if(cost>st.gb || S.ore<cost)return false;
+  const open = document.body.classList.contains("syspage") && S.msel===id;
+  hush=!open;
+  const bought=ladderBuy(id,gi,1);
+  hush=false;
+  if(!bought)return false;
+  st.gb-=cost;
+  st.gl={gi,t:Date.now()};
+  S.govBuys=(S.govBuys||0)+1;
+  if(!S.seen||!S.seen["vega:governor"])queueNotice("vega:governor");
+  dirty=true;
+  return true;
+}
+/* dt is game seconds elapsed (tick()'s own small dt, or GOV_EVERY repeated from
+   offlineGovCatchup() below). effMul scales the bank accrual down to match the
+   discounted ore offline already banked at (offlineEff()) - a governor never gets a
+   richer cut than the empire's own production did. capPerSys bounds how many buy
+   attempts a single call may make per system - only offlineGovCatchup() ever passes
+   it; live tick()'s dt is always far under GOV_EVERY, so the while loop below never
+   needs a cap during ordinary play. csim4.js never sets S.sys[id].gov anywhere, so
+   govSystems() is always empty there and this returns before touching rate() or
+   S.ore - the pacing baseline cannot move from this function. No Math.random(). */
+function govTick(dt, effMul, capPerSys){
+  if(!(dt>0))return;
+  effMul = effMul===undefined?1:effMul;
+  const ids=govSystems().filter(id=>sysHeld(id));
+  const n=ids.length; if(!n)return;
+  const share=GOV_SHARE/n, r=rate();
+  for(const id of ids){
+    const st=sysState(id); if(!st)continue;
+    st.gb=(st.gb||0)+r*dt*share*effMul;
+    st.gt=(st.gt||0)+dt;
+    let bought=0;
+    while(st.gt>=GOV_EVERY && (capPerSys===undefined || bought<capPerSys)){
+      st.gt-=GOV_EVERY;
+      govBuyStep(id, st);
+      bought++;
+    }
+  }
+}
+/* offline catch-up (PLAN-governors commit 2): offlineReport() does its own ore/cry/en
+   maths rather than calling tick(), so this is the one other place the bank accrues
+   and purchases fire while away. Capped at one purchase attempt per system per
+   GOV_EVERY of away time, max 50 calls overall - never O(days/GOV_EVERY) work for a
+   week-long absence. Called from offlineReport() (12-save.js), after S.ore already
+   has the away production folded in, so a purchase spends real, already-banked ore -
+   never money the player has not actually earned yet. */
+function offlineGovCatchup(awaySecs, effMul){
+  const steps=Math.min(50, Math.floor((awaySecs||0)/GOV_EVERY));
+  for(let i=0;i<steps;i++) govTick(GOV_EVERY, effMul, 1);
+}
+
 /* ============================ loop ============================ */
 let dirty=true, autoAcc=0;
 function tick(dt){
@@ -5600,9 +5708,11 @@ function tick(dt){
   const c=cryRate(); if(c>0)S.cry+=c*dt;
   const ov=nexLv("ovs");
   if(ov>0){ autoAcc+=dt*ov*3; while(autoAcc>=1){autoAcc-=1; const v=clickPow(); S.ore+=v;S.all+=v;S.clicks++;} }
-  /* EMPIRE2: the "auto" research node's buy-toggle is retired - see the note at the top
-     of patch403. The node itself still purchases and levels; this is just where its old
-     per-tier auto-purchase used to run. */
+  /* EMPIRE2: the "auto" research node's OLD buy-toggle is retired (patch403) - this is
+     where its per-tier auto-purchase used to run. PLAN-governors reuses the exact same
+     node (renamed Governors in copy, see 01-content.js) for a new, unrelated mechanic:
+     govTick() below, gated on a per-system S.sys[id].gov flag csim never sets. */
+  govTick(dt);
   raidTick(dt);
   rvTick(dt);
   histTick(dt);
@@ -11456,7 +11566,19 @@ function adopt(o){
       const gi=Math.floor(gk), c=Math.max(0,Math.floor(bin[gk]||0));
       if(gi>=0 && GENS[gi] && c>0) b[gi]=c;
     }
-    f.sys[k]={b};
+    /* PLAN-governors: gov/gb/gt/gl live on the same per-system entry as b. gov is a
+       plain 1/0 flag (appointing past govCount()<lv(S.rs,"auto") is a UI gate, not a
+       save invariant - a save from a game that has since lost research levels is
+       left over-appointed rather than silently un-appointing something the player
+       chose; renderSysGov() just clamps what NEW appointments are offered). gb/gt
+       are never negative; gl (last buy) is dropped unless it names a real tier. */
+    const gin=f.sys[k]||{};
+    const gov=gin.gov?1:0;
+    const gb=Math.max(0,+gin.gb||0);
+    const gt=Math.max(0,+gin.gt||0);
+    const gl=(gin.gl&&typeof gin.gl==="object"&&GENS[Math.floor(gin.gl.gi)]&&+gin.gl.t>0)
+      ? {gi:Math.floor(gin.gl.gi), t:+gin.gl.t} : null;
+    f.sys[k]={b, ...(gov?{gov}:{}), ...(gb?{gb}:{}), ...(gt?{gt}:{}), ...(gl?{gl}:{})};
   }
   /* home is always held - a save that predates a claim, or one that simply never had
      home in S.sys, still needs its count map to exist */
@@ -11720,6 +11842,13 @@ function offlineReport(){
   if(ore<=0&&cry<=0&&en<=0&&!fought.length&&!claims.length&&!occupied.length)return;
   S.ore+=ore;S.all+=ore;S.cry+=cry;S.en+=en;S.enAll+=en;
   for(const e of EXO){ const r=exoRate(e.id); if(r>0)S.exo[e.id]=exo(e.id)+r*t*eff }
+  /* PLAN-governors commit 2: offlineReport() never calls tick(), so governor bank
+     accrual/purchases need their own catch-up here - AFTER the away production above
+     has already landed in S.ore, so a governor purchase spends real, already-banked
+     ore. away (not the production-capped t) is what "one per GOV_EVERY of away time"
+     is measured against - a governor keeps checking in whether or not the offline
+     cap capped production. */
+  offlineGovCatchup(away, eff);
   showModal(`<h3>While you were away</h3>
    <p>Away for <b>${fmtT(away)}</b> — banked <b>${fmtT(t)}</b> at ${Math.round(eff*100)}% efficiency.</p>
    <div style="font:700 26px/1.2 ui-monospace,monospace;color:var(--cy);margin:10px 0">+${fmt(ore)} ${RI("ore")}</div>
@@ -13144,7 +13273,9 @@ window.__SD={get S(){return S},NEXUS,buyNex,openSite,SITE,siteSlots,
   sellRes,mktPrice,mktHeat,mktHeatMul,mktBasePrice,mktAmount,get mktBuy(){return mktBuy},mktBal,mktResLabel,
   svOrePrice,svCryPrice,svExoPrice,dmOrePrice,renderMarket,openStatsPane,
   mktSvKinds,exoModal,exoEverBanked,exoEverBankedAny,
-  renderSysBuild};
+  renderSysBuild,
+  /* PLAN-governors */
+  GOV_EVERY,GOV_SHARE,govSystems,govCount,govPickTier,govBuyStep,govTick,offlineGovCatchup};
 </script>
 </body>
 </html>

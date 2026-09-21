@@ -278,7 +278,19 @@ function adopt(o){
       const gi=Math.floor(gk), c=Math.max(0,Math.floor(bin[gk]||0));
       if(gi>=0 && GENS[gi] && c>0) b[gi]=c;
     }
-    f.sys[k]={b};
+    /* PLAN-governors: gov/gb/gt/gl live on the same per-system entry as b. gov is a
+       plain 1/0 flag (appointing past govCount()<lv(S.rs,"auto") is a UI gate, not a
+       save invariant - a save from a game that has since lost research levels is
+       left over-appointed rather than silently un-appointing something the player
+       chose; renderSysGov() just clamps what NEW appointments are offered). gb/gt
+       are never negative; gl (last buy) is dropped unless it names a real tier. */
+    const gin=f.sys[k]||{};
+    const gov=gin.gov?1:0;
+    const gb=Math.max(0,+gin.gb||0);
+    const gt=Math.max(0,+gin.gt||0);
+    const gl=(gin.gl&&typeof gin.gl==="object"&&GENS[Math.floor(gin.gl.gi)]&&+gin.gl.t>0)
+      ? {gi:Math.floor(gin.gl.gi), t:+gin.gl.t} : null;
+    f.sys[k]={b, ...(gov?{gov}:{}), ...(gb?{gb}:{}), ...(gt?{gt}:{}), ...(gl?{gl}:{})};
   }
   /* home is always held - a save that predates a claim, or one that simply never had
      home in S.sys, still needs its count map to exist */
@@ -542,6 +554,13 @@ function offlineReport(){
   if(ore<=0&&cry<=0&&en<=0&&!fought.length&&!claims.length&&!occupied.length)return;
   S.ore+=ore;S.all+=ore;S.cry+=cry;S.en+=en;S.enAll+=en;
   for(const e of EXO){ const r=exoRate(e.id); if(r>0)S.exo[e.id]=exo(e.id)+r*t*eff }
+  /* PLAN-governors commit 2: offlineReport() never calls tick(), so governor bank
+     accrual/purchases need their own catch-up here - AFTER the away production above
+     has already landed in S.ore, so a governor purchase spends real, already-banked
+     ore. away (not the production-capped t) is what "one per GOV_EVERY of away time"
+     is measured against - a governor keeps checking in whether or not the offline
+     cap capped production. */
+  offlineGovCatchup(away, eff);
   showModal(`<h3>While you were away</h3>
    <p>Away for <b>${fmtT(away)}</b> — banked <b>${fmtT(t)}</b> at ${Math.round(eff*100)}% efficiency.</p>
    <div style="font:700 26px/1.2 ui-monospace,monospace;color:var(--cy);margin:10px 0">+${fmt(ore)} ${RI("ore")}</div>
