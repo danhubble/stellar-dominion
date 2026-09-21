@@ -2613,6 +2613,14 @@ function renderRaids(){
   const thinCap=cp>0&&pw<cp*0.7;
   st.innerHTML=fmt(fleetDPS(cf))+" dps · "+fmt(fleetHPMax(cf))+" hull"
     +` <b class="flcap${over?" over":thinCap?" thin":""}">⚡${pw}/${cp}</b>`;
+  /* PLAN-fleets run 3 (BRIEF commit 2): where the selected tab's own fleet actually
+     is - independent of the ENGAGE/AUTO fleet a target card uses (that is always
+     fleetAtSys(t.sys), never this tab). Plain textContent, same idiom the fleet
+     bar's .fstat span uses - no churn key needed, it is not a DOM rebuild. */
+  const loc=$("#flLoc");
+  if(loc)loc.textContent = cf.to
+    ? "→ "+((SYSMAP[cf.to]||{}).n||cf.to).toUpperCase()+" · "+Math.max(0,Math.ceil(cf.eta))+"s"
+    : "AT "+((SYSMAP[cf.at]||{}).n||cf.at).toUpperCase();
   const hp=cf.hp, bar=$(".fl-hp");
   bar.classList.toggle("hurt",hp<=.6&&hp>.3); bar.classList.toggle("crit",hp<=.3);
   $("#flHp").style.width=(hp*100)+"%";

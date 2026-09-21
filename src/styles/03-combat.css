@@ -52,6 +52,9 @@
 .fl-h{display:flex;align-items:baseline;gap:10px}
 .fl-t{font:700 10px/1 system-ui;letter-spacing:.2em;color:#ff8fd0}
 .fl-st{margin-left:auto;font:600 11px/1 ui-monospace,monospace;color:var(--mut)}
+/* PLAN-fleets run 3: the selected tab's own "AT X"/"-> X . Ns" line - same idiom
+   the fleet bar's .fstat span uses, one size down since this sits under a header. */
+.fl-loc{font:600 10px/1 ui-monospace,monospace;color:var(--mut);margin:3px 0 0}
 .flcap{color:#ffb45c;font-weight:700}
 .flcap.thin{color:#ffb45c}
 .flcap.over{color:var(--rd)}

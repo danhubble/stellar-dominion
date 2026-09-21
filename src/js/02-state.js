@@ -10,7 +10,13 @@ function fresh(){
     /* PLAN-fleets run 1: S.fl replaces the old flat S.sh/S.fhp pair - see mkFleet()/
        fleets()/curFleet() next to fleetDPS() in 01-content.js. S.flSel is the id of
        the fleet the Raids pane is showing (run 3 adds more than one to pick from). */
-    fl:[mkFleet(1)], flSel:1, tg:[], tgT:0, wins:0, losses:0, plunder:0, flawless:0,
+    /* run 3: the delivery queue (S.flQ) must be seeded here too, not just sanitised
+       in adopt() - adopt()'s copy loop is `for(const k in f) if(k in o) f[k]=o[k]`,
+       keyed on fresh()'s OWN keys, so a key fresh() never mentions is silently
+       dropped from every incoming save even when the save carries it (found while
+       testing the queue surviving a reload - a real save-loss bug, not just a
+       fixture gap). */
+    fl:[mkFleet(1)], flSel:1, flQ:[0,0,0], tg:[], tgT:0, wins:0, losses:0, plunder:0, flawless:0,
     sv:0, svAll:0, rf:{}, crew:makeDeckhands(), bridge:makeDeckhands().map(c=>c.id), crewPool:[],
     cseed:1, bestCmb:0, flags:0, end:0,
     rs:{}, nx:{}, ac:{}, mi:0, miq:[], lvSeen:1, lvl:1, pk:{}, pkLog:[], lvOffer:null,

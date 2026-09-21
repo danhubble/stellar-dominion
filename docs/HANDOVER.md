@@ -11810,3 +11810,31 @@ Coordinator verification: sim identical, suite clean (tsabotage2 only times out 
 the sweep's load; passes alone). Cross-ring travel tuned 45→30 s per ring after seeing
 a first raid 110 s away with only home held. DEFEND IT is NOT gated on fleet position
 (garrison mini-game never used the fleet) — noted for the owner. Published Version 41.
+
+## PLAN-fleets run 3 — fleets 2 and 3
+
+`FLEET_UNLOCK`/`fleetSlots()`/`ensureFleets()` open Fleet 2 at level 14 and Fleet 3
+at 20 (level-up modal line + a VEGA notice each, or one combined "commissioned"
+toast for an old save that crosses both at once — see BRIEF-fleets-run3.md commit
+1's own note on the ambiguity). TRANSFER moves hulls between two idle fleets at the
+same system; `buyShip()` now routes to whichever fleet is idle at home or queues on
+`S.flQ` ("DELIVERS AT SOL REACH") until one lands. Map markers stack 14px apart when
+more than one fleet idles at the same node instead of drawing on top of each other.
+
+Found and fixed while writing this run's tests, not part of any of the four
+commits' own scope: `fresh()` never seeded `S.flQ`, so `adopt()`'s copy loop (keyed
+on `fresh()`'s own keys) silently dropped a save's queued purchase on every reload —
+a real save-loss bug, not a fixture gap. Also added the Raids pane's `#flLoc` line
+("AT X" / "→ X · Ns" for the selected tab's own fleet) that BRIEF-fleets-run3.md's
+commit 2 called for but commit 2 (already landed before this run resumed) didn't
+add — needed for `canAutoResolve`/tab-independence to be visible and for the
+commit-4 screenshot set.
+
+csim byte-identical throughout. `tfleets2.js` (appended): fleetSlots() at three
+levels, ensureFleets()'s single-notice vs combined-toast branches, an old level-22
+save gaining two fleets on load, the level-up modal's "2nd Fleet" line, TRANSFER
+both directions and its apart-refusal, the delivery queue (queues, drains on
+arrival, drains on load, counted by shipTotal() immediately), three stacked
+markers, autoResolveTarget() picking the fleet at the target over the selected
+tab, and the final-battle merge/unmerge with three fleets. tchurn2 clean. Suite
+clean end to end (including tsabotage2 run alone).

@@ -271,6 +271,209 @@ const { chromium } = require('playwright-core');
  ok('...and shows a SEND chip on that node instead', !!nodeTap.chipText && /SEND/.test(nodeTap.chipText), nodeTap);
  ok('tapping the chip sends the fleet and deselects', nodeTap.flSelAfter===null && nodeTap.toAfter==="kor", nodeTap);
 
+ // ================== PLAN-fleets run 3: fleets 2 and 3 ==================
+ // BRIEF-fleets-run3.md's "Tests" section: fleetSlots() at 13/14/20, an old
+ // level-22 save gaining two fleets on load with one combined toast, the
+ // level-up modal's Fleet-2 line, TRANSFER, buyShip()'s delivery queue,
+ // three markers (two stacked), autoResolveTarget() picking the fleet AT the
+ // target with two fleets in play, and the final-battle merge with three.
+
+ // ---------------- fleetSlots(): 13 -> 1, 14 -> 2, 20 -> 3 ----------------
+ const slots=await p.evaluate(()=>{
+   const G=window.__SD;
+   G.adopt({...G.fresh(), lvl:13, lvSeen:13}); const at13=G.fleetSlots();
+   G.adopt({...G.fresh(), lvl:14, lvSeen:14}); const at14=G.fleetSlots();
+   G.adopt({...G.fresh(), lvl:20, lvSeen:20}); const at20=G.fleetSlots();
+   return { at13, at14, at20 };
+ });
+ ok('fleetSlots(): level 13 -> 1 slot (only Fleet 1 is unlocked)', slots.at13===1, slots);
+ ok('fleetSlots(): level 14 -> 2 slots', slots.at14===2, slots);
+ ok('fleetSlots(): level 20 -> 3 slots', slots.at20===3, slots);
+
+ // ---------------- ensureFleets(): a single new slot queues one VEGA notice ----------------
+ const single=await p.evaluate(()=>{
+   const G=window.__SD;
+   G.adopt({...G.fresh(), lvl:13, lvSeen:13});
+   document.getElementById('toasts').innerHTML='';
+   G.S.lvl=14;                       // one threshold crossed since the last check
+   const added=G.ensureFleets();
+   return { added, flLen:G.fleets().length, notifyQueue:G.S.notifyQueue.slice(),
+     toastCount:document.querySelectorAll('#toasts .toast').length };
+ });
+ ok('ensureFleets(): crossing exactly one threshold adds one fleet and queues its own VEGA notice',
+   JSON.stringify(single.added)==="[2]" && single.flLen===2 &&
+   single.notifyQueue.includes("vega:fleet2") && single.toastCount===0, single);
+
+ // ---------------- an old level-22 save with one fleet gains two on load, one toast ----------------
+ const oldSave=await p.evaluate(()=>{
+   const G=window.__SD;
+   document.getElementById('toasts').innerHTML='';
+   G.adopt({ lvl:22, sh:[3,1,0], fhp:1 });   // old sh/fhp save, well past level 20
+   const toasts=[...document.querySelectorAll('#toasts .toast')].map(t=>t.textContent);
+   return {
+     flLen:G.S.fl.length,
+     f2:{at:G.S.fl[1].at, hp:G.S.fl[1].hp, sh:G.S.fl[1].sh.slice()},
+     f3:{at:G.S.fl[2].at, hp:G.S.fl[2].hp, sh:G.S.fl[2].sh.slice()},
+     seen2:!!G.S.seen["vega:fleet2"], seen3:!!G.S.seen["vega:fleet3"],
+     notifyQueue:G.S.notifyQueue.slice(), toasts
+   };
+ });
+ ok('an old level-22 save gains Fleet 2 and Fleet 3 on load, empty, at home, full integrity',
+   oldSave.flLen===3 && oldSave.f2.at==="home" && oldSave.f2.hp===1 && JSON.stringify(oldSave.f2.sh)==="[0,0,0]" &&
+   oldSave.f3.at==="home" && oldSave.f3.hp===1 && JSON.stringify(oldSave.f3.sh)==="[0,0,0]", oldSave);
+ ok('...both notices are marked seen so they never fire individually later',
+   oldSave.seen2 && oldSave.seen3 && !oldSave.notifyQueue.includes("vega:fleet2") && !oldSave.notifyQueue.includes("vega:fleet3"), oldSave);
+ ok('...and exactly one combined "commissioned" toast fires instead of two',
+   oldSave.toasts.length===1 && /commissioned/.test(oldSave.toasts[0]), oldSave);
+
+ // ---------------- the level-up modal (13 -> 14) mentions 2nd Fleet ----------------
+ const lvup=await p.evaluate(()=>{
+   const G=window.__SD;
+   G.adopt({...G.fresh(), lvl:13, lvSeen:13, ore:1e9});
+   G.S.xpn=G.xpNeed(14); G.checkLevel();
+   const pending=G.pendingLevels();
+   G.lvModal();
+   return { pending, html:document.getElementById('modal').innerHTML };
+ });
+ ok('checkLevel() earns level 14 (one pick pending)', lvup.pending===1, lvup);
+ ok('lvModal() at 13 -> 14 mentions 2nd Fleet, same styling as an UNLOCK line',
+   /2nd Fleet/.test(lvup.html) && /lvun/.test(lvup.html), lvup);
+
+ // ---------------- TRANSFER: moves hulls both ways, refuses when apart ----------------
+ const transfer=await p.evaluate(()=>{
+   const G=window.__SD;
+   G.adopt({...G.fresh(), lvl:20, lvSeen:20, ore:1e30});
+   G.S.fl=[
+     {id:1,n:"1st Fleet",sh:[5,2,0],hp:1,at:"kor",to:null,eta:0},
+     {id:2,n:"2nd Fleet",sh:[0,3,1],hp:1,at:"kor",to:null,eta:0},
+     {id:3,n:"3rd Fleet",sh:[1,0,0],hp:1,at:"home",to:null,eta:0}
+   ];
+   const f1=G.S.fl[0], f2=G.S.fl[1], f3=G.S.fl[2];
+   const matesAtKor=G.otherIdleFleetsAt(f1).map(f=>f.id);
+   const matesAlone=G.otherIdleFleetsAt(f3).map(f=>f.id);
+   G.transferModal(f1,f2);
+   document.querySelector('#trRows .trbtn[data-i="0"][data-d="-1"]').click();   // move 1 interceptor f1 -> f2
+   const afterMove={f1:f1.sh.slice(), f2:f2.sh.slice()};
+   document.querySelector('#trRows .trbtn[data-i="0"][data-d="1"]').click();    // move it back f2 -> f1
+   const afterBack={f1:f1.sh.slice(), f2:f2.sh.slice()};
+   document.getElementById('mask').classList.remove('on');
+   G.transferModal(f1,f3);                 // f1 at kor, f3 at home - apart
+   const apartHtml=document.getElementById('modal').innerHTML;
+   return { matesAtKor, matesAlone, afterMove, afterBack, apartHtml };
+ });
+ ok('otherIdleFleetsAt() finds the other idle fleet at the same system', JSON.stringify(transfer.matesAtKor)==="[2]", transfer);
+ ok('...and is empty for a fleet alone at its own system', JSON.stringify(transfer.matesAlone)==="[]", transfer);
+ ok('transferModal(): the "-" button moves one hull from a to b',
+   JSON.stringify(transfer.afterMove.f1)==="[4,2,0]" && JSON.stringify(transfer.afterMove.f2)==="[1,3,1]", transfer);
+ ok('...and the "+" button moves it back',
+   JSON.stringify(transfer.afterBack.f1)==="[5,2,0]" && JSON.stringify(transfer.afterBack.f2)==="[0,3,1]", transfer);
+ ok('transferModal() refuses (no rows) when the two fleets are no longer at the same system',
+   /no longer here/.test(transfer.apartHtml), transfer);
+
+ // ---------------- Raids pane #flTabs: the selected tab's own AT/-> location line ----------------
+ const flLoc=await p.evaluate(()=>{
+   const G=window.__SD;
+   G.adopt({...G.fresh(), lvl:20, lvSeen:20});
+   G.gotoTab("p-raid"); G.dirty=true; G.render();
+   const atHome=document.getElementById("flLoc").textContent;
+   document.getElementById('flTabs').querySelector('[data-fl="2"]').click();   // select Fleet 2
+   G.fleetSend(G.S.fl[1],"kor");
+   G.dirty=true; G.render();
+   const travelling=document.getElementById("flLoc").textContent;
+   return { atHome, travelling, selTab:G.S.flSel };
+ });
+ ok('#flTabs strip shows "AT <system>" for the selected tab\'s own fleet', /^AT /.test(flLoc.atHome), flLoc);
+ ok('...and "→ <system> · Ns" once that fleet is travelling (Fleet 2, the selected tab)',
+   flLoc.selTab===2 && /^→ KORU · \d+s$/.test(flLoc.travelling), flLoc);
+
+ // ---------------- buyShip(): lands at home, else queues; queue drains on arrival ----------------
+ const queue=await p.evaluate(()=>{
+   const G=window.__SD;
+   G.adopt({...G.fresh(), lvl:13, lvSeen:13, ore:1e30});   // lvl 13: only Fleet 1 exists (fleetSlots()===1)
+   const f=G.S.fl[0];
+   G.fleetSend(f,'kor');                   // the only fleet leaves home - none idle there
+   const bought=G.buyShip(0,5);
+   const queuedAfterBuy=G.S.flQ.slice();
+   const totalAfterBuy=G.shipTotal(0);     // must count the queue immediately
+   G.fleetTravelTick(f.eta+1);             // lands the fleet at kor - still no fleet home
+   G.fleetSend(f,'home');                  // now send it back
+   G.fleetTravelTick(f.eta+1);             // lands the fleet home, draining the queue
+   return { bought, queuedAfterBuy, totalAfterBuy, landedSh:f.sh.slice(), flQAfter:G.S.flQ.slice() };
+ });
+ ok('buyShip() queues on S.flQ when no fleet is idle at home', queue.bought && JSON.stringify(queue.queuedAfterBuy)==="[5,0,0]", queue);
+ ok('shipTotal() counts the queue toward the empire-wide total right away', queue.totalAfterBuy===5, queue);
+ ok('the queue lands in the fleet that next arrives home idle, and clears',
+   JSON.stringify(queue.landedSh)==="[5,0,0]" && JSON.stringify(queue.flQAfter)==="[0,0,0]", queue);
+
+ const queueOnLoad=await p.evaluate(()=>{
+   const G=window.__SD;
+   G.adopt({...G.fresh(), lvl:20, lvSeen:20, flQ:[2,0,0]});   // fleet 1 already idle at home
+   return { sh:G.S.fl[0].sh.slice(), flQ:G.S.flQ.slice() };
+ });
+ ok('a queued purchase already sitting in a loaded save drains immediately when a fleet is already home',
+   JSON.stringify(queueOnLoad.sh)==="[2,0,0]" && JSON.stringify(queueOnLoad.flQ)==="[0,0,0]", queueOnLoad);
+
+ // ---------------- three markers render; two stacked at the same node offset 14px ----------------
+ const markers=await p.evaluate(()=>{
+   const G=window.__SD;
+   G.adopt({...G.fresh(), lvl:20, lvSeen:20});
+   G.S.fl[1].sh=[1,0,0]; G.S.fl[2].sh=[1,0,0];
+   G.gotoTab("p-map"); G.setMapSec(0); G.dirty=true; G.render();
+   const marks=[...document.querySelectorAll('#fleetMarkers .flmark:not(.trav)')];
+   const offsets=marks.map(m=>{ const mm=m.style.left.match(/\+\s*(-?\d+)px/); return mm?+mm[1]:null; });
+   return { count:marks.length, offsets };
+ });
+ ok('three fleets idle at home render three markers', markers.count===3, markers);
+ ok('...stepped 0px/14px/28px right of each other in fleet order, not stacked on top of one another',
+   JSON.stringify(markers.offsets)==="[0,14,28]", markers);
+
+ // ---------------- autoResolveTarget(): the fleet AT the target, not the selected tab ----------------
+ const twoFleetResolve=await p.evaluate(()=>{
+   const G=window.__SD;
+   G.adopt({...G.fresh(), all:1e30, lvl:99, lvSeen:99, ore:1e30, sh:[500,300,150], fhp:1,
+     cmode:"wep", tg:[], rf:{gun:10,arm:10}, nx:{war:15}, xp:{casc:15,core:20},
+     wep:{own:{pulse:1,rocket:1}, slot:["pulse","rocket"]}});
+   // fleet 1 (the hulls, migrated from sh/fhp) stays at home; fleet 2 gets an equal
+   // loadout (refDPS()/refHP() read curFleet() as the difficulty-scaling reference,
+   // so it must not be left empty here) and moves to kor as the SELECTED tab - the
+   // target is at home, so the fight must use fleet 1 regardless of which fleet the
+   // Raids pane happens to be showing.
+   G.S.fl[1].sh=G.S.fl[0].sh.slice(); G.S.fl[1].at="kor"; G.S.flSel=2;
+   const t=Object.assign(G.assaultTarget(G.SYSMAP.dra), {sys:"home"});
+   const canAuto=G.canAutoResolve(t);
+   const resolved=G.autoResolveTarget(t,-1);
+   return { canAuto, resolved, fightFleet:G.BT?G.BT.f.id:null, selectedTab:G.S.flSel };
+ });
+ ok('canAutoResolve()/autoResolveTarget() find the fleet at t.sys (fleet 1, at home)', twoFleetResolve.canAuto && twoFleetResolve.resolved, twoFleetResolve);
+ ok('...not the fleet the Raids pane tab happens to be showing (fleet 2, selected but away)',
+   twoFleetResolve.fightFleet===1 && twoFleetResolve.selectedTab===2, twoFleetResolve);
+
+ // ---------------- final battle merge with three fleets ----------------
+ const finalThree=await p.evaluate(()=>{
+   const G=window.__SD;
+   if(G.BT)G.closeBattle();
+   G.adopt({...G.fresh(), all:1e30, lvl:99, lvSeen:99, ore:1e30});
+   G.S.fl=[
+     {id:1,n:"1st Fleet",sh:[60,0,0],hp:1,at:"home",to:null,eta:0},
+     {id:2,n:"2nd Fleet",sh:[30,0,0],hp:0.5,at:"home",to:null,eta:0},
+     {id:3,n:"3rd Fleet",sh:[10,20,0],hp:0.8,at:"home",to:null,eta:0}
+   ];
+   const mf=G.mergeFleetsForFinal();
+   const mergeOk=JSON.stringify(mf.sh)==="[100,20,0]" && Math.abs(mf.hp-0.5)<1e-9;
+   // lose 25 of the merged 100 interceptors - split proportionally to what each
+   // fleet contributed (60/30/10), the last fleet in the list absorbing the remainder.
+   mf.sh[0]-=25; mf.hp=0.4;
+   G.unmergeAfterFinal(mf);
+   return { mergeOk, sh1:G.S.fl[0].sh.slice(), sh2:G.S.fl[1].sh.slice(), sh3:G.S.fl[2].sh.slice(),
+     hp1:G.S.fl[0].hp, hp2:G.S.fl[1].hp, hp3:G.S.fl[2].hp };
+ });
+ ok('mergeFleetsForFinal() sums hulls and takes the min integrity across three fleets', finalThree.mergeOk, finalThree);
+ ok('unmergeAfterFinal() splits a loss across three fleets proportionally to what each contributed',
+   JSON.stringify(finalThree.sh1)==="[45,0,0]" && JSON.stringify(finalThree.sh2)==="[22,0,0]" &&
+   JSON.stringify(finalThree.sh3)==="[8,20,0]", finalThree);
+ ok('...and writes the post-fight integrity back to every one of the three fleets',
+   Math.abs(finalThree.hp1-0.4)<1e-9 && Math.abs(finalThree.hp2-0.4)<1e-9 && Math.abs(finalThree.hp3-0.4)<1e-9, finalThree);
+
  if(errs.length)ok('no page errors', false, errs);
  console.log(out.join('\n'));
  console.log(out.filter(l=>l.startsWith('FAIL')).length+' failures');

@@ -585,6 +585,9 @@ button.ghost{background:transparent;border-color:var(--line);color:var(--mut)}
 .fl-h{display:flex;align-items:baseline;gap:10px}
 .fl-t{font:700 10px/1 system-ui;letter-spacing:.2em;color:#ff8fd0}
 .fl-st{margin-left:auto;font:600 11px/1 ui-monospace,monospace;color:var(--mut)}
+/* PLAN-fleets run 3: the selected tab's own "AT X"/"-> X . Ns" line - same idiom
+   the fleet bar's .fstat span uses, one size down since this sits under a header. */
+.fl-loc{font:600 10px/1 ui-monospace,monospace;color:var(--mut);margin:3px 0 0}
 .flcap{color:#ffb45c;font-weight:700}
 .flcap.thin{color:#ffb45c}
 .flcap.over{color:var(--rd)}
@@ -1669,6 +1672,8 @@ body.syspage #toasts{bottom:calc(var(--sysbarh) + 8px + env(safe-area-inset-bott
             <div class="fl-h"><span class="fl-t">FLEET</span>
               <span class="fl-st" id="flStat"></span>
               <button class="svchip" id="svChip" title="Salvage — tap for detail"></button></div>
+            <!-- PLAN-fleets run 3 (BRIEF commit 2): where the selected tab's own fleet is -->
+            <div class="fl-loc" id="flLoc"></div>
             <div class="fl-hp"><i id="flHp"></i><span id="flHpT"></span></div>
             <div class="flbtns">
               <button id="flFix">REPAIR</button>
@@ -3901,7 +3906,13 @@ function fresh(){
     /* PLAN-fleets run 1: S.fl replaces the old flat S.sh/S.fhp pair - see mkFleet()/
        fleets()/curFleet() next to fleetDPS() in 01-content.js. S.flSel is the id of
        the fleet the Raids pane is showing (run 3 adds more than one to pick from). */
-    fl:[mkFleet(1)], flSel:1, tg:[], tgT:0, wins:0, losses:0, plunder:0, flawless:0,
+    /* run 3: the delivery queue (S.flQ) must be seeded here too, not just sanitised
+       in adopt() - adopt()'s copy loop is `for(const k in f) if(k in o) f[k]=o[k]`,
+       keyed on fresh()'s OWN keys, so a key fresh() never mentions is silently
+       dropped from every incoming save even when the save carries it (found while
+       testing the queue surviving a reload - a real save-loss bug, not just a
+       fixture gap). */
+    fl:[mkFleet(1)], flSel:1, flQ:[0,0,0], tg:[], tgT:0, wins:0, losses:0, plunder:0, flawless:0,
     sv:0, svAll:0, rf:{}, crew:makeDeckhands(), bridge:makeDeckhands().map(c=>c.id), crewPool:[],
     cseed:1, bestCmb:0, flags:0, end:0,
     rs:{}, nx:{}, ac:{}, mi:0, miq:[], lvSeen:1, lvl:1, pk:{}, pkLog:[], lvOffer:null,
@@ -10944,6 +10955,14 @@ function renderRaids(){
   const thinCap=cp>0&&pw<cp*0.7;
   st.innerHTML=fmt(fleetDPS(cf))+" dps · "+fmt(fleetHPMax(cf))+" hull"
     +` <b class="flcap${over?" over":thinCap?" thin":""}">⚡${pw}/${cp}</b>`;
+  /* PLAN-fleets run 3 (BRIEF commit 2): where the selected tab's own fleet actually
+     is - independent of the ENGAGE/AUTO fleet a target card uses (that is always
+     fleetAtSys(t.sys), never this tab). Plain textContent, same idiom the fleet
+     bar's .fstat span uses - no churn key needed, it is not a DOM rebuild. */
+  const loc=$("#flLoc");
+  if(loc)loc.textContent = cf.to
+    ? "→ "+((SYSMAP[cf.to]||{}).n||cf.to).toUpperCase()+" · "+Math.max(0,Math.ceil(cf.eta))+"s"
+    : "AT "+((SYSMAP[cf.at]||{}).n||cf.at).toUpperCase();
   const hp=cf.hp, bar=$(".fl-hp");
   bar.classList.toggle("hurt",hp<=.6&&hp>.3); bar.classList.toggle("crit",hp<=.3);
   $("#flHp").style.width=(hp*100)+"%";
