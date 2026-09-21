@@ -125,3 +125,11 @@ transfer modal, a raid card in both states.
   but confirm csim never calls `newTarget()` (grep) before adding a draw to it.
 - `holdResolve()` (offline/auto threat resolution) must not assume a fleet is
   present: the garrison-only path is the default when none is.
+
+## Follow-ups (owner, 21 Sep, after playing b642)
+
+- **Per-fleet cap.** Raids are sized off the full `fleetCap()` assuming one fleet
+  carries it; splitting hulls across three fleets leaves each below par. Change: the
+  cap applies PER FLEET (each fleet may hold `fleetCap()` power), hangar hulls count
+  against the fleet they came from. Buying is still gated by the ore cost curve.
+  Ship with the next batch (governors), not alone.
