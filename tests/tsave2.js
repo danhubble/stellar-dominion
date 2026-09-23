@@ -43,6 +43,10 @@ const { chromium } = require('playwright-core');
  const before=await p.evaluate(()=>({rate:Math.round(__SD.rate()), g0:__SD.gCount(0),
    held:__SD.heldSystems().length, homeTiers:Object.keys(__SD.S.sys.home.b).length,
    korRock:__SD.sysTierCount('kor',14)}));
+ /* PLAN-polish batch A: a level-20 fixture now queues the Raids-open VEGA lines, whose
+    fixed overlay covers the header - drain every queued notice before the click. */
+ await p.evaluate(()=>{ let n=0; while(window.__SD.S.notifyQueue&&window.__SD.S.notifyQueue.length&&n++<20){ document.getElementById('noticeX').click(); } });
+ await p.waitForTimeout(250);
  await p.click('#btnSave'); await p.waitForTimeout(300);
  await p.evaluate(()=>document.getElementById('mask').classList.remove('on'));
  await p.reload(); await p.waitForTimeout(800);
