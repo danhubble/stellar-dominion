@@ -11970,3 +11970,12 @@ pre-existing, unrelated failure: `tests/tsave2.js`'s `#btnSave` click times out
 behind an open notice bar - reproduced identically on the commit immediately
 before this batch (stashed every change and reran to confirm), so it predates
 this work and isn't something this batch should paper over.
+
+## release b644 — PLAN-polish batches A + B
+
+Coordinator: header verified at 667/844, fresh-save opening verified, suite clean after
+fixing tsave2 (batch A's Raids-open VEGA lines covered the SAVE button in its level-20
+fixture — drain added). Batch B's late-game levels land ~2–3 lower in csim because
+economy-matched ladder starts mean fewer cheap structures (less deeds XP); nothing late
+is gated on those levels. Not pushed to GitHub (no push path this session): bundle
+sd-b644.bundle covers 1fffc3b..main.

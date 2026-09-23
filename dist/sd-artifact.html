@@ -517,8 +517,11 @@ button.ghost{background:transparent;border-color:var(--line);color:var(--mut)}
                                     calc(-50% + var(--dy,0px)*.20 - 16px)) scale(.94)}
   100%{opacity:0;transform:translate(calc(-50% + var(--dx,0px)),
                                      calc(-50% + var(--dy,0px))) scale(.5)}}
-/* the resource card acknowledges the arrival, so the reward lands somewhere visible */
-.rcard.land{animation:rcland .44s ease-out}
+/* the resource card acknowledges the arrival, so the reward lands somewhere visible.
+   polish batch A #6: .svchip (the Raids-tab salvage counter) reuses the same
+   animation for the first-salvage pulse - not an .rcard, so it needs its own
+   selector on the shared keyframe. */
+.rcard.land,.svchip.land{animation:rcland .44s ease-out}
 @keyframes rcland{
   0%{box-shadow:0 0 0 0 rgba(92,230,165,.6)}
   45%{box-shadow:0 0 0 7px rgba(92,230,165,0);transform:translateY(-2px)}
@@ -527,7 +530,7 @@ button.ghost{background:transparent;border-color:var(--line);color:var(--mut)}
 @media(prefers-reduced-motion:reduce){
   .card.rdy.claimed:before{animation:none;background:none}
   .card.rdy button.misclaim.done{animation:none}
-  .rcard.land{animation:none}
+  .rcard.land,.svchip.land{animation:none}
   .rwfly{display:none}
   .card.rdy.gone{transition:opacity .12s linear}
   .noticebar,.noticepanel{transition:none}   /* patch629: no slide, just show */
@@ -609,8 +612,8 @@ button.ghost{background:transparent;border-color:var(--line);color:var(--mut)}
 .fl-hp.crit i{background:linear-gradient(90deg,#ff6b8a,#ff9a6b)}
 .fl-hp span{position:absolute;inset:0;display:grid;place-items:center;
   font:700 9.5px/1 ui-monospace,monospace;letter-spacing:.1em;color:#04050d}
-/* run 3: REPAIR gained a neighbour (TRANSFER), so both now sit in a flex row
-   instead of REPAIR alone taking the full width. */
+/* polish batch A #9: TRANSFER's own button here is gone (still flex, in case a
+   future button joins REPAIR again) - REPAIR (flex:1) fills the row alone now. */
 .flbtns{display:flex;gap:8px;margin-top:6px}
 #flFix{flex:1;border:1px solid rgba(92,230,165,.5);
   background:rgba(92,230,165,.11);color:var(--gr);border-radius:9px;padding:8px;
@@ -1022,38 +1025,10 @@ button.ghost{background:transparent;border-color:var(--line);color:var(--mut)}
   color:#ffb3c2;border-radius:7px;padding:5px 6px;font:700 10px/1 system-ui;max-width:100%}
 #devp .dvn{white-space:pre-wrap;word-break:break-word;
   font:600 9px/1.4 ui-monospace,monospace;color:var(--dim);margin-top:7px}
-/* ---------- stats ---------- */
-#kpis{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:10px}
-.kpi{border:1px solid var(--line);border-radius:10px;padding:8px 10px;
-  background:rgba(255,255,255,.03);box-shadow:inset 3px 0 0 var(--a)}
-.kpi .kl{font:700 8.5px/1 system-ui;letter-spacing:.15em;color:var(--dim)}
-.kpi .kv{font:700 17px/1.15 ui-monospace,monospace;color:var(--txt);margin-top:4px}
-.kpi .ks{font:600 9.5px/1 ui-monospace,monospace;color:var(--mut);margin-top:3px}
-#mchips{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px}
-.mchip{border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--mut);
-  border-radius:7px;padding:5px 9px;font:600 10.5px/1 system-ui;cursor:pointer}
-.mchip.on{border-color:var(--a);color:var(--a);background:rgba(255,255,255,.07)}
-#chartBox{position:relative;border:1px solid var(--line);border-radius:12px;
-  background:rgba(255,255,255,.02);padding:10px 10px 4px}
-#chartHead{display:flex;align-items:baseline;gap:8px;margin-bottom:6px}
-#chartTtl{font:700 12px/1 system-ui;color:var(--txt)}
-#chartScale{margin-left:auto;font:600 9px/1 system-ui;letter-spacing:.12em;color:var(--dim)}
-#chart{width:100%;height:190px;display:block;touch-action:pan-y}
-#chart .grid{stroke:rgba(255,255,255,.07);stroke-width:1}
-#chart .axis{fill:var(--dim);font:600 8.5px ui-monospace,monospace}
-#chart .ln{fill:none;stroke:var(--a);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
-#chart .fillA{fill:var(--a);opacity:.10}
-#chart .end{fill:var(--a);stroke:var(--bg2);stroke-width:2}
-#chart .cross{stroke:rgba(255,255,255,.30);stroke-width:1}
-#chart .hit{fill:var(--a);stroke:var(--bg2);stroke-width:2}
-#chartTip{position:absolute;pointer-events:none;display:none;transform:translate(-50%,-100%);
-  background:rgba(8,11,28,.96);border:1px solid var(--line2);border-radius:7px;
-  padding:5px 8px;font:600 10.5px/1.4 ui-monospace,monospace;color:var(--txt);white-space:nowrap;
-  box-shadow:0 4px 14px rgba(0,0,0,.5)}
-#chartTip small{display:block;color:var(--dim);font-size:9px;letter-spacing:.08em}
-#chartEmpty{font-size:11.5px;color:var(--mut);line-height:1.5;padding:22px 4px;text-align:center}
+/* polish batch A #8: the stats page's KPI tiles/measure chips/history chart CSS
+   (#kpis/.kpi/#mchips/.mchip/#chartBox and friends) is gone with the "Graphs" half
+   of "Records & Graphs" - see renderAch()'s own header note in 09-render.js. */
 .sechead2{font:700 10px/1 system-ui;letter-spacing:.2em;color:var(--dim);margin:16px 0 8px}
-@media(max-width:460px){ #kpis{grid-template-columns:1fr 1fr} #chart{height:165px} }
 /* ---------- map ---------- */
 #mapWrap{position:relative;width:100%;aspect-ratio:1/1;max-height:52vh;margin:0 auto 10px;
   border:1px solid rgba(120,150,255,.22);border-radius:14px;overflow:hidden;
@@ -1613,11 +1588,13 @@ body.syspage #toasts{bottom:calc(var(--sysbarh) + 8px + env(safe-area-inset-bott
   </div>
   <div class="res">
     <button class="rcard c-ore" data-res="ore" title="Ore — tap for detail"><div class="ricon" id="riOre"></div><div><div class="val" id="vOre">0</div><div class="sub" id="vRate">0 /s</div></div></button>
+    <!-- polish batch A #7: crystal back in the top three (owner: "I miss having the
+         crystal there"). Generic .rcard[data-res] click-wiring (15-wiring.js) covers
+         it same as ore/dm - no dedicated handler needed. The context card that used
+         to sit here moved down to the Research tab, where the crystal strip used to
+         be (#resCryStrip) - see renderCtxCard()'s own header note. -->
+    <button class="rcard c-cry" data-res="cry" title="Crystal — tap for detail"><div class="ricon" id="riCry"></div><div><div class="val" id="vCry">0</div><div class="sub" id="vCryRate">0 /s</div></div></button>
     <button class="rcard c-dm" data-res="dm" title="Dark Matter — tap for detail"><div class="ricon" id="riDm"></div><div><div class="val" id="vDm">0</div><div class="sub" id="vDmS">for the Nexus</div></div></button>
-    <!-- patch607: the context card. No data-res (see the header note above) — the
-         generic .rcard[data-res] click-wiring skips it; patch630 gives it its own
-         dedicated wiring instead (see exoModal()), gated on exoEverBankedAny(). -->
-    <button class="rcard c-ctx" id="ctxCard" title="Selected system"><div class="ricon"><i class="exdot" id="ctxDot"></i></div><div><div class="val" id="vCtxVal">—</div><div class="ctxnums"><div class="sub" id="vCtxName">—</div><div class="sub" id="vCtxRate"> </div></div></div></button>
   </div>
 </header>
 
@@ -1662,7 +1639,13 @@ body.syspage #toasts{bottom:calc(var(--sysbarh) + 8px + env(safe-area-inset-bott
     </nav>
     <div id="view">
       <div class="pane" id="p-res">
-        <div id="resCryStrip"></div>
+        <!-- polish batch A #7: the context card (used to be the header's third
+             card) relocated here - this is where the crystal strip used to live
+             (crystal moved up into the header's top three). renderCtxCard() owns
+             these nodes exactly as it always has, unconditional every render(). -->
+        <div id="resCryStrip">
+          <button class="rcard c-ctx" id="ctxCard" title="Selected system"><div class="ricon"><i class="exdot" id="ctxDot"></i></div><div><div class="val" id="vCtxVal">—</div><div class="ctxnums"><div class="sub" id="vCtxName">—</div><div class="sub" id="vCtxRate"> </div></div></div></button>
+        </div>
         <div id="resMode" class="rmode">
           <button class="rmbtn on" data-rm="tree">TECH TREE</button>
           <button class="rmbtn" data-rm="prog">PROGRAMMES</button>
@@ -1694,10 +1677,10 @@ body.syspage #toasts{bottom:calc(var(--sysbarh) + 8px + env(safe-area-inset-bott
             <!-- PLAN-fleets run 3 (BRIEF commit 2): where the selected tab's own fleet is -->
             <div class="fl-loc" id="flLoc"></div>
             <div class="fl-hp"><i id="flHp"></i><span id="flHpT"></span></div>
+            <!-- polish batch A #9: TRANSFER removed from the Raids tab's own fleet
+                 strip - it stays on the fleet card modal (#fcTransfer, 09-render.js). -->
             <div class="flbtns">
               <button id="flFix">REPAIR</button>
-              <!-- PLAN-fleets run 3: same TRANSFER the fleet card modal offers -->
-              <button id="flTransfer" class="transfer">TRANSFER</button>
             </div>
           </div>
         </div>
@@ -1743,7 +1726,7 @@ body.syspage #toasts{bottom:calc(var(--sysbarh) + 8px + env(safe-area-inset-bott
         </div>
       </div>
       <div class="pane" id="p-mis">
-        <p class="hint">Sequential contracts from the Colonial Authority. Complete one to reveal the next.</p>
+        <p class="hint">Sequential missions from the Colonial Authority. Complete one to reveal the next.</p>
         <div class="grid" id="mis"></div>
       </div>
       <div class="pane on" id="p-map">
@@ -1843,22 +1826,17 @@ body.syspage #toasts{bottom:calc(var(--sysbarh) + 8px + env(safe-area-inset-bott
         <div class="sechead2">DARK MATTER</div>
         <div class="grid" id="mktDm"></div>
         <div class="row" style="margin-top:14px">
-          <button class="ghost" id="mktStatsLink">Records &amp; graphs</button>
+          <button class="ghost" id="mktStatsLink">Achievements</button>
         </div>
       </div>
+      <!-- polish batch A #8: "Records & Graphs" (the #kpis stat tiles + #chartBox
+           production history chart) is gone - ACHS turned out to be real, named
+           milestones (each grants a permanent global bonus), so this pane is now
+           just that list, retitled. Reached the same way, Market's ghost link
+           above (#mktStatsLink), no notification dot any more - see checkAchs(). -->
       <div class="pane" id="p-ach">
-        <div id="kpis"></div>
-        <div id="mchips"></div>
-        <div id="chartBox">
-          <div id="chartHead"><span id="chartTtl">Production</span>
-            <span id="chartScale"></span></div>
-          <svg id="chart" viewBox="0 0 300 150" preserveAspectRatio="none"
-            role="img" aria-label="History chart"></svg>
-          <div id="chartEmpty"></div>
-          <div id="chartTip"></div>
-        </div>
-        <div class="sechead2">RECORDS</div>
-        <p class="hint">Each record grants a permanent global production bonus.</p>
+        <div class="sechead2">ACHIEVEMENTS</div>
+        <p class="hint">Each one grants a permanent global production bonus.</p>
         <div class="grid" id="ach"></div>
       </div>
     </div>
@@ -1935,7 +1913,7 @@ body.syspage #toasts{bottom:calc(var(--sysbarh) + 8px + env(safe-area-inset-bott
 "use strict";
 /* bumped by hand, one per patch that ships - shown in the dev panel so the owner
    can tell which build a report/screenshot came from. */
-const BUILD=643;
+const BUILD=644;
 /* ============================ storage (safe) ============================ */
 const Store=(()=>{let mem={},ok=false;
   try{const k="__sd";window.localStorage.setItem(k,"1");window.localStorage.removeItem(k);ok=true}catch(e){ok=false}
@@ -2352,8 +2330,11 @@ function sysLadder(id){ const s=SYSMAP[id]; return (s&&LADDERS[ladderKindOf(s)])
 function ladderMarquee(kind){ const l=LADDERS[kind]; return (l&&l.length)?l[l.length-1]:-1 }
 /* first not-yet-owned tier in this system's own ladder, in order - what the body
    shows greyed-out with a price. null once every tier on this ladder is owned. */
+/* PLAN-polish batch B item 5: tiers below sysT0(id) are never the next reveal -
+   they're skipped outright, not shown-then-bought (see sysT0()'s own comment). */
 function sysNextGi(id){
-  for(const gi of sysLadder(id)) if(sysTierCount(id,gi)<=0) return gi;
+  const t0=sysT0(id);
+  for(const gi of sysLadder(id)){ if(gi<t0)continue; if(sysTierCount(id,gi)<=0) return gi; }
   return null;
 }
 const TCOL=["#48e2ff","#5fd6f4","#79c6ef","#93b3f3","#a89df6","#ffb45c","#ffd166","#b07cff","#d76cff","#ff8fd0",
@@ -2505,7 +2486,12 @@ const GROW=1.15;
    per system). Retune by moving/adding LVXP_PTS anchors, not by re-deriving a
    formula. */
 const LVMAX=80;
-const LVXP_PTS={1:0,2:38,8:330,12:600,14:760,16:920,18:1200,20:1500,22:1900,23:2300,25:2900,27:3450,29:3700,31:3950,33:4450,36:5300,38:5700,41:7300,45:9300,51:11500,55:13000,63:15000,69:16000,80:20000};
+/* PLAN-polish batch B item 1: LVXP_PTS[3] is a new anchor, not an interpolated
+   point - it used to fall out of the straight line from 2 (38) to 8 (330), i.e.
+   ~87 (49 XP for the 2->3 step). Owner: too much for the second level-up. Anchored
+   lower instead, at 55 (17 XP for the 2->3 step) - see docs/HANDOVER.md for the
+   before/after csim table this moved. */
+const LVXP_PTS={1:0,2:38,3:55,8:330,12:600,14:760,16:920,18:1200,20:1500,22:1900,23:2300,25:2900,27:3450,29:3700,31:3950,33:4450,36:5300,38:5700,41:7300,45:9300,51:11500,55:13000,63:15000,69:16000,80:20000};
 const LVXP=(()=>{ const ks=Object.keys(LVXP_PTS).map(Number).sort((a,b)=>a-b), t=[0];
   for(let n=1;n<=LVMAX;n++){ let i=0; while(i<ks.length-1&&ks[i+1]<n)i++;
     const a=ks[i], b=ks[Math.min(i+1,ks.length-1)];
@@ -2558,7 +2544,9 @@ const UNLOCK=[
  {lv:3,  p:"p-mis",  n:"Missions", d:"Objectives that pay crystal and Dark Matter."},
  {lv:5,  p:"p-res",  n:"Research", d:"Spend crystal on a tech tree of lasting upgrades."},
  {lv:5,  p:"p-map",  n:"Map",      d:"Claim other systems for Dark Matter and exotic resources."},
- {lv:6,  p:"p-mkt",  n:"Market",  d:"Sell surplus ore, crystal and exotics for Salvage or Dark Matter."},
+ /* PLAN-polish batch B item 3: Market moved from 6 to 9, so it opens alongside
+    Raids (also 9) - salvage has a use the moment it appears. */
+ {lv:9,  p:"p-mkt",  n:"Market",  d:"Sell surplus ore, crystal and exotics for Salvage or Dark Matter."},
  {lv:9,  p:"p-raid", n:"Raids",    d:"Build a fleet and raid convoys for loot and salvage."},
  {lv:20, p:"p-nex",  n:"Nexus",    d:"Permanent upgrades bought with Dark Matter."}
 ];
@@ -2593,6 +2581,13 @@ const XPROG=[
  {x:"he", id:"casc",  n:"Cascade Ignition",   max:15, c:15, cg:2.2,
   d:lv=>"\u00d7"+fmt(Math.pow(1.22,lv))+" fleet damage & hull",
   t:"A fusion cascade that never has to be relit."},
+ /* polish batch A #11: Command Lattice only ever paid off in turn mode, which is
+    dev-only - removing it from XPROG outright moved csim4.js's pacing output
+    (doProg() buys the cheapest affordable programme each pass, and something else
+    always ends up cheapest once this slot is gone). Kept as a real, unchanged
+    XPROG entry so csim's own buyXp() calls behave exactly as before; made inert
+    for an actual player instead - INERT_PROGS below (09-render.js reads it to skip
+    the row, 15-wiring.js/buyXp() block a purchase through the UI). */
  {x:"he", id:"comm",  n:"Command Lattice",    max:12, c:24, cg:2.2,
   d:lv=>"+"+Math.floor(lv/3)+" command points in battle",
   t:"More of the fleet answers at once."},
@@ -2617,6 +2612,11 @@ const XPROG=[
   d:lv=>"\u00d7"+fmt(Math.pow(1.35,lv))+" exotic yield everywhere",
   t:"Every system you hold gives up more of what it holds."}
 ];
+/* polish batch A #11: XPROG entries a real player never sees or buys through the
+   UI (Command Lattice, "comm" - see its own header note above). The XPROG data and
+   buyXp() are untouched so csim4.js's own buys are unaffected; renderProg() /
+   updateEmpBars() (09-render.js) skip any row whose id is in this set instead. */
+const INERT_PROGS=new Set(["comm"]);
 /* ---------------- the map ----------------
    Every system carries an `owner`. Nothing owns anything yet, but rival empires are
    the planned next step and retrofitting ownership later would be painful.
@@ -3581,7 +3581,9 @@ const FLEET_NAMES=["1st Fleet","2nd Fleet","3rd Fleet"];
    unlockLv("p-raid") rather than a bare literal, so a pacing change to Raids moves
    this with it) - run 2 never actually renders slot 1 locked, since the whole bar
    is hidden below RAIDLV anyway. */
-const FLEET_UNLOCK=[unlockLv("p-raid"),14,20];
+/* PLAN-polish batch B item 4: Fleet 2/3 moved from 14/20 to 16/22 (owner: "should
+   come in later"). */
+const FLEET_UNLOCK=[unlockLv("p-raid"),16,22];
 /* single place every fleet display name is read from, so run 3's level-up modal
    line, the commissioning toast and mkFleet() itself never drift from each other. */
 function ordFleet(id){ return FLEET_NAMES[id-1]||("Fleet "+id) }
@@ -3594,7 +3596,7 @@ function fleetSlots(){ return FLEET_UNLOCK.filter(lv=>level()>=lv).length }
 /* run 3 (PLAN-fleets decision 1): pushes a fresh Fleet 2/3 the moment the player's
    level opens its slot. Called every tick from checkUnlocks() (same idiom every
    other level-gated unlock in that function uses) and once from adopt() right after
-   the fleet array is sanitised, so a save loaded straight at a level past 14/20 (an
+   the fleet array is sanitised, so a save loaded straight at a level past 16/22 (an
    old save from before this run, or one restored from a backup) gets caught up
    immediately rather than waiting for the next tick.
    Normal play only ever crosses one threshold per call (checkUnlocks runs ~11x/s,
@@ -3976,6 +3978,13 @@ function fresh(){
     fl:[mkFleet(1)], flSel:1, flQ:[0,0,0], tg:[], tgT:0, wins:0, losses:0, plunder:0, flawless:0,
     sv:0, svAll:0, rf:{}, crew:makeDeckhands(), bridge:makeDeckhands().map(c=>c.id), crewPool:[],
     cseed:1, bestCmb:0, flags:0, end:0,
+    /* PLAN-polish batch B item 2: lvEarn (the one-level-per-check ratchet
+       checkLevel() advances - see its own header comment in 03-defence.js) is
+       deliberately NOT seeded here. A brand-new game self-seeds it on the first
+       tick (checkLevel()); adopt() always recomputes it from scratch (see there) -
+       so it is never carried through a `{...fresh(), ...}` spread as a stale 1,
+       which would otherwise defeat adopt()'s own backfill for exactly that
+       common test-fixture shape (caught while writing tests). */
     rs:{}, nx:{}, ac:{}, mi:0, miq:[], lvSeen:1, lvl:1, pk:{}, pkLog:[], lvOffer:null,
     sys:{ home:{ b:{} } },
     exo:{}, xp:{}, taken:{}, lost:{}, occ:{}, occAt:{}, def:{}, han:{}, rv:{}, exoSeen:{}, seen:{}, notifyQueue:[], rvMsg:{},
@@ -4066,6 +4075,18 @@ function sysHeld(id){ return !!sysState(id) && !sysOccupied(id) }
    GENS exists (right after it, below), so every lookup here is a handful of array
    entries, not a scan of all of GENS. */
 function sysTierCount(id,gi){ const st=sysState(id); return (st&&st.b&&st.b[gi])||0 }
+/* PLAN-polish batch B item 5: the GENS index a newly-claimed system's ladder starts
+   at - set once, on claim (see claimSystem()), to the lowest tier whose first unit
+   already costs a meaningful slice of current production, so a rich economy does
+   not have to click through a dozen trivial early tiers it can already outright
+   skip. Home is exempt (its own ladder always starts at 0), and an old save (or
+   any system claimed before this batch) has no t0 at all, which reads as 0 here -
+   "nothing skipped", exactly the pre-batch behaviour. sysNextGi()/tierBuildable()
+   and the BUILDINGS render all key off this. */
+function sysT0(id){
+  const s=SYSMAP[id]; if(!s||s.home)return 0;
+  const st=sysState(id); return (st&&st.t0>0)?st.t0:0;
+}
 /* every system the player holds, home included - heldSystems() deliberately excludes it */
 function builtSystems(){ return SYS.filter(s=>sysHeld(s.id)) }
 /* a garrison you have beaten stops counting as an owner */
@@ -4691,6 +4712,24 @@ function claimSystem(s){
   S.ore-=s.cost;
   if(!S.sys||typeof S.sys!=="object")S.sys={};
   S.sys[s.id]={b:{}};
+  /* PLAN-polish batch B item 5: new systems start their ladder at a tier that
+     matches the economy - a rich empire claiming Draskhold does not click through
+     Mining Drone/Smelter Pod/Crust Borer one at a time when it can already afford
+     the fourth tier outright. t0 is the lowest GENS index on this system's own
+     ladder whose first unit already costs >=1% of a minute's production
+     (rate()*60) - ladderCost(id,gi,1) with a freshly-claimed (0-owned) system is
+     exactly GENS[gi].b*costMul(), the first-unit price. Everything from t0 down is
+     skipped outright (sysNextGi()/tierBuildable()), never shown-then-bought. */
+  {
+    const threshold=rate()*60*0.01;
+    const ladder=sysLadder(s.id);
+    /* default: if even the marquee tier costs less than the threshold (an
+       extraordinarily rich claim), land on it rather than skip the whole ladder -
+       a system always needs at least one buildable tier. */
+    let t0=ladder.length?ladder[ladder.length-1]:0;
+    for(const gi of ladder){ if(ladderCost(s.id,gi,1)>=threshold){ t0=gi; break } }
+    if(t0>0)S.sys[s.id].t0=t0;
+  }
   grantXp("cl1", XPV.claim1, "First system claimed");
   grantXp("cl:"+s.id, XPV.claim[s.ring]||0, "Claimed "+s.n);
   if(s.dm>0){ S.dm+=s.dm; S.dmAll+=s.dm }
@@ -4708,9 +4747,34 @@ function exoUnlocked(id){ return exoRate(id)>0 }
 function exoCostOf(i,k){ const g=GENS[i]; return g.exo ? g.exoC*k : 0 }
 /* cumulative XP needed to be level n (level 1 is free, n past LVMAX is unreachable) */
 function xpNeed(n){ return n<=1 ? 0 : (n<=LVMAX ? LVXP[n] : Infinity) }
-/* what your XP entitles you to; the claim flow (level()/pendingLevels()/takeLevel())
-   is untouched and still keys off S.lvl */
-function earnedLevel(){ const x=S.xpn||0; let n=1; while(n<LVMAX && x>=LVXP[n+1]) n++; return n }
+/* what your XP alone entitles you to, uncapped - no one-per-check gate (see
+   earnedLevel() below). Used only by adopt()'s backfill and the dev "grant
+   levels" shortcut, both of which mean to bypass the gate outright. */
+function trueEarnedLevel(){ const x=S.xpn||0; let n=1; while(n<LVMAX && x>=LVXP[n+1]) n++; return n }
+/* what your XP entitles you to RIGHT NOW; the claim flow (level()/pendingLevels()/
+   takeLevel()) is untouched and still keys off S.lvl.
+   PLAN-polish batch B item 2: a burst of XP (four missions claimed at once, several
+   firsts paid by one claim) used to jump earnedLevel() - and so pendingLevels() -
+   by several levels in a single call, opening a cascade of level-up modals back to
+   back. S.lvEarn is now a ratchet that advances by AT MOST ONE level per CHECK -
+   checkLevel() below is the one place that advances it; any XP past that stays
+   banked in S.xpn (untouched) and is picked up by the next check (the next tick's
+   checkLevel() call) rather than all landing at once. earnedLevel() itself is a
+   plain read of S.lvEarn - it must NOT advance the ratchet, since it's called from
+   many read-only paths (pendingLevels(), lvProgress(), xpNext(), lvSummary(),
+   render) any number of times per frame; gating there instead of in checkLevel()
+   was tried and reverted (caught while writing tests) - a single checkLevel() call
+   already reads pendingLevels() for its own toast text, and reading it again from
+   outside advanced the gate a second and third time, collapsing the whole "one per
+   check" promise inside a single frame. S.lvEarn is seeded (once, on adopt - see
+   there) to whatever the save's XP already truly entitled it to, so loading an old
+   save never rolls back pending levels it already had. */
+/* never below level() - a structural floor, not a second advance path: a claimed
+   level can never exceed what you've earned, so if something set S.lvl directly
+   (a dev tool, a test fixture, adopt()'s own fleet/etc. migrations) without the
+   ratchet having caught up yet, the read here is still honest. Pure and safe to
+   call any number of times - it does not touch S.lvEarn. */
+function earnedLevel(){ return Math.max((S.lvEarn>=1)?S.lvEarn:1, level()); }
 /* the one door XP comes through. Idempotent on key: a milestone fires once, ever. */
 function grantXp(key, amt, label){
   if(!key||!(amt>0))return false;
@@ -4956,6 +5020,10 @@ function unlocked(gi){ return builtSystems().some(s=>tierBuildable(s.id,gi)) }
 function tierBuildable(id,gi){
   if(!sysHeld(id))return false;
   const s=SYSMAP[id]; if(!s||!GENS[gi]||GENS[gi].kind!==ladderKindOf(s))return false;
+  /* PLAN-polish batch B item 5: a tier below sysT0(id) is never buildable - it can
+     never be owned (nothing ever builds it) and sysNextGi() already skips past it,
+     so the two clauses below fall through to false for it with no extra check
+     needed here. */
   return sysTierCount(id,gi)>0 || sysNextGi(id)===gi;
 }
 /* kOverride (PLAN-governors "Watch for"): govBuyStep() passes an explicit 1 here so a
@@ -5506,7 +5574,7 @@ function checkMissions(){
   while(S.mi<MISSIONS.length && MISSIONS[S.mi].k(S) && guard++<50){
     const m=MISSIONS[S.mi];
     S.miq.push(S.mi); S.mi++;
-    toast("Contract ready — "+m.d,"g"); blip(880,.2,"square",.05);
+    toast("Mission ready — "+m.d,"g"); blip(880,.2,"square",.05);
     flag("p-mis"); dirty=true;
   }
 }
@@ -5530,15 +5598,24 @@ function claimAllMissions(){
 /* Nothing is ever forced. A new level only announces itself; the player claims it
    when they want to, which is what keeps time away from turning into a wall of popups. */
 function checkLevel(){
+  /* PLAN-polish batch B item 2: the one-level-per-check ratchet - see earnedLevel()'s
+     own header comment for why the advance lives here and not there. */
+  if(!(S.lvEarn>=1))S.lvEarn=Math.max(1,level());
+  if(S.lvEarn<LVMAX && (S.xpn||0)>=xpNeed(S.lvEarn+1))S.lvEarn++;
   const e=earnedLevel();
   if(!S.lvSeen||S.lvSeen<1)S.lvSeen=1;
   if(e<=S.lvSeen)return;
   S.lvSeen=e; dirty=true;
   blip(880,.3,"square",.05);
   const pend=pendingLevels();
-  toast(pend>1 ? pend+" levels ready \u2014 tap the LEVEL chip"
-               : "Level "+e+" ready \u2014 tap the LEVEL chip", "y");
+  /* polish batch A #1: the very first level-up used to show both this toast AND the
+     lvClaim notice card below - two messages for the same event. The notice card is
+     the fuller explanation (what the LEVEL chip does), so it wins; the toast only
+     fires once lvClaim has already been seen. */
+  const lvClaimSeen=!!(S.seen&&S.seen.lvClaim);
   if(pend>0)queueNotice("lvClaim");
+  if(lvClaimSeen) toast(pend>1 ? pend+" levels ready \u2014 tap the LEVEL chip"
+                                : "Level "+e+" ready \u2014 tap the LEVEL chip", "y");
 }
 function lvModal(){
   if(pendingLevels()<1)return;
@@ -5548,7 +5625,8 @@ function lvModal(){
   const opens=UNLOCK.filter(u=>u.lv===nextL);
   /* PLAN-fleets run 3: FLEET_UNLOCK index 0 (Fleet 1) is the same level as the
      p-raid UNLOCK row above and already gets its own line there - only index >=1
-     (Fleet 2/3, levels 14/20) needs a line here, same styling as an UNLOCK row. */
+     (Fleet 2/3, levels 16/22 - PLAN-polish batch B item 4) needs a line here, same
+     styling as an UNLOCK row. */
   const fleetIdx=FLEET_UNLOCK.findIndex((lv,i)=>i>=1&&lv===nextL);
   showModal(`<h3 class="lvup">Level ${nextL}</h3>
     ${opens.map(un=>`<p class="lvun">This one also opens <b class="lvup">${un.n}</b> \u2014 ${un.d}</p>`).join("")}
@@ -5613,7 +5691,7 @@ function xpNext(){
     const amt=XPV.mission(S.mi);
     if(amt>0){
       const already=(S.miq||[]).includes(S.mi);
-      const m=MISSIONS[S.mi]; out.push({label:already?"Claim contract: "+m.d:m.d, amt, p:already?1:(m.p?m.p(S):(m.k(S)?1:0))});
+      const m=MISSIONS[S.mi]; out.push({label:already?"Claim mission: "+m.d:m.d, amt, p:already?1:(m.p?m.p(S):(m.k(S)?1:0))});
     }
   }
   if(unlockedAt("p-raid")){
@@ -5690,7 +5768,10 @@ function checkAchs(){
   for(const a of ACHS) if(!S.ac[a.id]&&a.k(S)){
     S.ac[a.id]=1; toast("Record unlocked — "+a.n,"y"); blip(1046,.25,"sine",.05);
     grantXp("ac:"+a.id, XPV.record, null);
-    flag("p-mkt"); dirty=true;                /* Records live behind Market's ghost link now */
+    /* polish batch A #8: the stats page's own notification dot is gone with the
+       rest of "Records & Graphs" - the toast above is still the moment, Achievements
+       is a plain reachable page now, not something that needs flagging. */
+    dirty=true;
   }
 }
 function flag(p){ const t=$$(".tab").find(t=>t.dataset.p===p); if(t&&!t.classList.contains("on"))t.classList.add("alert"); }
@@ -5886,7 +5967,7 @@ const VEGA_NAME="VEGA";
 const VEGA={
  boot:      {t:"Systems online. One rock, one belt, a great deal of nothing. Tap the scanner — we start with our hands.", go:null},
  firstDrone:{t:"First drone out. It will keep working when you stop. That is the whole idea.", go:null},
- missions:  {t:"The Colonial Authority has opened a contracts channel. They pay in crystal. They also watch.", go:"p-mis"},
+ missions:  {t:"The Colonial Authority has opened a missions channel. They pay in crystal. They also watch.", go:"p-mis"},
  research:  {t:"Crystal is enough now for a tech tree. What we learn stays learned.", go:"p-res"},
  /* key kept as "stats" (queueNotice/back-fill both reference "vega:stats") - the beat
     itself now introduces the Market at the same unlock point. */
@@ -5896,6 +5977,12 @@ const VEGA={
  firstClaim:{t:"That is ours now. It will want its own buildings — the rock here is not the rock at home.", go:"p-map"},
  exoBanked: {t:"First exotic banked. Home's deeper tiers were waiting on exactly this.", go:"p-res"},
  raids:     {t:"We have hulls to spare. Convoys run the dark between systems; nobody guards them well.", go:"p-raid"},
+ /* polish batch A #5: Raids opening was one line and then silence on how to actually
+    use the tab. Three short beats, queued right behind vega:raids in checkUnlocks()
+    below - buy hulls, fit weapons, then crew them. PLACEHOLDER TEXT, owner rewrites. */
+ raidsBuy:  {t:"Buy hulls before anything else. An empty fleet card does nothing.", go:"p-raid"},        /* PLACEHOLDER */
+ raidsFit:  {t:"Fit weapons once you have hulls. A ship with empty slots still loses.", go:"p-raid"},    /* PLACEHOLDER */
+ raidsOfficers: {t:"Officers after that. The right one in the right seat changes what a fleet can do.", go:"p-raid"}, /* PLACEHOLDER */
  firstWin:  {t:"Clean. Salvage buys what ore cannot: guns, refits, people who know how to use them.", go:"p-raid"},
  crew:      {t:"Word has spread that we pay. A few are asking to sign on. Some of them are worth it.", go:"p-raid"},
  rival:     {t:"We are not alone out here. They have noticed us. Expect them to test the fence.", go:"p-map"},
@@ -5916,8 +6003,8 @@ const VEGA={
  drift65:   {t:"I need you to hold Nyx. I cannot explain why yet. I will.", go:"p-map"},                          /* PLACEHOLDER */
  /* fires the first time Exotic Nodes are banked - inert until Batch B adds S.en */
  project:   {t:"Exotic Nodes. I do not have a better name for them yet. Bank everything you find.", go:"p-nex"},  /* PLACEHOLDER */
- /* PLAN-fleets run 3: fired by ensureFleets() (01-content.js) the moment level 14/20
-    opens the slot - PLACEHOLDER TEXT. Only reached when exactly one fleet is added
+ /* PLAN-fleets run 3: fired by ensureFleets() (01-content.js) the moment level 16/22
+    (PLAN-polish batch B item 4 - was 14/20) opens the slot - PLACEHOLDER TEXT. Only reached when exactly one fleet is added
     in a single call; an old save that opens both at once gets a combined toast
     instead and never queues either card (see ensureFleets()'s own comment). */
  fleet2:    {t:"Second hull group is fitted out. Command splits, coverage doesn't.", go:"p-map"},   /* PLACEHOLDER */
@@ -6026,6 +6113,10 @@ const NOTICES={
 for(const k in VEGA) NOTICES["vega:"+k]={t:VEGA[k].t, who:VEGA_NAME, go: VEGA[k].go ? ()=>gotoTab(VEGA[k].go) : null};
 NOTICES["vega:claimable"].go=()=>{ const s=SYS.find(x=>!x.home&&sysOpen(x)); S.msel=s?s.id:null; gotoTab("p-map"); };
 NOTICES["vega:exoBanked"].go=()=>{ gotoTab("p-res"); resMode="prog"; syncResMode(); dirty=true; render(); };
+/* polish batch A #4: TAKE ME THERE for vega:map must land on the map itself, not
+   whatever system page happens to be open - close it (S.msel=null) same as
+   vega:claimable does above, then switch tabs. */
+NOTICES["vega:map"].go=()=>{ S.msel=null; gotoTab("p-map"); };
 /* one NOTICES entry per RIVAL_MSG beat, keyed "rival:<beat>" - no static `who`
    (renderNotice() resolves the speaker from S.rvMsg at render time, since it is
    rolled per-save, not fixed like VEGA's). */
@@ -6076,8 +6167,9 @@ function checkUnlocks(){
   if(unlockedAt("p-map"))queueNotice("vega:map");
   if(SYS.some(s=>!s.home&&sysOpen(s)))queueNotice("vega:claimable");
   if(EXO.some(e=>exoEverBanked(e.id)))queueNotice("vega:exoBanked");
-  if(unlockedAt("p-raid"))queueNotice("vega:raids");
-  ensureFleets();   /* PLAN-fleets run 3: pushes Fleet 2/3 the moment level 14/20 opens */
+  if(unlockedAt("p-raid")){ queueNotice("vega:raids"); queueNotice("vega:raidsBuy");
+    queueNotice("vega:raidsFit"); queueNotice("vega:raidsOfficers"); }
+  ensureFleets();   /* PLAN-fleets run 3: pushes Fleet 2/3 the moment level 16/22 opens */
   if(crewUnlocked())queueNotice("vega:crew");
   if(unlockedAt("p-nex"))queueNotice("vega:nexus");
   if(level()>=23)queueNotice("vega:ring2");
@@ -6234,7 +6326,7 @@ function updateEmpBars(){
     const have=exo(p.exoId), rate=exoRate(p.exoId);
     const bk=p.head.querySelector("[data-banked]"); if(bk)bk.textContent=fmt(have);
     const rt=p.head.querySelector("[data-rate]"); if(rt)rt.textContent=fmt(rate);
-    const rows=XPROG.filter(z=>z.x===p.exoId);
+    const rows=XPROG.filter(z=>z.x===p.exoId&&!INERT_PROGS.has(z.id));
     const anyAfford=rows.some(r=>{ const l=xlv(r.id); return l<r.max && have>=xpCost(r,l) });
     const badge=p.head.querySelector("[data-badge]");
     if(badge)badge.style.display=anyAfford?"inline-block":"none";
@@ -6256,6 +6348,11 @@ function render(){
   syncSysPage();
   $("#vOre").textContent=fmt(S.ore);
   $("#vRate").textContent=fmt(rate())+" /s";
+  /* polish batch A #7: crystal moved from the Research-only strip into the header's
+     top three - same unconditional every-render() treatment ore/dm get, not the old
+     "only while Research is on" gate (renderResCryStrip() is gone, folded in here). */
+  $("#vCry").textContent=fmt(S.cry);
+  $("#vCryRate").textContent=anyOf(1)?fmt(cryRate())+" /s":"build a Smelter Pod";
   $("#vDm").textContent=fmt(S.dm);
   { const e=$("#vDmS"); const spent=NEXUS.reduce((a,x)=>a+(x.cur==="en"?0:lv(S.nx,x.id)),0);
     e.textContent = spent ? spent+" Nexus levels" : "for the Nexus";
@@ -6268,7 +6365,10 @@ function render(){
   { const cv="+"+fmt(clickPow());
     $("#clickv").textContent=cv;
     const sv=$("#sshScanV"); if(sv)sv.textContent=cv; }
-  const tut=$("#tut"); if(tut&&(anyOf(0)||S.clicks>25))tut.remove();
+  /* polish batch A #13: also hides once a system is claimed - the owner playthrough
+     still had it up post-claim (claiming needs ore, not necessarily a built
+     structure or 25 scans, so neither existing condition is guaranteed by then). */
+  const tut=$("#tut"); if(tut&&(anyOf(0)||S.clicks>25||heldSystems().length>0))tut.remove();
   $("#kStruct").textContent=fmt(tot());
   $("#kMult").textContent="×"+fmt(globalMul());
   $("#kAll").textContent=fmt(S.all);
@@ -6277,8 +6377,6 @@ function render(){
   if(misReady()>0)flag("p-mis");
   renderLevel();
   if($("#p-map").classList.contains("on")){ renderMap(); renderFleetBar(); }
-  if($("#p-res").classList.contains("on"))renderResCryStrip();
-  if($("#p-ach").classList.contains("on"))renderStats();
   if($("#p-mkt").classList.contains("on"))renderMarket();
   if(devOn)devInfo();
 
@@ -6813,21 +6911,6 @@ function renderCtxCard(){
   name.textContent=ex.n.toUpperCase();
   rate.textContent = r>0 ? "+"+fmt(r)+"/s" : "\u00A0";
 }
-/* patch607 - the crystal strip at the top of Research. Skeleton built once (the
-   dataset.h guard tchurn2 exists to enforce - see its own header note), the live
-   balance/rate written into that same node's existing children every tick after -
-   same two-step idiom buildMarket()/renderMarket() already use just below. */
-function renderResCryStrip(){
-  const host=$("#resCryStrip"); if(!host)return;
-  if(host.dataset.h!=="cry"){
-    host.dataset.h="cry";
-    host.innerHTML='<button type="button" class="rcard c-cry" id="resCryBtn" title="Crystal — tap for detail"><div class="ricon" id="resCryIcon"></div><div><div class="val" id="resCryVal">0</div><div class="sub" id="resCryRate">0 /s</div></div></button>';
-    $("#resCryIcon").innerHTML=RI("cry","");
-    $("#resCryBtn").onclick=()=>resourceModal("cry");
-  }
-  $("#resCryVal").textContent=fmt(S.cry);
-  $("#resCryRate").textContent=anyOf(1)?fmt(cryRate())+" /s":"build a Smelter Pod";
-}
 /* ---------------- market (item 5, patch563) ----------------
    Sell-only. One shared volume-tax "heat" counter per output currency
    (S.mkt.heat.sv for every sale that pays out Salvage, .dm for Dark Matter) -
@@ -7156,7 +7239,11 @@ function renderSysBuild(s,held){
     return;
   }
   wrap.hidden=false;
-  const ladder=sysLadder(s.id);
+  /* PLAN-polish batch B item 5: tiers below sysT0(id) are skipped outright - never
+     shown, never bought - so the BUILDINGS list (and its "N of M tiers" count) is
+     built from the visible slice of the ladder, not the whole thing. */
+  const t0=sysT0(s.id);
+  const ladder=sysLadder(s.id).filter(gi=>gi>=t0);
   const owned=ladder.filter(gi=>sysTierCount(s.id,gi)>0).length;
   const countTxt=owned+" of "+ladder.length+" tiers";
   if(countEl&&countEl.textContent!==countTxt)countEl.textContent=countTxt;
@@ -7172,13 +7259,22 @@ function renderSysBuild(s,held){
     rowsHost.dataset.h=key;
     empSlotEls=[];
     rowsHost.innerHTML="";
-    let shownNext=false;
+    let shownNext=false, nextRowEl=null;
     for(const gi of ladder){
       if(sysTierCount(s.id,gi)>0){ rowsHost.appendChild(ladderTierRow(s.id,gi,false)); }
-      else if(!shownNext){ rowsHost.appendChild(ladderTierRow(s.id,gi,true)); shownNext=true; }
+      else if(!shownNext){ nextRowEl=ladderTierRow(s.id,gi,true); rowsHost.appendChild(nextRowEl); shownNext=true; }
       else break;
     }
-    if(viewEl)viewEl.scrollTop=prevTop;
+    /* polish batch A #2: the very first time a second tier row (Smelter Pod, right
+       after the first Mining Drone) becomes visible, it can sit below the fold on a
+       small screen - scroll it into view instead of restoring the old scroll
+       position. One-time only (S.seen guard), any later reveal keeps the old
+       restore-scrollTop behaviour. */
+    if(!S.seen)S.seen={};
+    if(owned===1 && nextRowEl && !S.seen.tierReveal1){
+      S.seen.tierReveal1=true;
+      if(viewEl)nextRowEl.scrollIntoView({block:"nearest"});
+    } else if(viewEl)viewEl.scrollTop=prevTop;
   }
 }
 /* PLAN-governors owner decision 3: the GOVERNOR toggle chip, under the BUILDINGS
@@ -7933,7 +8029,9 @@ function renderProg(){
 }
 function progRow(exoId){
   const e=exoDef(exoId), have=exo(exoId), rate=exoRate(exoId);
-  const rows=XPROG.filter(z=>z.x===exoId);
+  /* polish batch A #11: INERT_PROGS rows (Command Lattice) never get a card here -
+     see its own header note (01-content.js). */
+  const rows=XPROG.filter(z=>z.x===exoId&&!INERT_PROGS.has(z.id));
   const anyAfford=rows.some(r=>{ const l=xlv(r.id); return l<r.max && have>=xpCost(r,l) });
   const wrap=document.createElement("div");
   const head=document.createElement("div");
@@ -8330,7 +8428,7 @@ function renderMis(){
     d.appendChild(btn); host.appendChild(d);
   });
   if(S.mi>=MISSIONS.length){
-    if(!q.length)host.innerHTML='<div class="card done"><h5>All contracts fulfilled</h5><p>The Colonial Authority has nothing left to ask of you.</p></div>';
+    if(!q.length)host.innerHTML='<div class="card done"><h5>All missions fulfilled</h5><p>The Colonial Authority has nothing left to ask of you.</p></div>';
     return;
   }
   MISSIONS.slice(S.mi,S.mi+3).forEach((m,k)=>{
@@ -8340,110 +8438,22 @@ function renderMis(){
     host.appendChild(d);
   });
   const done=document.createElement("div"); done.className="card done";
-  done.innerHTML=`<h5>Completed</h5><p>${misDone()} of ${MISSIONS.length} contracts fulfilled.</p>`;
+  done.innerHTML=`<h5>Completed</h5><p>${misDone()} of ${MISSIONS.length} missions fulfilled.</p>`;
   host.appendChild(done);
 }
 /* ---------------- stats ---------------- */
-const CW=300, CH=150, CPL=34, CPR=10, CPT=8, CPB=18;   /* viewBox + plot padding */
-let chartSig="";
-function measDef(id){ return MEAS.find(m=>m.id===id)||MEAS[0] }
 function fmtT2(s){ return s<60 ? Math.round(s)+"s"
   : s<3600 ? Math.round(s/60)+"m" : (s/3600).toFixed(s<36000?1:0)+"h" }
-function renderStats(){
-  const H=histOk();
-  /* headline numbers first - a stat tile beats a one-point chart */
-  const kp=$("#kpis");
-  if(kp)kp.innerHTML=[
-    ["PRODUCTION","#48e2ff",fmt(rate())+" /s",fmt(S.all)+" all-time"],
-    ["LEVEL","#ffd166",String(level()),perkShort()],
-    ["STRUCTURES","#5ce6a5",fmt(tot()),fmt(globalMul())+"\u00d7 bonus"],
-    ["SYSTEMS","#8fb8ff",heldSystems().length+" / "+(SYS.length-1),
-      fmt(S.dm)+" Dark Matter"]
-  ].map(([l,c,v,s])=>`<div class="kpi" style="--a:${c}">
-      <div class="kl">${l}</div><div class="kv">${v}</div><div class="ks">${s}</div></div>`).join("");
-
-  const ch=$("#mchips");
-  if(ch&&ch.childElementCount!==MEAS.length){
-    ch.innerHTML=MEAS.map(m=>`<button class="mchip" data-m="${m.id}" style="--a:${m.col}">${m.n}</button>`).join("");
-    $$("#mchips .mchip").forEach(b=>b.onclick=()=>{ S.mtab=b.dataset.m; dirty=true; render() });
-  }
-  $$("#mchips .mchip").forEach(b=>b.classList.toggle("on",b.dataset.m===S.mtab));
-
-  const m=measDef(S.mtab), data=histSeries(m.id);
-  /* the plot only changes when a sample lands or the measure switches - redrawing it
-     every frame also wiped the crosshair as soon as the pointer stopped moving */
-  const sig=m.id+"|"+data.length+"|"+(data[data.length-1]||0)+"|"+H.iv;
-  if(sig===chartSig)return;
-  chartSig=sig;
-  $("#chartTtl").textContent=m.n+(m.unit?" ("+m.unit+")":"");
-  $("#chartTtl").style.color=m.col;
-  const box=$("#chartBox"); box.style.setProperty("--a",m.col);
-  const svg=$("#chart"), empty=$("#chartEmpty");
-  if(data.length<2){
-    svg.style.display="none"; $("#chartScale").textContent="";
-    empty.style.display="block";
-    empty.textContent="Not enough history yet \u2014 a reading is taken every "
-      +fmtT2(H.iv)+". Come back in a minute.";
-    $("#chartTip").style.display="none";
-    return;
-  }
-  svg.style.display="block"; empty.style.display="none";
-
-  /* log where the measure is exponential, linear where it is a count */
-  const useLog = !!m.log && data.some(v=>v>0);
-  $("#chartScale").textContent = useLog ? "LOG SCALE" : "";
-  const tf = useLog ? (v=>Math.log10(Math.max(v,1e-6))) : (v=>v);
-  let lo=Infinity, hi=-Infinity;
-  for(const v of data){ const t=tf(v); if(t<lo)lo=t; if(t>hi)hi=t }
-  if(!(hi>lo)){ hi=lo+1 }
-  const pad=(hi-lo)*0.08; lo-=pad; hi+=pad;
-  /* a count has no negative half - padding must not invent one */
-  if(!useLog && data.every(v=>v>=0) && lo<0) lo=0;
-  const PW=CW-CPL-CPR, PH=CH-CPT-CPB;
-  const X=i=>CPL+(data.length<2?0:i/(data.length-1))*PW;
-  const Y=v=>CPT+PH-((tf(v)-lo)/(hi-lo))*PH;
-
-  const pts=data.map((v,i)=>X(i).toFixed(1)+","+Y(v).toFixed(1));
-  const area="M"+X(0).toFixed(1)+","+(CPT+PH)+" L"+pts.join(" L")+
-             " L"+X(data.length-1).toFixed(1)+","+(CPT+PH)+" Z";
-  const lab=v=>useLog?fmt(Math.pow(10,v)):fmt(v);
-  const mid=(lo+hi)/2;
-  const last=data[data.length-1], span=histAt(data.length-1);
-  svg.innerHTML=`
-    <line class="grid" x1="${CPL}" y1="${CPT}" x2="${CW-CPR}" y2="${CPT}"/>
-    <line class="grid" x1="${CPL}" y1="${CPT+PH/2}" x2="${CW-CPR}" y2="${CPT+PH/2}"/>
-    <line class="grid" x1="${CPL}" y1="${CPT+PH}" x2="${CW-CPR}" y2="${CPT+PH}"/>
-    <text class="axis" x="${CPL-4}" y="${CPT+3}" text-anchor="end">${lab(hi)}</text>
-    <text class="axis" x="${CPL-4}" y="${CPT+PH/2+3}" text-anchor="end">${lab(mid)}</text>
-    <text class="axis" x="${CPL-4}" y="${CPT+PH}" text-anchor="end">${lab(lo)}</text>
-    <text class="axis" x="${CPL}" y="${CH-5}">${fmtT2(span)} ago</text>
-    <text class="axis" x="${CW-CPR}" y="${CH-5}" text-anchor="end">now</text>
-    <path class="fillA" d="${area}"/>
-    <polyline class="ln" points="${pts.join(" ")}"/>
-    <circle class="end" cx="${X(data.length-1).toFixed(1)}" cy="${Y(last).toFixed(1)}" r="3.2"/>
-    <g id="chOverlay"></g>`;
-
-  /* crosshair + tooltip. Pointer events cover mouse and touch in one path. */
-  const tip=$("#chartTip"), ov=svg.querySelector("#chOverlay");
-  const move=ev=>{
-    const r=svg.getBoundingClientRect();
-    const px=(ev.clientX-r.left)/r.width*CW;
-    let i=Math.round((px-CPL)/PW*(data.length-1));
-    i=Math.max(0,Math.min(data.length-1,i));
-    if(!isFinite(i))return;
-    const x=X(i), y=Y(data[i]);
-    ov.innerHTML=`<line class="cross" x1="${x.toFixed(1)}" y1="${CPT}" x2="${x.toFixed(1)}" y2="${CPT+PH}"/>
-      <circle class="hit" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4"/>`;
-    tip.style.display="block";
-    tip.style.left=(x/CW*r.width)+"px";
-    tip.style.top=(y/CH*r.height-8)+"px";
-    tip.innerHTML=fmt(data[i])+(m.unit?" "+m.unit:"")+
-      `<small>${fmtT2(span-histAt(i))} ago</small>`;
-  };
-  const leave=()=>{ ov.innerHTML=""; tip.style.display="none" };
-  svg.onpointermove=move; svg.onpointerdown=move;
-  svg.onpointerleave=leave; svg.onpointercancel=leave;
-}
+/* polish batch A #8: renderStats() (the KPI tiles + production history chart, the
+   "graphs" half of "Records & Graphs") is gone along with #kpis/#mchips/#chartBox
+   - the owner playthrough flagged the whole stats page, and ACHS/checkAchs() turned
+   out to be real, named milestones worth keeping (each grants a permanent global
+   bonus - see renderAch() right below), so only the achievements half survives,
+   reachable the same way (Market's ghost link, retitled "Achievements" in
+   index.html) rather than gone outright. histTick()/MEAS/the hist* sampling
+   functions and the save format's own S.hist are untouched - deleting the save
+   field for a page that might come back was more risk than it was worth for a
+   fixes batch; they just have no UI reading them any more. */
 function renderAch(){
   const host=$("#ach"); host.innerHTML="";
   ACHS.forEach(a=>{
@@ -9038,6 +9048,9 @@ function closeDefence(){ DT=null; $("#defence").classList.remove("on"); dirty=tr
    Declared here, right before the one function every LF resolution path already
    calls, so cleanup can live in exactly one place - see lfClear()'s own note. */
 let lfPromptTimer=null, lfPromptLive=false;
+/* polish batch A #6: set true the moment the first raid win pays out salvage,
+   consumed (and cleared) the next time renderRaids() draws #svChip - see endBattle(). */
+let svPulse=false;
 function lfClearPromptTimer(){ if(lfPromptTimer){ clearTimeout(lfPromptTimer); lfPromptTimer=null } }
 function lfClear(){ LF=null; S.lfMark=null; lfClearPromptTimer(); lfPromptLive=false; }
 /* test-only helper: force the in-flight fleet's due time so a test can assert
@@ -10364,7 +10377,11 @@ function endBattle(how){
   let o=0,c=0,m=0,lost=[0,0,0];
   let sv=0;
   if(how==="win"){ o=full.o; c=full.c; m=full.m; S.wins=(S.wins||0)+1; xpOnWins();
-    if(S.wins===1)queueNotice("vega:firstWin");
+    /* polish batch A #6: first salvage earned pulses the salvage counter, same
+       .land idiom flyReward() uses on a resource chip - queued here (svChip may not
+       even be in the DOM/visible yet) and consumed the next time renderRaids()
+       draws the chip, see svPulse below. */
+    if(S.wins===1){ queueNotice("vega:firstWin"); svPulse=true; }
     sv=svReward(t);
     if(T.boss)S.flags=(S.flags||0)+1;
     if(BT.hp>=BT.hpm*0.999)S.flawless=1;
@@ -11185,13 +11202,6 @@ $("#abFocus").onclick=()=>{ if(BT&&!BT.done&&BT.cd.f<=0){BT.buf.f=5;BT.cd.f=16;b
 $("#abFlak").onclick=()=>{ if(BT&&!BT.done&&BT.cd.k<=0){BT.buf.k=5;BT.cd.k=22;blip(420,.15,"sine",.05)} };
 $("#bRetreat").onclick=()=>{ if(BT&&!BT.done)endBattle("timeout") };
 $("#flFix").onclick=()=>{ if(repairFleet()){ renderAll(); save() } };
-/* run 3: same TRANSFER the fleet card modal offers, reachable from the Raids pane's
-   own fleet strip too - always against curFleet() (the tab currently selected) and
-   the nearest idle fleet sitting at its own system. */
-$("#flTransfer").onclick=()=>{
-  const cf=curFleet(), mates=otherIdleFleetsAt(cf);
-  if(mates.length)transferModal(cf, mates[0]);
-};
 $("#bPause").onclick=()=>{ if(BT&&!BT.done){ BT.paused=!BT.paused; dirty=true } };
 $("#trScr").onclick=()=>{ if(addOrder("scr"))dirty=true };
 $("#trRep").onclick=()=>{ if(addOrder("rep"))dirty=true };
@@ -11251,29 +11261,34 @@ function renderRaids(){
   fx.classList.toggle("hide", !fleetCount(cf) || hp>=1);
   fx.disabled = S.ore<rc || hp>=1;
   fx.textContent = "REPAIR \u00b7 "+fmt(rc)+" ORE";
-  /* run 3: TRANSFER next to REPAIR - only meaningful with another idle fleet at
-     curFleet()'s own system, same rule the fleet card modal's button uses. */
-  const ftBtn=$("#flTransfer");
-  if(ftBtn)ftBtn.disabled = otherIdleFleetsAt(cf).length===0;
   const host=$("#flShips"); host.innerHTML="";
   /* run 3 (decision 6): no idle fleet at home right now - a BUY still queues (see
      buyShip()'s own comment), it just doesn't land in curFleet() immediately. Said
      plainly on the button rather than silently landing somewhere the player can't
      see yet. */
   const noHomeIdle=!fleets().some(fl=>!fl.to&&fl.at==="home");
+  /* polish batch A #12: buyShip() lands a purchase on curFleet() only when IT is
+     idle at home - otherwise the first idle-at-home fleet takes it, same rule
+     buyShip() itself uses (see its own header comment). Worked out once per
+     render, same for every ship class this loop draws a button for. */
+  const buyTgt = (!cf.to&&cf.at==="home") ? cf : fleets().find(fl=>!fl.to&&fl.at==="home");
   SHIPS.forEach((sp,i)=>{
     const d=document.createElement("div"); d.className="shp"; d.style.setProperty("--a",sp.col);
     const k=S.sell?Math.min(S.buy==="max"?cf.sh[i]:S.buy,cf.sh[i]):(S.buy==="max"?Math.max(1,shipMax(i)):S.buy);
     const c=S.sell?(k>0?0.5*sp.b*Math.pow(sp.g,shipTotal(i)-k)*(Math.pow(sp.g,k)-1)/(sp.g-1):0):shipCost(i,k);
     const fits=k*sp.pw<=capLeft();
     const can=S.sell?(k>0&&!cf.to):(S.ore>=c&&fits);
+    /* polish batch A #10/#12: "DELIVERS AT SOL REACH" (nothing here has a shipyard
+       yet, PLACEHOLDER copy either way) when nothing is home to take it, and now
+       also says which fleet it actually lands on when that isn't the selected tab. */
+    const buyLabel = "BUY ×"+k+(buyTgt&&buyTgt!==cf?" → "+buyTgt.n.toUpperCase():"");
     d.innerHTML=`<div class="si"><svg viewBox="0 0 48 48">${sp.ic}</svg></div>
       <div><div class="sn">${sp.n}</div>
         <div class="sd">${fmt(sp.dps*fleetMult())} dps · ${fmt(sp.hp*fleetMult())} hull · ⚡${sp.pw}</div></div>
       <div style="display:flex;align-items:center;gap:10px">
         <div class="sc">${cf.sh[i]}</div>
         <button class="gb"><b>${S.sell||fits?fmt(c)+" ore":"NO CAPACITY"}</b><i>${
-          S.sell?"SCRAP ×"+k:(noHomeIdle?"DELIVERS AT SOL REACH":"BUY ×"+k)}</i></button>
+          S.sell?"SCRAP ×"+k:(noHomeIdle?"NO SHIPYARD HERE":buyLabel)}</i></button>
       </div>`;
     const bt=d.querySelector("button"); bt.disabled=!can;
     bt.onclick=()=>{ if(S.sell)sellShip(i,k); else buyShip(i,k); render(); };
@@ -11332,6 +11347,12 @@ function renderRaids(){
   });
   // salvage chip
   $("#svChip").innerHTML=RI("sv","ci sv")+fmt(S.sv||0);
+  if(svPulse){
+    svPulse=false;
+    const chip=$("#svChip");
+    chip.classList.remove("land"); void chip.offsetWidth; chip.classList.add("land");
+    setTimeout(()=>chip.classList.remove("land"),460);
+  }
 
   // refits
   const rh=$("#refits"); rh.innerHTML="";
@@ -11728,7 +11749,13 @@ function adopt(o){
     const gt=Math.max(0,+gin.gt||0);
     const gl=(gin.gl&&typeof gin.gl==="object"&&GENS[Math.floor(gin.gl.gi)]&&+gin.gl.t>0)
       ? {gi:Math.floor(gin.gl.gi), t:+gin.gl.t} : null;
-    f.sys[k]={b, ...(gov?{gov}:{}), ...(gb?{gb}:{}), ...(gt?{gt}:{}), ...(gl?{gl}:{})};
+    /* PLAN-polish batch B item 5: t0 is a GENS index (never negative) naming a real
+       tier, or absent - a save from before this batch (or any system claimed
+       before it) simply never carries the key, which sysT0() already reads as 0
+       ("nothing skipped"), exactly the old behaviour. */
+    const t0raw=Math.floor(gin.t0||0);
+    const t0=(t0raw>0 && GENS[t0raw]) ? t0raw : 0;
+    f.sys[k]={b, ...(gov?{gov}:{}), ...(gb?{gb}:{}), ...(gt?{gt}:{}), ...(gl?{gl}:{}), ...(t0?{t0}:{})};
   }
   /* home is always held - a save that predates a claim, or one that simply never had
      home in S.sys, still needs its count map to exist */
@@ -11794,6 +11821,13 @@ function adopt(o){
   if(!f.xp||typeof f.xp!=="object")f.xp={};
   for(const k in f.xp){ const r=XPROG.find(z=>z.id===k);
     if(!r||!(f.xp[k]>0))delete f.xp[k]; else f.xp[k]=Math.min(r.max,Math.floor(f.xp[k])) }
+  /* polish batch A #11: Command Lattice is inert for a real player (see INERT_PROGS,
+     01-content.js) - a save that already banked levels in it (from before this
+     change) loses them on load, no refund, same as the plan's own instruction for
+     an outright removal. Kept out of the generic pass above because "comm" is still
+     a normal XPROG entry (csim4.js needs it to stay exactly as it was, see its own
+     header note) - this is the one spot that actually drops it for a player save. */
+  if(f.xp.comm)delete f.xp.comm;
   if(!f.exo||typeof f.exo!=="object")f.exo={};
   for(const k in f.exo){ if(!EXO.some(e=>e.id===k)||!(f.exo[k]>0))delete f.exo[k] }
   /* Exotic Nodes (patch582): a separate resource from S.exo, not one of EXO -
@@ -11836,6 +11870,20 @@ function adopt(o){
        is otherwise unread anywhere in the game. */
     if(!("t0" in o) || !(f.t0>0))f.t0=null;
     if(!("lvSeen" in o))f.lvSeen=f.lvl;
+    /* PLAN-polish batch B item 2: lvEarn (the one-level-per-check ratchet) is
+       ALWAYS recomputed here, from this save's own (already-sanitised) xpn/lvl -
+       never carried through from `o` - rather than trying to tell a genuine old
+       save apart from a `{...fresh(), xpn:X}` test fixture (fresh() deliberately
+       never seeds this key any more - see its own comment - so that ambiguity
+       does not arise, but recomputing unconditionally is simpler regardless, and
+       cheap: xpn/lvl are already fixed by the two lines above). This is a
+       load-time-only jump straight to the save's true entitlement, uncapped by
+       the one-per-check gate - the same "an old save catching up past several
+       thresholds in one go gets ONE combined moment, not a cascade" rule
+       ensureFleets()/PLAN-fleets run 3 already applies to Fleet 2/3. */
+    let lvEarn=Math.max(1,f.lvl);
+    while(lvEarn<LVMAX && (f.xpn||0)>=xpNeed(lvEarn+1))lvEarn++;
+    f.lvEarn=lvEarn;
   }
   S=f;
   /* S.han[sysId] - always exactly 3 non-negative integers, never more than HAN_CAP
@@ -11899,7 +11947,8 @@ function adopt(o){
   if(unlockedAt("p-map"))S.seen["vega:map"]=true;
   if(SYS.some(s=>!s.home&&sysOpen(s)))S.seen["vega:claimable"]=true;
   if(EXO.some(e=>exoEverBanked(e.id)))S.seen["vega:exoBanked"]=true;
-  if(unlockedAt("p-raid"))S.seen["vega:raids"]=true;
+  if(unlockedAt("p-raid")){ S.seen["vega:raids"]=true; S.seen["vega:raidsBuy"]=true;
+    S.seen["vega:raidsFit"]=true; S.seen["vega:raidsOfficers"]=true; }
   /* PLAN-fleets run 3: catches an old save up on Fleet 2/3 the instant it loads,
      same reasoning as every backfill around it - a level-22 save from before this
      run existed should not wait for the next tick to gain fleets it has clearly
@@ -13129,6 +13178,13 @@ $("#noticeX").onclick=dismissNotice;
 $("#notice").onclick=(e)=>{ if(e.target.id==="notice")dismissNotice(); };  /* patch629: backdrop tap = dismiss */
 $("#noticeGo").onclick=()=>{
   const key=S.notifyQueue&&S.notifyQueue[0], n=key&&NOTICES[key];
+  /* polish batch A #4: vega:raids' own go switches to the Raids tab. If a level is
+     already pending, dismissNotice() below immediately shows the lvClaim notice
+     card next (and from there its own GO opens the perk-pick modal) - racing the
+     tab switch and, on a small screen, looking like it never happened. Navigate
+     first for this one beat so the tab change always wins, then let the queue
+     advance as normal. Every other beat keeps the old dismiss-then-go order. */
+  if(key==="vega:raids" && n&&n.go){ n.go(); dismissNotice(); return; }
   dismissNotice();
   if(n&&n.go)n.go();
 };
@@ -13148,6 +13204,10 @@ document.addEventListener("visibilitychange",()=>{ if(document.hidden)save() });
 let devOn=false, devTaps=0, devTapT=0;
 function devGrantLevels(k){
   S.xpn=Math.max(S.xpn||0, xpNeed(level()+k));
+  /* PLAN-polish batch B item 2: a dev cheat means to jump instantly - bypass the
+     one-level-per-check ratchet outright rather than waiting on it one tick at a
+     time (trueEarnedLevel(), never earnedLevel(), see its own header comment). */
+  S.lvEarn=Math.max(S.lvEarn||1, trueEarnedLevel());
   S.lvSeen=earnedLevel();
   let guard=0;
   while(pendingLevels()>0 && guard++<600){
@@ -13317,7 +13377,7 @@ $(".brand h1").addEventListener("click",()=>{
 const had=load();
 if(!had)playOpening();
 $("#btnMute").textContent=S.muted?"♪̸":"♪";
-$("#riOre").innerHTML=RI("ore","");$("#riDm").innerHTML=RI("dm","");
+$("#riOre").innerHTML=RI("ore","");$("#riDm").innerHTML=RI("dm","");$("#riCry").innerHTML=RI("cry","");
 $("#scanIco").innerHTML=RES_ICON.ore;
 $("#sshScanIco").innerHTML=RES_ICON.ore;
 syncChips();
@@ -13349,8 +13409,8 @@ window.__SD={get S(){return S},NEXUS,buyNex,openSite,SITE,siteSlots,
   REFIT,rfl,refitCost,buyRefit,ROLES,RAR,rollCrew,hireCrew,dismissCrew,assignCrew,
   hitEnemy,bUpdate,bDraw,get bScale(){return bScale},
   hireCost,dismissValue,bridgeSlots,crewUnlocked,onBridge,crewMul,svReward,EK,EMIX,comboMul,bTapAt,
-  endBattle,rate,cryRate,softCap,clickRaw,clickCap,scanPerkMul,level,earnedLevel,
-  MEAS,HMAX,histTick,histSeries,histAt,histOk,histSample,renderStats,
+  endBattle,rate,cryRate,softCap,clickRaw,clickCap,scanPerkMul,level,earnedLevel,trueEarnedLevel,
+  MEAS,HMAX,histTick,histSeries,histAt,histOk,histSample,
   devAction,devToggle,get devOn(){return devOn},devGrantLevels,
   lastError,get frameErrs(){return frameErrs},
   EXO,SYS,SYSMAP,SITE_LEN:SITE.length,exo,exoRate,exoUnlocked,exoCostOf,unlocked,
@@ -13418,7 +13478,7 @@ window.__SD={get S(){return S},NEXUS,buyNex,openSite,SITE,siteSlots,
   forecastSplit,evadeOf,landedPips,isRaw,
   resolveRound,forecastIncoming,screenCut,telAll,bTapTurn,pendingLevels,takeLevel,lvOffer,lvModal,lvSummary,
   PERKS,pkl,costMul,perkSummary,xpNeed,grantXp,xpSeed,xpSeedAll,xpOnWins,xpOnDef,xpCrewFull,checkAchs,xpNext,LVXP,LVXP_PTS,lvlMul,UNLOCK,unlockLv,checkLevel,tick,doScan,fmt,fmtT,GENS,adopt,fresh,clickPow,tot,globalMul,RESH,resCur,resBal,resCost,buyRes,
-  LADDER_KINDS,LADDERS,ladderKindOf,sysLadder,sysTierCount,builtSystems,sysNextGi,tierBuildable,
+  LADDER_KINDS,LADDERS,ladderKindOf,sysLadder,sysTierCount,sysState,sysT0,builtSystems,sysNextGi,tierBuildable,
   ladderRate,ladderPerUnit,ladderCost,ladderMaxAff,ladderGain,ladderExoId,ladderExoCost,ladderBuy,
   ladderMarquee,gCount,anyOf,
   KIND_INFO,empFurthestRing,gotoTab,
