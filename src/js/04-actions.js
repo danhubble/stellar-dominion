@@ -8,6 +8,10 @@
 function tierBuildable(id,gi){
   if(!sysHeld(id))return false;
   const s=SYSMAP[id]; if(!s||!GENS[gi]||GENS[gi].kind!==ladderKindOf(s))return false;
+  /* PLAN-polish batch B item 5: a tier below sysT0(id) is never buildable - it can
+     never be owned (nothing ever builds it) and sysNextGi() already skips past it,
+     so the two clauses below fall through to false for it with no extra check
+     needed here. */
   return sysTierCount(id,gi)>0 || sysNextGi(id)===gi;
 }
 /* kOverride (PLAN-governors "Watch for"): govBuyStep() passes an explicit 1 here so a

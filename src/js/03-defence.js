@@ -587,6 +587,24 @@ function claimSystem(s){
   S.ore-=s.cost;
   if(!S.sys||typeof S.sys!=="object")S.sys={};
   S.sys[s.id]={b:{}};
+  /* PLAN-polish batch B item 5: new systems start their ladder at a tier that
+     matches the economy - a rich empire claiming Draskhold does not click through
+     Mining Drone/Smelter Pod/Crust Borer one at a time when it can already afford
+     the fourth tier outright. t0 is the lowest GENS index on this system's own
+     ladder whose first unit already costs >=1% of a minute's production
+     (rate()*60) - ladderCost(id,gi,1) with a freshly-claimed (0-owned) system is
+     exactly GENS[gi].b*costMul(), the first-unit price. Everything from t0 down is
+     skipped outright (sysNextGi()/tierBuildable()), never shown-then-bought. */
+  {
+    const threshold=rate()*60*0.01;
+    const ladder=sysLadder(s.id);
+    /* default: if even the marquee tier costs less than the threshold (an
+       extraordinarily rich claim), land on it rather than skip the whole ladder -
+       a system always needs at least one buildable tier. */
+    let t0=ladder.length?ladder[ladder.length-1]:0;
+    for(const gi of ladder){ if(ladderCost(s.id,gi,1)>=threshold){ t0=gi; break } }
+    if(t0>0)S.sys[s.id].t0=t0;
+  }
   grantXp("cl1", XPV.claim1, "First system claimed");
   grantXp("cl:"+s.id, XPV.claim[s.ring]||0, "Claimed "+s.n);
   if(s.dm>0){ S.dm+=s.dm; S.dmAll+=s.dm }

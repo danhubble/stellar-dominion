@@ -2326,8 +2326,11 @@ function sysLadder(id){ const s=SYSMAP[id]; return (s&&LADDERS[ladderKindOf(s)])
 function ladderMarquee(kind){ const l=LADDERS[kind]; return (l&&l.length)?l[l.length-1]:-1 }
 /* first not-yet-owned tier in this system's own ladder, in order - what the body
    shows greyed-out with a price. null once every tier on this ladder is owned. */
+/* PLAN-polish batch B item 5: tiers below sysT0(id) are never the next reveal -
+   they're skipped outright, not shown-then-bought (see sysT0()'s own comment). */
 function sysNextGi(id){
-  for(const gi of sysLadder(id)) if(sysTierCount(id,gi)<=0) return gi;
+  const t0=sysT0(id);
+  for(const gi of sysLadder(id)){ if(gi<t0)continue; if(sysTierCount(id,gi)<=0) return gi; }
   return null;
 }
 const TCOL=["#48e2ff","#5fd6f4","#79c6ef","#93b3f3","#a89df6","#ffb45c","#ffd166","#b07cff","#d76cff","#ff8fd0",
@@ -4063,6 +4066,18 @@ function sysHeld(id){ return !!sysState(id) && !sysOccupied(id) }
    GENS exists (right after it, below), so every lookup here is a handful of array
    entries, not a scan of all of GENS. */
 function sysTierCount(id,gi){ const st=sysState(id); return (st&&st.b&&st.b[gi])||0 }
+/* PLAN-polish batch B item 5: the GENS index a newly-claimed system's ladder starts
+   at - set once, on claim (see claimSystem()), to the lowest tier whose first unit
+   already costs a meaningful slice of current production, so a rich economy does
+   not have to click through a dozen trivial early tiers it can already outright
+   skip. Home is exempt (its own ladder always starts at 0), and an old save (or
+   any system claimed before this batch) has no t0 at all, which reads as 0 here -
+   "nothing skipped", exactly the pre-batch behaviour. sysNextGi()/tierBuildable()
+   and the BUILDINGS render all key off this. */
+function sysT0(id){
+  const s=SYSMAP[id]; if(!s||s.home)return 0;
+  const st=sysState(id); return (st&&st.t0>0)?st.t0:0;
+}
 /* every system the player holds, home included - heldSystems() deliberately excludes it */
 function builtSystems(){ return SYS.filter(s=>sysHeld(s.id)) }
 /* a garrison you have beaten stops counting as an owner */
@@ -4688,6 +4703,24 @@ function claimSystem(s){
   S.ore-=s.cost;
   if(!S.sys||typeof S.sys!=="object")S.sys={};
   S.sys[s.id]={b:{}};
+  /* PLAN-polish batch B item 5: new systems start their ladder at a tier that
+     matches the economy - a rich empire claiming Draskhold does not click through
+     Mining Drone/Smelter Pod/Crust Borer one at a time when it can already afford
+     the fourth tier outright. t0 is the lowest GENS index on this system's own
+     ladder whose first unit already costs >=1% of a minute's production
+     (rate()*60) - ladderCost(id,gi,1) with a freshly-claimed (0-owned) system is
+     exactly GENS[gi].b*costMul(), the first-unit price. Everything from t0 down is
+     skipped outright (sysNextGi()/tierBuildable()), never shown-then-bought. */
+  {
+    const threshold=rate()*60*0.01;
+    const ladder=sysLadder(s.id);
+    /* default: if even the marquee tier costs less than the threshold (an
+       extraordinarily rich claim), land on it rather than skip the whole ladder -
+       a system always needs at least one buildable tier. */
+    let t0=ladder.length?ladder[ladder.length-1]:0;
+    for(const gi of ladder){ if(ladderCost(s.id,gi,1)>=threshold){ t0=gi; break } }
+    if(t0>0)S.sys[s.id].t0=t0;
+  }
   grantXp("cl1", XPV.claim1, "First system claimed");
   grantXp("cl:"+s.id, XPV.claim[s.ring]||0, "Claimed "+s.n);
   if(s.dm>0){ S.dm+=s.dm; S.dmAll+=s.dm }
@@ -4966,6 +4999,10 @@ function unlocked(gi){ return builtSystems().some(s=>tierBuildable(s.id,gi)) }
 function tierBuildable(id,gi){
   if(!sysHeld(id))return false;
   const s=SYSMAP[id]; if(!s||!GENS[gi]||GENS[gi].kind!==ladderKindOf(s))return false;
+  /* PLAN-polish batch B item 5: a tier below sysT0(id) is never buildable - it can
+     never be owned (nothing ever builds it) and sysNextGi() already skips past it,
+     so the two clauses below fall through to false for it with no extra check
+     needed here. */
   return sysTierCount(id,gi)>0 || sysNextGi(id)===gi;
 }
 /* kOverride (PLAN-governors "Watch for"): govBuyStep() passes an explicit 1 here so a
@@ -7177,7 +7214,11 @@ function renderSysBuild(s,held){
     return;
   }
   wrap.hidden=false;
-  const ladder=sysLadder(s.id);
+  /* PLAN-polish batch B item 5: tiers below sysT0(id) are skipped outright - never
+     shown, never bought - so the BUILDINGS list (and its "N of M tiers" count) is
+     built from the visible slice of the ladder, not the whole thing. */
+  const t0=sysT0(s.id);
+  const ladder=sysLadder(s.id).filter(gi=>gi>=t0);
   const owned=ladder.filter(gi=>sysTierCount(s.id,gi)>0).length;
   const countTxt=owned+" of "+ladder.length+" tiers";
   if(countEl&&countEl.textContent!==countTxt)countEl.textContent=countTxt;
@@ -11683,7 +11724,13 @@ function adopt(o){
     const gt=Math.max(0,+gin.gt||0);
     const gl=(gin.gl&&typeof gin.gl==="object"&&GENS[Math.floor(gin.gl.gi)]&&+gin.gl.t>0)
       ? {gi:Math.floor(gin.gl.gi), t:+gin.gl.t} : null;
-    f.sys[k]={b, ...(gov?{gov}:{}), ...(gb?{gb}:{}), ...(gt?{gt}:{}), ...(gl?{gl}:{})};
+    /* PLAN-polish batch B item 5: t0 is a GENS index (never negative) naming a real
+       tier, or absent - a save from before this batch (or any system claimed
+       before it) simply never carries the key, which sysT0() already reads as 0
+       ("nothing skipped"), exactly the old behaviour. */
+    const t0raw=Math.floor(gin.t0||0);
+    const t0=(t0raw>0 && GENS[t0raw]) ? t0raw : 0;
+    f.sys[k]={b, ...(gov?{gov}:{}), ...(gb?{gb}:{}), ...(gt?{gt}:{}), ...(gl?{gl}:{}), ...(t0?{t0}:{})};
   }
   /* home is always held - a save that predates a claim, or one that simply never had
      home in S.sys, still needs its count map to exist */

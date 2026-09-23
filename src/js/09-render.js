@@ -1077,7 +1077,11 @@ function renderSysBuild(s,held){
     return;
   }
   wrap.hidden=false;
-  const ladder=sysLadder(s.id);
+  /* PLAN-polish batch B item 5: tiers below sysT0(id) are skipped outright - never
+     shown, never bought - so the BUILDINGS list (and its "N of M tiers" count) is
+     built from the visible slice of the ladder, not the whole thing. */
+  const t0=sysT0(s.id);
+  const ladder=sysLadder(s.id).filter(gi=>gi>=t0);
   const owned=ladder.filter(gi=>sysTierCount(s.id,gi)>0).length;
   const countTxt=owned+" of "+ladder.length+" tiers";
   if(countEl&&countEl.textContent!==countTxt)countEl.textContent=countTxt;

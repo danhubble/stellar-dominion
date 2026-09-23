@@ -111,6 +111,18 @@ function sysHeld(id){ return !!sysState(id) && !sysOccupied(id) }
    GENS exists (right after it, below), so every lookup here is a handful of array
    entries, not a scan of all of GENS. */
 function sysTierCount(id,gi){ const st=sysState(id); return (st&&st.b&&st.b[gi])||0 }
+/* PLAN-polish batch B item 5: the GENS index a newly-claimed system's ladder starts
+   at - set once, on claim (see claimSystem()), to the lowest tier whose first unit
+   already costs a meaningful slice of current production, so a rich economy does
+   not have to click through a dozen trivial early tiers it can already outright
+   skip. Home is exempt (its own ladder always starts at 0), and an old save (or
+   any system claimed before this batch) has no t0 at all, which reads as 0 here -
+   "nothing skipped", exactly the pre-batch behaviour. sysNextGi()/tierBuildable()
+   and the BUILDINGS render all key off this. */
+function sysT0(id){
+  const s=SYSMAP[id]; if(!s||s.home)return 0;
+  const st=sysState(id); return (st&&st.t0>0)?st.t0:0;
+}
 /* every system the player holds, home included - heldSystems() deliberately excludes it */
 function builtSystems(){ return SYS.filter(s=>sysHeld(s.id)) }
 /* a garrison you have beaten stops counting as an owner */

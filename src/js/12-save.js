@@ -290,7 +290,13 @@ function adopt(o){
     const gt=Math.max(0,+gin.gt||0);
     const gl=(gin.gl&&typeof gin.gl==="object"&&GENS[Math.floor(gin.gl.gi)]&&+gin.gl.t>0)
       ? {gi:Math.floor(gin.gl.gi), t:+gin.gl.t} : null;
-    f.sys[k]={b, ...(gov?{gov}:{}), ...(gb?{gb}:{}), ...(gt?{gt}:{}), ...(gl?{gl}:{})};
+    /* PLAN-polish batch B item 5: t0 is a GENS index (never negative) naming a real
+       tier, or absent - a save from before this batch (or any system claimed
+       before it) simply never carries the key, which sysT0() already reads as 0
+       ("nothing skipped"), exactly the old behaviour. */
+    const t0raw=Math.floor(gin.t0||0);
+    const t0=(t0raw>0 && GENS[t0raw]) ? t0raw : 0;
+    f.sys[k]={b, ...(gov?{gov}:{}), ...(gb?{gb}:{}), ...(gt?{gt}:{}), ...(gl?{gl}:{}), ...(t0?{t0}:{})};
   }
   /* home is always held - a save that predates a claim, or one that simply never had
      home in S.sys, still needs its count map to exist */

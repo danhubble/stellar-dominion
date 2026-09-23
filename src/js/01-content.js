@@ -78,8 +78,11 @@ function sysLadder(id){ const s=SYSMAP[id]; return (s&&LADDERS[ladderKindOf(s)])
 function ladderMarquee(kind){ const l=LADDERS[kind]; return (l&&l.length)?l[l.length-1]:-1 }
 /* first not-yet-owned tier in this system's own ladder, in order - what the body
    shows greyed-out with a price. null once every tier on this ladder is owned. */
+/* PLAN-polish batch B item 5: tiers below sysT0(id) are never the next reveal -
+   they're skipped outright, not shown-then-bought (see sysT0()'s own comment). */
 function sysNextGi(id){
-  for(const gi of sysLadder(id)) if(sysTierCount(id,gi)<=0) return gi;
+  const t0=sysT0(id);
+  for(const gi of sysLadder(id)){ if(gi<t0)continue; if(sysTierCount(id,gi)<=0) return gi; }
   return null;
 }
 const TCOL=["#48e2ff","#5fd6f4","#79c6ef","#93b3f3","#a89df6","#ffb45c","#ffd166","#b07cff","#d76cff","#ff8fd0",
