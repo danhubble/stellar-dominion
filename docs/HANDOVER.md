@@ -11854,3 +11854,119 @@ Coordinator verification: toggle ON/OFF, last-buy line, LIST ◆, research card,
 a sim-policy artefact, not a player-facing pacing change; documented exception).
 `.gitignore` now `/shots/` so `tools/shots/*.js` are tracked. First release pushed
 via git bundle (coordinator cannot run git on the owner's machine).
+
+## PLAN-polish batch B — pacing (six commits)
+
+23 Sep 2026. Base b643, following straight on from Batch A (fixes) in the same
+plan. Five levers, one commit each, plus a sixth fixing a bug item 2's own
+mechanism had (caught while writing this batch's tests) before this docs/tests
+commit. This batch changes pacing on purpose, so the csim byte-identical rule is
+replaced by a before/after table and a new baseline, same exception PLAN-pacing.md
+used.
+
+**The five levers:**
+1. `LVXP_PTS[3]` - a new anchor, not the ~87 the 2→8 interpolation used to give
+   level 3: 55 (17 XP for the 2→3 step, was 49).
+2. `grantXp()`'s downstream level entitlement (`earnedLevel()`) is now a
+   one-level-per-check ratchet (`S.lvEarn`), advanced by `checkLevel()` - a burst
+   of XP (four missions at once, several firsts off one claim) opens at most one
+   level-up modal per tick, surplus banked in `S.xpn` untouched. Shipped in two
+   commits: the mechanism, then a fix once writing its own tests caught that the
+   first version re-advanced on every `pendingLevels()`/render read instead of
+   once per `checkLevel()` call - see that commit's own long message for the
+   full story; not repeated here.
+3. `UNLOCK`'s `p-mkt` row: 6 → 9, tied to Raids (also 9) so salvage has a market
+   to sell into the moment raiding starts paying it.
+4. `FLEET_UNLOCK`: `[unlockLv("p-raid"), 14, 20]` → `[unlockLv("p-raid"), 16, 22]`
+   (owner: "should come in later").
+5. New systems record `S.sys[id].t0` on claim - the lowest ladder tier (a GENS
+   index) whose first-unit cost is already ≥1% of a minute's current production
+   (`rate()*60`). Tiers below `t0` are skipped outright (`sysNextGi()`,
+   `tierBuildable()`, the BUILDINGS render) - never shown, never buildable. Home
+   is exempt; an old save (or a system claimed before this batch) has no `t0` at
+   all, reading as 0 via `sysT0()` - "nothing skipped".
+
+**Sim, before vs after (all six commits) - full table in the commit messages,
+headline rows here:**
+
+| row | before | after |
+|---|---|---|
+| time to level 3 | 8m | 4m |
+| time to level 5 | 10m | 8m |
+| time to level 8 | 16m | 16m |
+| time to level 9 | 18m | 18m |
+| time to level 12 | 23m | 23m |
+| first claim, ring 1 | 23.0m | 23.0m |
+| first claim, ring 2 | 113.0m | 97.0m |
+| first claim, ring 3 | 312.0m | 247.0m |
+| map maxed | 5 days | 5 days |
+| level 60 reached at | 56.5 days | 98.5 days |
+| first raid | csim cannot tell you - it never simulates a raid (its own header comment says so; the level≥12 XP grant every 30 active minutes is a stand-in for raid-win XP, not a raid) | same |
+
+Rows csim cannot tell you about, beyond first raid above: **item 2** (one-level-
+per-check) moved nothing printed at all - csim's own `activeMinute()` drains
+`pendingLevels()` in a synchronous `while` loop every simulated second regardless
+of how the gate paces real ticks, so the throttle (which only matters for the
+real UI's async modal chain, `setTimeout(lvModal,200)`) is invisible to it by
+construction. **Item 3** (Market unlock level) also moved nothing - the sim never
+buys or sells on the market at all. **Item 4** (fleet unlock levels) likewise -
+the sim never buys ships or opens the Raids pane.
+
+What DID move, and why: item 1 (lower level-3 XP) pulls level 3 forward from
+minute 8 to minute 4 and level 5 from 10 to 8, with small knock-on ripples through
+the whole run (a level 60 that used to land at day 56.5 now lands at day 98.5 -
+not a regression, just the downstream effect of every level threshold below it
+shifting by a few minutes each, compounding over a 98-day run; the milestone
+table above - levels 3/5/8/9/12, map-maxed, ring claims - is the one that
+actually answers "did this batch help the flat early stretch", and it says yes).
+Item 5 (economy-matched ladder start) is the big legitimate mover: richer claims
+skip tiers they can already afford several times over, so rate/xp/structure
+counts shift meaningfully from minute 30 on, and ring 2/3 claim times both pull
+earlier (113m→97m, 312m→247m) since the ore that used to go into trivial early
+tiers goes straight into the ones that actually move the needle. None of this is
+a bug - it's exactly what "new systems start their ladder at an economy-matched
+tier" is supposed to do.
+
+Deviation from the plan, with reason: a sixth commit was needed (item 2's own
+fix) that the plan's "one commit per item, five commits" didn't anticipate -
+found only while writing this commit's own tests
+(`tests/tpacing2.js`'s "a single grantXp burst... advances exactly one level"
+case), not before. Fixing it as a clearly-labelled follow-up commit rather than
+rewriting history was the safer call once it had already been committed and
+built on. No other deviations.
+
+**Existing tests touched, with reasons** (all in the item-2-fix commit except
+where noted):
+- `tests/tfleets2.js` (item 4 commit): every fixture that needed Fleet 2 or
+  Fleet 3 to actually exist bumped from the old 14/20 thresholds to 16/22 -
+  `fleetSlots()` table, the single-threshold-crossing fixture, the level-up-modal
+  fixture, and the three-markers fixture. Fixtures that only ever touch Fleet 1
+  or Fleet 2 (TRANSFER, per-fleet cap, hangar attribution, the old-save
+  migration already at lvl 22) needed no change - already at or past the new
+  thresholds.
+- `tests/txp2.js`: the `xpNeed`/`earnedLevel` curve check (given this much XP,
+  what level does the curve say) now reads the new `trueEarnedLevel()` (ungated)
+  instead of `earnedLevel()` (now gated) - it was always testing the XP→level
+  MAPPING, not level-claim pacing.
+- `tests/tlockstates2.js`: the "takeLevel() alone flips the node" fixture used to
+  jump straight to the target level off one `checkLevel()` call; now repeats
+  `checkLevel()`+drain until the target is reached, one tick's worth of ratchet
+  advance at a time - same as real play calling `checkLevel()` every frame.
+- `tests/tpolish2.js` (item 4 commit): the buy-button-label fixture used
+  `lvl:14` to get Fleet 2 via `ensureFleets()` - moved to `lvl:16`.
+
+New tests: `tests/tpacing2.js` gained a section covering all five items -
+`LVXP_PTS[3]`'s value, the one-level-per-check ratchet (a 3-level burst advances
+by exactly one on the next check, then one more per check after that),
+`p-mkt` locked at 8/unlocked at 9, `FLEET_UNLOCK`'s exact values, and `t0`
+selection for both a ~1e6/s-rate claim (Draskhold, the plan's own example - lands
+on Fusion Forge, gi 5, skipping Mining Drone through Orbital Harvester) and a
+zero-rate fresh claim (t0 unset, nothing skipped). `sysState`/`sysT0`/
+`trueEarnedLevel` added to the `window.__SD` export list so these tests (and any
+future ones) can reach them.
+
+Full suite (`tools/runall.sh`) clean after every commit except the one
+pre-existing, unrelated failure: `tests/tsave2.js`'s `#btnSave` click times out
+behind an open notice bar - reproduced identically on the commit immediately
+before this batch (stashed every change and reran to confirm), so it predates
+this work and isn't something this batch should paper over.

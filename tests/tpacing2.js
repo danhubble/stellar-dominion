@@ -118,6 +118,98 @@ const { chromium } = require('playwright-core');
  ok('claiming the first ring-3+ system queues vega:project while S.en is still 0',
    project.claimed && project.enBefore===0 && project.enAfterClaim===0 && project.queued, project);
 
+ // ================== PLAN-polish batch B (five commits, csim before/after in
+ // docs/HANDOVER.md): LVXP_PTS[3], one-level-per-check, Market->9, FLEET_UNLOCK
+ // 16/22, and per-system t0 ==================
+
+ // ---------- item 1: LVXP_PTS[3] ----------
+ const lvxp3=await p.evaluate(()=>({v:window.__SD.LVXP_PTS[3]}));
+ ok('LVXP_PTS[3] is the new, lower anchor (55, not the old ~87 interpolation)',
+   lvxp3.v===55, lvxp3);
+
+ // ---------- item 2: one level per check, surplus banked ----------
+ const burst=await p.evaluate(()=>{
+   const G=window.__SD;
+   G.adopt({...G.fresh(), lvl:5, lvSeen:5});
+   const pendBefore=G.pendingLevels();
+   // exactly 3 levels' worth of XP in one grant, same shape as four missions
+   // claimed at once or several firsts paid by a single claim.
+   G.grantXp('test:burst', G.xpNeed(8)-G.xpNeed(5), null);
+   G.checkLevel();
+   const pendAfterFirstCheck=G.pendingLevels();
+   G.checkLevel();
+   const pendAfterSecondCheck=G.pendingLevels();
+   G.checkLevel();
+   const pendAfterThirdCheck=G.pendingLevels();
+   return { pendBefore, pendAfterFirstCheck, pendAfterSecondCheck, pendAfterThirdCheck };
+ });
+ ok('before the burst, nothing is pending', burst.pendBefore===0, burst);
+ ok('a 3-level XP burst advances pendingLevels() by exactly ONE on the check right after it (surplus banked, not spent)',
+   burst.pendAfterFirstCheck===1, burst);
+ ok('...and the next level arrives on the NEXT check, one at a time',
+   burst.pendAfterSecondCheck===2, burst);
+ ok('...and the third (last banked) level on the check after that',
+   burst.pendAfterThirdCheck===3, burst);
+
+ // ---------- item 3: Market unlocks at 9, not 8 ----------
+ const mktLv=await p.evaluate(()=>{
+   const G=window.__SD;
+   const u=G.UNLOCK.find(x=>x.p==='p-mkt');
+   G.adopt({...G.fresh(), lvl:8, lvSeen:8}); const at8=G.unlockedAt('p-mkt');
+   G.adopt({...G.fresh(), lvl:9, lvSeen:9}); const at9=G.unlockedAt('p-mkt');
+   return { lv:u.lv, at8, at9 };
+ });
+ ok('UNLOCK: p-mkt.lv is 9', mktLv.lv===9, mktLv);
+ ok('Market is locked at level 8...', mktLv.at8===false, mktLv);
+ ok('...and unlocked at level 9 (same level as Raids)', mktLv.at9===true, mktLv);
+
+ // ---------- item 4: FLEET_UNLOCK values ----------
+ const fu=await p.evaluate(()=>({v:window.__SD.FLEET_UNLOCK, raidLv:window.__SD.unlockLv('p-raid')}));
+ ok('FLEET_UNLOCK is [unlockLv("p-raid"), 16, 22]',
+   JSON.stringify(fu.v)===JSON.stringify([fu.raidLv,16,22]), fu);
+
+ // ---------- item 5: t0 selection ----------
+ // Draskhold (dra) is an ore-kind system - the plan's own example ("Draskhold at
+ // millions of ore starts on Crust Borers, not Mining Drones"). Built up so
+ // rate() lands close to 1e6/s: 9766 Mining Drones on home, past every MILE
+ // doubling (mileMul()=512): 9766*0.2*512 ~= 1,000,038/s.
+ const t0rich=await p.evaluate(()=>{
+   const G=window.__SD;
+   G.adopt({...G.fresh(), lvl:12, lvSeen:12, ore:1e7, sys:{home:{b:{0:9766}}}});
+   const rate=G.rate();
+   const dra=G.SYS.find(s=>s.id==='dra');
+   const claimed=G.claimSystem(dra);
+   const t0=G.sysState('dra').t0;
+   // independent replica of the claim-time selection, straight from GENS/costMul -
+   // not a call into sysT0()/claimSystem() itself, so this actually checks the maths.
+   const threshold=rate*60*0.01;
+   const ladder=G.sysLadder('dra');
+   let want=ladder[ladder.length-1];
+   for(const gi of ladder){ if(G.GENS[gi].b*G.costMul()>=threshold){ want=gi; break; } }
+   const nextGi=G.sysNextGi('dra');
+   const skippedBuildable=[0,1,2,3,4].map(gi=>G.tierBuildable('dra',gi));
+   const revealBuildable=G.tierBuildable('dra',t0);
+   return { rate, claimed, t0, want, nextGi, skippedBuildable, revealBuildable };
+ });
+ ok('rate() lands close to 1e6/s for this fixture', t0rich.rate>9e5 && t0rich.rate<1.1e6, t0rich);
+ ok('a rich claim\'s t0 matches the lowest tier whose first unit costs >=1% of rate()*60 (gi 5, Fusion Forge)',
+   t0rich.claimed && t0rich.t0===t0rich.want && t0rich.t0===5, t0rich);
+ ok('...sysNextGi() lands on t0, not tier 0 (Mining Drone is skipped, not shown-then-bought)',
+   t0rich.nextGi===t0rich.t0, t0rich);
+ ok('...every tier below t0 (0-4) is not buildable at all', t0rich.skippedBuildable.every(b=>b===false), t0rich);
+ ok('...and t0 itself is buildable (the reveal)', t0rich.revealBuildable===true, t0rich);
+
+ const t0fresh=await p.evaluate(()=>{
+   const G=window.__SD;
+   G.adopt({...G.fresh(), lvl:12, lvSeen:12, ore:1e7});   // rate()===0, no structures at all
+   const rate=G.rate();
+   const dra=G.SYS.find(s=>s.id==='dra');
+   const claimed=G.claimSystem(dra);
+   return { rate, claimed, t0:G.sysState('dra').t0, nextGi:G.sysNextGi('dra') };
+ });
+ ok('a fresh save (rate()===0) claims with t0 unset (reads as 0 via sysT0()) - nothing skipped',
+   t0fresh.claimed && t0fresh.rate===0 && !t0fresh.t0 && t0fresh.nextGi===0, t0fresh);
+
  console.log(out.join('\n'));
  console.log(out.filter(l=>l.startsWith('FAIL')).length+' failures');
  await b.close();
