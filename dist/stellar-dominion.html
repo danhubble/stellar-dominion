@@ -511,8 +511,11 @@ button.ghost{background:transparent;border-color:var(--line);color:var(--mut)}
                                     calc(-50% + var(--dy,0px)*.20 - 16px)) scale(.94)}
   100%{opacity:0;transform:translate(calc(-50% + var(--dx,0px)),
                                      calc(-50% + var(--dy,0px))) scale(.5)}}
-/* the resource card acknowledges the arrival, so the reward lands somewhere visible */
-.rcard.land{animation:rcland .44s ease-out}
+/* the resource card acknowledges the arrival, so the reward lands somewhere visible.
+   polish batch A #6: .svchip (the Raids-tab salvage counter) reuses the same
+   animation for the first-salvage pulse - not an .rcard, so it needs its own
+   selector on the shared keyframe. */
+.rcard.land,.svchip.land{animation:rcland .44s ease-out}
 @keyframes rcland{
   0%{box-shadow:0 0 0 0 rgba(92,230,165,.6)}
   45%{box-shadow:0 0 0 7px rgba(92,230,165,0);transform:translateY(-2px)}
@@ -521,7 +524,7 @@ button.ghost{background:transparent;border-color:var(--line);color:var(--mut)}
 @media(prefers-reduced-motion:reduce){
   .card.rdy.claimed:before{animation:none;background:none}
   .card.rdy button.misclaim.done{animation:none}
-  .rcard.land{animation:none}
+  .rcard.land,.svchip.land{animation:none}
   .rwfly{display:none}
   .card.rdy.gone{transition:opacity .12s linear}
   .noticebar,.noticepanel{transition:none}   /* patch629: no slide, just show */
@@ -1609,11 +1612,13 @@ body.syspage #toasts{bottom:calc(var(--sysbarh) + 8px + env(safe-area-inset-bott
   </div>
   <div class="res">
     <button class="rcard c-ore" data-res="ore" title="Ore — tap for detail"><div class="ricon" id="riOre"></div><div><div class="val" id="vOre">0</div><div class="sub" id="vRate">0 /s</div></div></button>
+    <!-- polish batch A #7: crystal back in the top three (owner: "I miss having the
+         crystal there"). Generic .rcard[data-res] click-wiring (15-wiring.js) covers
+         it same as ore/dm - no dedicated handler needed. The context card that used
+         to sit here moved down to the Research tab, where the crystal strip used to
+         be (#resCryStrip) - see renderCtxCard()'s own header note. -->
+    <button class="rcard c-cry" data-res="cry" title="Crystal — tap for detail"><div class="ricon" id="riCry"></div><div><div class="val" id="vCry">0</div><div class="sub" id="vCryRate">0 /s</div></div></button>
     <button class="rcard c-dm" data-res="dm" title="Dark Matter — tap for detail"><div class="ricon" id="riDm"></div><div><div class="val" id="vDm">0</div><div class="sub" id="vDmS">for the Nexus</div></div></button>
-    <!-- patch607: the context card. No data-res (see the header note above) — the
-         generic .rcard[data-res] click-wiring skips it; patch630 gives it its own
-         dedicated wiring instead (see exoModal()), gated on exoEverBankedAny(). -->
-    <button class="rcard c-ctx" id="ctxCard" title="Selected system"><div class="ricon"><i class="exdot" id="ctxDot"></i></div><div><div class="val" id="vCtxVal">—</div><div class="ctxnums"><div class="sub" id="vCtxName">—</div><div class="sub" id="vCtxRate"> </div></div></div></button>
   </div>
 </header>
 
@@ -1658,7 +1663,13 @@ body.syspage #toasts{bottom:calc(var(--sysbarh) + 8px + env(safe-area-inset-bott
     </nav>
     <div id="view">
       <div class="pane" id="p-res">
-        <div id="resCryStrip"></div>
+        <!-- polish batch A #7: the context card (used to be the header's third
+             card) relocated here - this is where the crystal strip used to live
+             (crystal moved up into the header's top three). renderCtxCard() owns
+             these nodes exactly as it always has, unconditional every render(). -->
+        <div id="resCryStrip">
+          <button class="rcard c-ctx" id="ctxCard" title="Selected system"><div class="ricon"><i class="exdot" id="ctxDot"></i></div><div><div class="val" id="vCtxVal">—</div><div class="ctxnums"><div class="sub" id="vCtxName">—</div><div class="sub" id="vCtxRate"> </div></div></div></button>
+        </div>
         <div id="resMode" class="rmode">
           <button class="rmbtn on" data-rm="tree">TECH TREE</button>
           <button class="rmbtn" data-rm="prog">PROGRAMMES</button>
@@ -6268,6 +6279,11 @@ function render(){
   syncSysPage();
   $("#vOre").textContent=fmt(S.ore);
   $("#vRate").textContent=fmt(rate())+" /s";
+  /* polish batch A #7: crystal moved from the Research-only strip into the header's
+     top three - same unconditional every-render() treatment ore/dm get, not the old
+     "only while Research is on" gate (renderResCryStrip() is gone, folded in here). */
+  $("#vCry").textContent=fmt(S.cry);
+  $("#vCryRate").textContent=anyOf(1)?fmt(cryRate())+" /s":"build a Smelter Pod";
   $("#vDm").textContent=fmt(S.dm);
   { const e=$("#vDmS"); const spent=NEXUS.reduce((a,x)=>a+(x.cur==="en"?0:lv(S.nx,x.id)),0);
     e.textContent = spent ? spent+" Nexus levels" : "for the Nexus";
@@ -6289,7 +6305,6 @@ function render(){
   if(misReady()>0)flag("p-mis");
   renderLevel();
   if($("#p-map").classList.contains("on")){ renderMap(); renderFleetBar(); }
-  if($("#p-res").classList.contains("on"))renderResCryStrip();
   if($("#p-ach").classList.contains("on"))renderStats();
   if($("#p-mkt").classList.contains("on"))renderMarket();
   if(devOn)devInfo();
@@ -6824,21 +6839,6 @@ function renderCtxCard(){
   val.textContent=fmt(exo(ex.id));
   name.textContent=ex.n.toUpperCase();
   rate.textContent = r>0 ? "+"+fmt(r)+"/s" : "\u00A0";
-}
-/* patch607 - the crystal strip at the top of Research. Skeleton built once (the
-   dataset.h guard tchurn2 exists to enforce - see its own header note), the live
-   balance/rate written into that same node's existing children every tick after -
-   same two-step idiom buildMarket()/renderMarket() already use just below. */
-function renderResCryStrip(){
-  const host=$("#resCryStrip"); if(!host)return;
-  if(host.dataset.h!=="cry"){
-    host.dataset.h="cry";
-    host.innerHTML='<button type="button" class="rcard c-cry" id="resCryBtn" title="Crystal — tap for detail"><div class="ricon" id="resCryIcon"></div><div><div class="val" id="resCryVal">0</div><div class="sub" id="resCryRate">0 /s</div></div></button>';
-    $("#resCryIcon").innerHTML=RI("cry","");
-    $("#resCryBtn").onclick=()=>resourceModal("cry");
-  }
-  $("#resCryVal").textContent=fmt(S.cry);
-  $("#resCryRate").textContent=anyOf(1)?fmt(cryRate())+" /s":"build a Smelter Pod";
 }
 /* ---------------- market (item 5, patch563) ----------------
    Sell-only. One shared volume-tax "heat" counter per output currency
@@ -9059,6 +9059,9 @@ function closeDefence(){ DT=null; $("#defence").classList.remove("on"); dirty=tr
    Declared here, right before the one function every LF resolution path already
    calls, so cleanup can live in exactly one place - see lfClear()'s own note. */
 let lfPromptTimer=null, lfPromptLive=false;
+/* polish batch A #6: set true the moment the first raid win pays out salvage,
+   consumed (and cleared) the next time renderRaids() draws #svChip - see endBattle(). */
+let svPulse=false;
 function lfClearPromptTimer(){ if(lfPromptTimer){ clearTimeout(lfPromptTimer); lfPromptTimer=null } }
 function lfClear(){ LF=null; S.lfMark=null; lfClearPromptTimer(); lfPromptLive=false; }
 /* test-only helper: force the in-flight fleet's due time so a test can assert
@@ -10385,7 +10388,11 @@ function endBattle(how){
   let o=0,c=0,m=0,lost=[0,0,0];
   let sv=0;
   if(how==="win"){ o=full.o; c=full.c; m=full.m; S.wins=(S.wins||0)+1; xpOnWins();
-    if(S.wins===1)queueNotice("vega:firstWin");
+    /* polish batch A #6: first salvage earned pulses the salvage counter, same
+       .land idiom flyReward() uses on a resource chip - queued here (svChip may not
+       even be in the DOM/visible yet) and consumed the next time renderRaids()
+       draws the chip, see svPulse below. */
+    if(S.wins===1){ queueNotice("vega:firstWin"); svPulse=true; }
     sv=svReward(t);
     if(T.boss)S.flags=(S.flags||0)+1;
     if(BT.hp>=BT.hpm*0.999)S.flawless=1;
@@ -11353,6 +11360,12 @@ function renderRaids(){
   });
   // salvage chip
   $("#svChip").innerHTML=RI("sv","ci sv")+fmt(S.sv||0);
+  if(svPulse){
+    svPulse=false;
+    const chip=$("#svChip");
+    chip.classList.remove("land"); void chip.offsetWidth; chip.classList.add("land");
+    setTimeout(()=>chip.classList.remove("land"),460);
+  }
 
   // refits
   const rh=$("#refits"); rh.innerHTML="";
@@ -13346,7 +13359,7 @@ $(".brand h1").addEventListener("click",()=>{
 const had=load();
 if(!had)playOpening();
 $("#btnMute").textContent=S.muted?"♪̸":"♪";
-$("#riOre").innerHTML=RI("ore","");$("#riDm").innerHTML=RI("dm","");
+$("#riOre").innerHTML=RI("ore","");$("#riDm").innerHTML=RI("dm","");$("#riCry").innerHTML=RI("cry","");
 $("#scanIco").innerHTML=RES_ICON.ore;
 $("#sshScanIco").innerHTML=RES_ICON.ore;
 syncChips();

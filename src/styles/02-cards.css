@@ -61,8 +61,11 @@
                                     calc(-50% + var(--dy,0px)*.20 - 16px)) scale(.94)}
   100%{opacity:0;transform:translate(calc(-50% + var(--dx,0px)),
                                      calc(-50% + var(--dy,0px))) scale(.5)}}
-/* the resource card acknowledges the arrival, so the reward lands somewhere visible */
-.rcard.land{animation:rcland .44s ease-out}
+/* the resource card acknowledges the arrival, so the reward lands somewhere visible.
+   polish batch A #6: .svchip (the Raids-tab salvage counter) reuses the same
+   animation for the first-salvage pulse - not an .rcard, so it needs its own
+   selector on the shared keyframe. */
+.rcard.land,.svchip.land{animation:rcland .44s ease-out}
 @keyframes rcland{
   0%{box-shadow:0 0 0 0 rgba(92,230,165,.6)}
   45%{box-shadow:0 0 0 7px rgba(92,230,165,0);transform:translateY(-2px)}
@@ -71,7 +74,7 @@
 @media(prefers-reduced-motion:reduce){
   .card.rdy.claimed:before{animation:none;background:none}
   .card.rdy button.misclaim.done{animation:none}
-  .rcard.land{animation:none}
+  .rcard.land,.svchip.land{animation:none}
   .rwfly{display:none}
   .card.rdy.gone{transition:opacity .12s linear}
   .noticebar,.noticepanel{transition:none}   /* patch629: no slide, just show */

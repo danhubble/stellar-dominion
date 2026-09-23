@@ -186,6 +186,11 @@ function render(){
   syncSysPage();
   $("#vOre").textContent=fmt(S.ore);
   $("#vRate").textContent=fmt(rate())+" /s";
+  /* polish batch A #7: crystal moved from the Research-only strip into the header's
+     top three - same unconditional every-render() treatment ore/dm get, not the old
+     "only while Research is on" gate (renderResCryStrip() is gone, folded in here). */
+  $("#vCry").textContent=fmt(S.cry);
+  $("#vCryRate").textContent=anyOf(1)?fmt(cryRate())+" /s":"build a Smelter Pod";
   $("#vDm").textContent=fmt(S.dm);
   { const e=$("#vDmS"); const spent=NEXUS.reduce((a,x)=>a+(x.cur==="en"?0:lv(S.nx,x.id)),0);
     e.textContent = spent ? spent+" Nexus levels" : "for the Nexus";
@@ -207,7 +212,6 @@ function render(){
   if(misReady()>0)flag("p-mis");
   renderLevel();
   if($("#p-map").classList.contains("on")){ renderMap(); renderFleetBar(); }
-  if($("#p-res").classList.contains("on"))renderResCryStrip();
   if($("#p-ach").classList.contains("on"))renderStats();
   if($("#p-mkt").classList.contains("on"))renderMarket();
   if(devOn)devInfo();
@@ -742,21 +746,6 @@ function renderCtxCard(){
   val.textContent=fmt(exo(ex.id));
   name.textContent=ex.n.toUpperCase();
   rate.textContent = r>0 ? "+"+fmt(r)+"/s" : "\u00A0";
-}
-/* patch607 - the crystal strip at the top of Research. Skeleton built once (the
-   dataset.h guard tchurn2 exists to enforce - see its own header note), the live
-   balance/rate written into that same node's existing children every tick after -
-   same two-step idiom buildMarket()/renderMarket() already use just below. */
-function renderResCryStrip(){
-  const host=$("#resCryStrip"); if(!host)return;
-  if(host.dataset.h!=="cry"){
-    host.dataset.h="cry";
-    host.innerHTML='<button type="button" class="rcard c-cry" id="resCryBtn" title="Crystal — tap for detail"><div class="ricon" id="resCryIcon"></div><div><div class="val" id="resCryVal">0</div><div class="sub" id="resCryRate">0 /s</div></div></button>';
-    $("#resCryIcon").innerHTML=RI("cry","");
-    $("#resCryBtn").onclick=()=>resourceModal("cry");
-  }
-  $("#resCryVal").textContent=fmt(S.cry);
-  $("#resCryRate").textContent=anyOf(1)?fmt(cryRate())+" /s":"build a Smelter Pod";
 }
 /* ---------------- market (item 5, patch563) ----------------
    Sell-only. One shared volume-tax "heat" counter per output currency

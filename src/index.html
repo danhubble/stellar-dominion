@@ -55,11 +55,13 @@
   </div>
   <div class="res">
     <button class="rcard c-ore" data-res="ore" title="Ore — tap for detail"><div class="ricon" id="riOre"></div><div><div class="val" id="vOre">0</div><div class="sub" id="vRate">0 /s</div></div></button>
+    <!-- polish batch A #7: crystal back in the top three (owner: "I miss having the
+         crystal there"). Generic .rcard[data-res] click-wiring (15-wiring.js) covers
+         it same as ore/dm - no dedicated handler needed. The context card that used
+         to sit here moved down to the Research tab, where the crystal strip used to
+         be (#resCryStrip) - see renderCtxCard()'s own header note. -->
+    <button class="rcard c-cry" data-res="cry" title="Crystal — tap for detail"><div class="ricon" id="riCry"></div><div><div class="val" id="vCry">0</div><div class="sub" id="vCryRate">0 /s</div></div></button>
     <button class="rcard c-dm" data-res="dm" title="Dark Matter — tap for detail"><div class="ricon" id="riDm"></div><div><div class="val" id="vDm">0</div><div class="sub" id="vDmS">for the Nexus</div></div></button>
-    <!-- patch607: the context card. No data-res (see the header note above) — the
-         generic .rcard[data-res] click-wiring skips it; patch630 gives it its own
-         dedicated wiring instead (see exoModal()), gated on exoEverBankedAny(). -->
-    <button class="rcard c-ctx" id="ctxCard" title="Selected system"><div class="ricon"><i class="exdot" id="ctxDot"></i></div><div><div class="val" id="vCtxVal">—</div><div class="ctxnums"><div class="sub" id="vCtxName">—</div><div class="sub" id="vCtxRate"> </div></div></div></button>
   </div>
 </header>
 
@@ -104,7 +106,13 @@
     </nav>
     <div id="view">
       <div class="pane" id="p-res">
-        <div id="resCryStrip"></div>
+        <!-- polish batch A #7: the context card (used to be the header's third
+             card) relocated here - this is where the crystal strip used to live
+             (crystal moved up into the header's top three). renderCtxCard() owns
+             these nodes exactly as it always has, unconditional every render(). -->
+        <div id="resCryStrip">
+          <button class="rcard c-ctx" id="ctxCard" title="Selected system"><div class="ricon"><i class="exdot" id="ctxDot"></i></div><div><div class="val" id="vCtxVal">—</div><div class="ctxnums"><div class="sub" id="vCtxName">—</div><div class="sub" id="vCtxRate"> </div></div></div></button>
+        </div>
         <div id="resMode" class="rmode">
           <button class="rmbtn on" data-rm="tree">TECH TREE</button>
           <button class="rmbtn" data-rm="prog">PROGRAMMES</button>

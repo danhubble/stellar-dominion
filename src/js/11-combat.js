@@ -428,6 +428,9 @@ function closeDefence(){ DT=null; $("#defence").classList.remove("on"); dirty=tr
    Declared here, right before the one function every LF resolution path already
    calls, so cleanup can live in exactly one place - see lfClear()'s own note. */
 let lfPromptTimer=null, lfPromptLive=false;
+/* polish batch A #6: set true the moment the first raid win pays out salvage,
+   consumed (and cleared) the next time renderRaids() draws #svChip - see endBattle(). */
+let svPulse=false;
 function lfClearPromptTimer(){ if(lfPromptTimer){ clearTimeout(lfPromptTimer); lfPromptTimer=null } }
 function lfClear(){ LF=null; S.lfMark=null; lfClearPromptTimer(); lfPromptLive=false; }
 /* test-only helper: force the in-flight fleet's due time so a test can assert
@@ -1754,7 +1757,11 @@ function endBattle(how){
   let o=0,c=0,m=0,lost=[0,0,0];
   let sv=0;
   if(how==="win"){ o=full.o; c=full.c; m=full.m; S.wins=(S.wins||0)+1; xpOnWins();
-    if(S.wins===1)queueNotice("vega:firstWin");
+    /* polish batch A #6: first salvage earned pulses the salvage counter, same
+       .land idiom flyReward() uses on a resource chip - queued here (svChip may not
+       even be in the DOM/visible yet) and consumed the next time renderRaids()
+       draws the chip, see svPulse below. */
+    if(S.wins===1){ queueNotice("vega:firstWin"); svPulse=true; }
     sv=svReward(t);
     if(T.boss)S.flags=(S.flags||0)+1;
     if(BT.hp>=BT.hpm*0.999)S.flawless=1;
@@ -2722,6 +2729,12 @@ function renderRaids(){
   });
   // salvage chip
   $("#svChip").innerHTML=RI("sv","ci sv")+fmt(S.sv||0);
+  if(svPulse){
+    svPulse=false;
+    const chip=$("#svChip");
+    chip.classList.remove("land"); void chip.offsetWidth; chip.classList.add("land");
+    setTimeout(()=>chip.classList.remove("land"),460);
+  }
 
   // refits
   const rh=$("#refits"); rh.innerHTML="";

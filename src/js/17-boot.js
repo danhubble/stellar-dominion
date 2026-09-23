@@ -2,7 +2,7 @@
 const had=load();
 if(!had)playOpening();
 $("#btnMute").textContent=S.muted?"♪̸":"♪";
-$("#riOre").innerHTML=RI("ore","");$("#riDm").innerHTML=RI("dm","");
+$("#riOre").innerHTML=RI("ore","");$("#riDm").innerHTML=RI("dm","");$("#riCry").innerHTML=RI("cry","");
 $("#scanIco").innerHTML=RES_ICON.ore;
 $("#sshScanIco").innerHTML=RES_ICON.ore;
 syncChips();
