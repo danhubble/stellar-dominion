@@ -2582,13 +2582,6 @@ $("#abFocus").onclick=()=>{ if(BT&&!BT.done&&BT.cd.f<=0){BT.buf.f=5;BT.cd.f=16;b
 $("#abFlak").onclick=()=>{ if(BT&&!BT.done&&BT.cd.k<=0){BT.buf.k=5;BT.cd.k=22;blip(420,.15,"sine",.05)} };
 $("#bRetreat").onclick=()=>{ if(BT&&!BT.done)endBattle("timeout") };
 $("#flFix").onclick=()=>{ if(repairFleet()){ renderAll(); save() } };
-/* run 3: same TRANSFER the fleet card modal offers, reachable from the Raids pane's
-   own fleet strip too - always against curFleet() (the tab currently selected) and
-   the nearest idle fleet sitting at its own system. */
-$("#flTransfer").onclick=()=>{
-  const cf=curFleet(), mates=otherIdleFleetsAt(cf);
-  if(mates.length)transferModal(cf, mates[0]);
-};
 $("#bPause").onclick=()=>{ if(BT&&!BT.done){ BT.paused=!BT.paused; dirty=true } };
 $("#trScr").onclick=()=>{ if(addOrder("scr"))dirty=true };
 $("#trRep").onclick=()=>{ if(addOrder("rep"))dirty=true };
@@ -2648,29 +2641,34 @@ function renderRaids(){
   fx.classList.toggle("hide", !fleetCount(cf) || hp>=1);
   fx.disabled = S.ore<rc || hp>=1;
   fx.textContent = "REPAIR \u00b7 "+fmt(rc)+" ORE";
-  /* run 3: TRANSFER next to REPAIR - only meaningful with another idle fleet at
-     curFleet()'s own system, same rule the fleet card modal's button uses. */
-  const ftBtn=$("#flTransfer");
-  if(ftBtn)ftBtn.disabled = otherIdleFleetsAt(cf).length===0;
   const host=$("#flShips"); host.innerHTML="";
   /* run 3 (decision 6): no idle fleet at home right now - a BUY still queues (see
      buyShip()'s own comment), it just doesn't land in curFleet() immediately. Said
      plainly on the button rather than silently landing somewhere the player can't
      see yet. */
   const noHomeIdle=!fleets().some(fl=>!fl.to&&fl.at==="home");
+  /* polish batch A #12: buyShip() lands a purchase on curFleet() only when IT is
+     idle at home - otherwise the first idle-at-home fleet takes it, same rule
+     buyShip() itself uses (see its own header comment). Worked out once per
+     render, same for every ship class this loop draws a button for. */
+  const buyTgt = (!cf.to&&cf.at==="home") ? cf : fleets().find(fl=>!fl.to&&fl.at==="home");
   SHIPS.forEach((sp,i)=>{
     const d=document.createElement("div"); d.className="shp"; d.style.setProperty("--a",sp.col);
     const k=S.sell?Math.min(S.buy==="max"?cf.sh[i]:S.buy,cf.sh[i]):(S.buy==="max"?Math.max(1,shipMax(i)):S.buy);
     const c=S.sell?(k>0?0.5*sp.b*Math.pow(sp.g,shipTotal(i)-k)*(Math.pow(sp.g,k)-1)/(sp.g-1):0):shipCost(i,k);
     const fits=k*sp.pw<=capLeft();
     const can=S.sell?(k>0&&!cf.to):(S.ore>=c&&fits);
+    /* polish batch A #10/#12: "DELIVERS AT SOL REACH" (nothing here has a shipyard
+       yet, PLACEHOLDER copy either way) when nothing is home to take it, and now
+       also says which fleet it actually lands on when that isn't the selected tab. */
+    const buyLabel = "BUY ×"+k+(buyTgt&&buyTgt!==cf?" → "+buyTgt.n.toUpperCase():"");
     d.innerHTML=`<div class="si"><svg viewBox="0 0 48 48">${sp.ic}</svg></div>
       <div><div class="sn">${sp.n}</div>
         <div class="sd">${fmt(sp.dps*fleetMult())} dps · ${fmt(sp.hp*fleetMult())} hull · ⚡${sp.pw}</div></div>
       <div style="display:flex;align-items:center;gap:10px">
         <div class="sc">${cf.sh[i]}</div>
         <button class="gb"><b>${S.sell||fits?fmt(c)+" ore":"NO CAPACITY"}</b><i>${
-          S.sell?"SCRAP ×"+k:(noHomeIdle?"DELIVERS AT SOL REACH":"BUY ×"+k)}</i></button>
+          S.sell?"SCRAP ×"+k:(noHomeIdle?"NO SHIPYARD HERE":buyLabel)}</i></button>
       </div>`;
     const bt=d.querySelector("button"); bt.disabled=!can;
     bt.onclick=()=>{ if(S.sell)sellShip(i,k); else buyShip(i,k); render(); };

@@ -164,7 +164,7 @@ function updateEmpBars(){
     const have=exo(p.exoId), rate=exoRate(p.exoId);
     const bk=p.head.querySelector("[data-banked]"); if(bk)bk.textContent=fmt(have);
     const rt=p.head.querySelector("[data-rate]"); if(rt)rt.textContent=fmt(rate);
-    const rows=XPROG.filter(z=>z.x===p.exoId);
+    const rows=XPROG.filter(z=>z.x===p.exoId&&!INERT_PROGS.has(z.id));
     const anyAfford=rows.some(r=>{ const l=xlv(r.id); return l<r.max && have>=xpCost(r,l) });
     const badge=p.head.querySelector("[data-badge]");
     if(badge)badge.style.display=anyAfford?"inline-block":"none";
@@ -212,7 +212,6 @@ function render(){
   if(misReady()>0)flag("p-mis");
   renderLevel();
   if($("#p-map").classList.contains("on")){ renderMap(); renderFleetBar(); }
-  if($("#p-ach").classList.contains("on"))renderStats();
   if($("#p-mkt").classList.contains("on"))renderMarket();
   if(devOn)devInfo();
 
@@ -1861,7 +1860,9 @@ function renderProg(){
 }
 function progRow(exoId){
   const e=exoDef(exoId), have=exo(exoId), rate=exoRate(exoId);
-  const rows=XPROG.filter(z=>z.x===exoId);
+  /* polish batch A #11: INERT_PROGS rows (Command Lattice) never get a card here -
+     see its own header note (01-content.js). */
+  const rows=XPROG.filter(z=>z.x===exoId&&!INERT_PROGS.has(z.id));
   const anyAfford=rows.some(r=>{ const l=xlv(r.id); return l<r.max && have>=xpCost(r,l) });
   const wrap=document.createElement("div");
   const head=document.createElement("div");
@@ -2272,106 +2273,18 @@ function renderMis(){
   host.appendChild(done);
 }
 /* ---------------- stats ---------------- */
-const CW=300, CH=150, CPL=34, CPR=10, CPT=8, CPB=18;   /* viewBox + plot padding */
-let chartSig="";
-function measDef(id){ return MEAS.find(m=>m.id===id)||MEAS[0] }
 function fmtT2(s){ return s<60 ? Math.round(s)+"s"
   : s<3600 ? Math.round(s/60)+"m" : (s/3600).toFixed(s<36000?1:0)+"h" }
-function renderStats(){
-  const H=histOk();
-  /* headline numbers first - a stat tile beats a one-point chart */
-  const kp=$("#kpis");
-  if(kp)kp.innerHTML=[
-    ["PRODUCTION","#48e2ff",fmt(rate())+" /s",fmt(S.all)+" all-time"],
-    ["LEVEL","#ffd166",String(level()),perkShort()],
-    ["STRUCTURES","#5ce6a5",fmt(tot()),fmt(globalMul())+"\u00d7 bonus"],
-    ["SYSTEMS","#8fb8ff",heldSystems().length+" / "+(SYS.length-1),
-      fmt(S.dm)+" Dark Matter"]
-  ].map(([l,c,v,s])=>`<div class="kpi" style="--a:${c}">
-      <div class="kl">${l}</div><div class="kv">${v}</div><div class="ks">${s}</div></div>`).join("");
-
-  const ch=$("#mchips");
-  if(ch&&ch.childElementCount!==MEAS.length){
-    ch.innerHTML=MEAS.map(m=>`<button class="mchip" data-m="${m.id}" style="--a:${m.col}">${m.n}</button>`).join("");
-    $$("#mchips .mchip").forEach(b=>b.onclick=()=>{ S.mtab=b.dataset.m; dirty=true; render() });
-  }
-  $$("#mchips .mchip").forEach(b=>b.classList.toggle("on",b.dataset.m===S.mtab));
-
-  const m=measDef(S.mtab), data=histSeries(m.id);
-  /* the plot only changes when a sample lands or the measure switches - redrawing it
-     every frame also wiped the crosshair as soon as the pointer stopped moving */
-  const sig=m.id+"|"+data.length+"|"+(data[data.length-1]||0)+"|"+H.iv;
-  if(sig===chartSig)return;
-  chartSig=sig;
-  $("#chartTtl").textContent=m.n+(m.unit?" ("+m.unit+")":"");
-  $("#chartTtl").style.color=m.col;
-  const box=$("#chartBox"); box.style.setProperty("--a",m.col);
-  const svg=$("#chart"), empty=$("#chartEmpty");
-  if(data.length<2){
-    svg.style.display="none"; $("#chartScale").textContent="";
-    empty.style.display="block";
-    empty.textContent="Not enough history yet \u2014 a reading is taken every "
-      +fmtT2(H.iv)+". Come back in a minute.";
-    $("#chartTip").style.display="none";
-    return;
-  }
-  svg.style.display="block"; empty.style.display="none";
-
-  /* log where the measure is exponential, linear where it is a count */
-  const useLog = !!m.log && data.some(v=>v>0);
-  $("#chartScale").textContent = useLog ? "LOG SCALE" : "";
-  const tf = useLog ? (v=>Math.log10(Math.max(v,1e-6))) : (v=>v);
-  let lo=Infinity, hi=-Infinity;
-  for(const v of data){ const t=tf(v); if(t<lo)lo=t; if(t>hi)hi=t }
-  if(!(hi>lo)){ hi=lo+1 }
-  const pad=(hi-lo)*0.08; lo-=pad; hi+=pad;
-  /* a count has no negative half - padding must not invent one */
-  if(!useLog && data.every(v=>v>=0) && lo<0) lo=0;
-  const PW=CW-CPL-CPR, PH=CH-CPT-CPB;
-  const X=i=>CPL+(data.length<2?0:i/(data.length-1))*PW;
-  const Y=v=>CPT+PH-((tf(v)-lo)/(hi-lo))*PH;
-
-  const pts=data.map((v,i)=>X(i).toFixed(1)+","+Y(v).toFixed(1));
-  const area="M"+X(0).toFixed(1)+","+(CPT+PH)+" L"+pts.join(" L")+
-             " L"+X(data.length-1).toFixed(1)+","+(CPT+PH)+" Z";
-  const lab=v=>useLog?fmt(Math.pow(10,v)):fmt(v);
-  const mid=(lo+hi)/2;
-  const last=data[data.length-1], span=histAt(data.length-1);
-  svg.innerHTML=`
-    <line class="grid" x1="${CPL}" y1="${CPT}" x2="${CW-CPR}" y2="${CPT}"/>
-    <line class="grid" x1="${CPL}" y1="${CPT+PH/2}" x2="${CW-CPR}" y2="${CPT+PH/2}"/>
-    <line class="grid" x1="${CPL}" y1="${CPT+PH}" x2="${CW-CPR}" y2="${CPT+PH}"/>
-    <text class="axis" x="${CPL-4}" y="${CPT+3}" text-anchor="end">${lab(hi)}</text>
-    <text class="axis" x="${CPL-4}" y="${CPT+PH/2+3}" text-anchor="end">${lab(mid)}</text>
-    <text class="axis" x="${CPL-4}" y="${CPT+PH}" text-anchor="end">${lab(lo)}</text>
-    <text class="axis" x="${CPL}" y="${CH-5}">${fmtT2(span)} ago</text>
-    <text class="axis" x="${CW-CPR}" y="${CH-5}" text-anchor="end">now</text>
-    <path class="fillA" d="${area}"/>
-    <polyline class="ln" points="${pts.join(" ")}"/>
-    <circle class="end" cx="${X(data.length-1).toFixed(1)}" cy="${Y(last).toFixed(1)}" r="3.2"/>
-    <g id="chOverlay"></g>`;
-
-  /* crosshair + tooltip. Pointer events cover mouse and touch in one path. */
-  const tip=$("#chartTip"), ov=svg.querySelector("#chOverlay");
-  const move=ev=>{
-    const r=svg.getBoundingClientRect();
-    const px=(ev.clientX-r.left)/r.width*CW;
-    let i=Math.round((px-CPL)/PW*(data.length-1));
-    i=Math.max(0,Math.min(data.length-1,i));
-    if(!isFinite(i))return;
-    const x=X(i), y=Y(data[i]);
-    ov.innerHTML=`<line class="cross" x1="${x.toFixed(1)}" y1="${CPT}" x2="${x.toFixed(1)}" y2="${CPT+PH}"/>
-      <circle class="hit" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4"/>`;
-    tip.style.display="block";
-    tip.style.left=(x/CW*r.width)+"px";
-    tip.style.top=(y/CH*r.height-8)+"px";
-    tip.innerHTML=fmt(data[i])+(m.unit?" "+m.unit:"")+
-      `<small>${fmtT2(span-histAt(i))} ago</small>`;
-  };
-  const leave=()=>{ ov.innerHTML=""; tip.style.display="none" };
-  svg.onpointermove=move; svg.onpointerdown=move;
-  svg.onpointerleave=leave; svg.onpointercancel=leave;
-}
+/* polish batch A #8: renderStats() (the KPI tiles + production history chart, the
+   "graphs" half of "Records & Graphs") is gone along with #kpis/#mchips/#chartBox
+   - the owner playthrough flagged the whole stats page, and ACHS/checkAchs() turned
+   out to be real, named milestones worth keeping (each grants a permanent global
+   bonus - see renderAch() right below), so only the achievements half survives,
+   reachable the same way (Market's ghost link, retitled "Achievements" in
+   index.html) rather than gone outright. histTick()/MEAS/the hist* sampling
+   functions and the save format's own S.hist are untouched - deleting the save
+   field for a page that might come back was more risk than it was worth for a
+   fixes batch; they just have no UI reading them any more. */
 function renderAch(){
   const host=$("#ach"); host.innerHTML="";
   ACHS.forEach(a=>{

@@ -319,6 +319,13 @@ const XPROG=[
  {x:"he", id:"casc",  n:"Cascade Ignition",   max:15, c:15, cg:2.2,
   d:lv=>"\u00d7"+fmt(Math.pow(1.22,lv))+" fleet damage & hull",
   t:"A fusion cascade that never has to be relit."},
+ /* polish batch A #11: Command Lattice only ever paid off in turn mode, which is
+    dev-only - removing it from XPROG outright moved csim4.js's pacing output
+    (doProg() buys the cheapest affordable programme each pass, and something else
+    always ends up cheapest once this slot is gone). Kept as a real, unchanged
+    XPROG entry so csim's own buyXp() calls behave exactly as before; made inert
+    for an actual player instead - INERT_PROGS below (09-render.js reads it to skip
+    the row, 15-wiring.js/buyXp() block a purchase through the UI). */
  {x:"he", id:"comm",  n:"Command Lattice",    max:12, c:24, cg:2.2,
   d:lv=>"+"+Math.floor(lv/3)+" command points in battle",
   t:"More of the fleet answers at once."},
@@ -343,6 +350,11 @@ const XPROG=[
   d:lv=>"\u00d7"+fmt(Math.pow(1.35,lv))+" exotic yield everywhere",
   t:"Every system you hold gives up more of what it holds."}
 ];
+/* polish batch A #11: XPROG entries a real player never sees or buys through the
+   UI (Command Lattice, "comm" - see its own header note above). The XPROG data and
+   buyXp() are untouched so csim4.js's own buys are unaffected; renderProg() /
+   updateEmpBars() (09-render.js) skip any row whose id is in this set instead. */
+const INERT_PROGS=new Set(["comm"]);
 /* ---------------- the map ----------------
    Every system carries an `owner`. Nothing owns anything yet, but rival empires are
    the planned next step and retrofitting ownership later would be painful.

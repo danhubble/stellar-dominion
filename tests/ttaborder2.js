@@ -2,8 +2,10 @@ const GAME_URL='file://'+require('path').resolve(__dirname,'../dist/stellar-domi
 // ttaborder2.js — Stats moved to the end of the tab bar, then (patch563) that slot
 // became Market; order is otherwise unchanged, and switching tabs by data-p (not
 // position) still works. Stats itself (id p-ach) has no tab of its own any more -
-// reached via the Market pane's "Records & graphs" ghost link - so this file no
-// longer asserts a Stats tab exists, only that Market's does and opens p-mkt.
+// reached via the Market pane's ghost link - so this file no longer asserts a Stats
+// tab exists, only that Market's does and opens p-mkt. Polish batch A #8: that link
+// is now labeled "Achievements" (the "Records & Graphs" KPI/chart page is gone,
+// #p-ach is just the achievements grid now - see tpolish2.js for that behaviour).
 //
 // patch608/612 (PLAN-unify.md): the Map pane is first now, labeled Empire, and the
 // old #p-emp tab button is gone outright - not hidden, deleted. Order is Map,
@@ -34,7 +36,7 @@ const { chromium } = require('playwright-core');
  await p.evaluate(()=>{ document.getElementById('mktStatsLink').click(); });
  await p.waitForTimeout(200);
  const statsOn=await p.evaluate(()=>document.getElementById('p-ach').classList.contains('on'));
- ok('the "Records & graphs" ghost link opens the Stats pane', statsOn);
+ ok('the "Achievements" ghost link opens the Stats pane', statsOn);
 
  console.log(out.join('\n'));
  console.log(out.filter(l=>l.startsWith('FAIL')).length+' failures');

@@ -356,6 +356,13 @@ function adopt(o){
   if(!f.xp||typeof f.xp!=="object")f.xp={};
   for(const k in f.xp){ const r=XPROG.find(z=>z.id===k);
     if(!r||!(f.xp[k]>0))delete f.xp[k]; else f.xp[k]=Math.min(r.max,Math.floor(f.xp[k])) }
+  /* polish batch A #11: Command Lattice is inert for a real player (see INERT_PROGS,
+     01-content.js) - a save that already banked levels in it (from before this
+     change) loses them on load, no refund, same as the plan's own instruction for
+     an outright removal. Kept out of the generic pass above because "comm" is still
+     a normal XPROG entry (csim4.js needs it to stay exactly as it was, see its own
+     header note) - this is the one spot that actually drops it for a player save. */
+  if(f.xp.comm)delete f.xp.comm;
   if(!f.exo||typeof f.exo!=="object")f.exo={};
   for(const k in f.exo){ if(!EXO.some(e=>e.id===k)||!(f.exo[k]>0))delete f.exo[k] }
   /* Exotic Nodes (patch582): a separate resource from S.exo, not one of EXO -

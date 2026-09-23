@@ -111,35 +111,7 @@
   color:#ffb3c2;border-radius:7px;padding:5px 6px;font:700 10px/1 system-ui;max-width:100%}
 #devp .dvn{white-space:pre-wrap;word-break:break-word;
   font:600 9px/1.4 ui-monospace,monospace;color:var(--dim);margin-top:7px}
-/* ---------- stats ---------- */
-#kpis{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:10px}
-.kpi{border:1px solid var(--line);border-radius:10px;padding:8px 10px;
-  background:rgba(255,255,255,.03);box-shadow:inset 3px 0 0 var(--a)}
-.kpi .kl{font:700 8.5px/1 system-ui;letter-spacing:.15em;color:var(--dim)}
-.kpi .kv{font:700 17px/1.15 ui-monospace,monospace;color:var(--txt);margin-top:4px}
-.kpi .ks{font:600 9.5px/1 ui-monospace,monospace;color:var(--mut);margin-top:3px}
-#mchips{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px}
-.mchip{border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--mut);
-  border-radius:7px;padding:5px 9px;font:600 10.5px/1 system-ui;cursor:pointer}
-.mchip.on{border-color:var(--a);color:var(--a);background:rgba(255,255,255,.07)}
-#chartBox{position:relative;border:1px solid var(--line);border-radius:12px;
-  background:rgba(255,255,255,.02);padding:10px 10px 4px}
-#chartHead{display:flex;align-items:baseline;gap:8px;margin-bottom:6px}
-#chartTtl{font:700 12px/1 system-ui;color:var(--txt)}
-#chartScale{margin-left:auto;font:600 9px/1 system-ui;letter-spacing:.12em;color:var(--dim)}
-#chart{width:100%;height:190px;display:block;touch-action:pan-y}
-#chart .grid{stroke:rgba(255,255,255,.07);stroke-width:1}
-#chart .axis{fill:var(--dim);font:600 8.5px ui-monospace,monospace}
-#chart .ln{fill:none;stroke:var(--a);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
-#chart .fillA{fill:var(--a);opacity:.10}
-#chart .end{fill:var(--a);stroke:var(--bg2);stroke-width:2}
-#chart .cross{stroke:rgba(255,255,255,.30);stroke-width:1}
-#chart .hit{fill:var(--a);stroke:var(--bg2);stroke-width:2}
-#chartTip{position:absolute;pointer-events:none;display:none;transform:translate(-50%,-100%);
-  background:rgba(8,11,28,.96);border:1px solid var(--line2);border-radius:7px;
-  padding:5px 8px;font:600 10.5px/1.4 ui-monospace,monospace;color:var(--txt);white-space:nowrap;
-  box-shadow:0 4px 14px rgba(0,0,0,.5)}
-#chartTip small{display:block;color:var(--dim);font-size:9px;letter-spacing:.08em}
-#chartEmpty{font-size:11.5px;color:var(--mut);line-height:1.5;padding:22px 4px;text-align:center}
+/* polish batch A #8: the stats page's KPI tiles/measure chips/history chart CSS
+   (#kpis/.kpi/#mchips/.mchip/#chartBox and friends) is gone with the "Graphs" half
+   of "Records & Graphs" - see renderAch()'s own header note in 09-render.js. */
 .sechead2{font:700 10px/1 system-ui;letter-spacing:.2em;color:var(--dim);margin:16px 0 8px}
-@media(max-width:460px){ #kpis{grid-template-columns:1fr 1fr} #chart{height:165px} }

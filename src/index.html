@@ -144,10 +144,10 @@
             <!-- PLAN-fleets run 3 (BRIEF commit 2): where the selected tab's own fleet is -->
             <div class="fl-loc" id="flLoc"></div>
             <div class="fl-hp"><i id="flHp"></i><span id="flHpT"></span></div>
+            <!-- polish batch A #9: TRANSFER removed from the Raids tab's own fleet
+                 strip - it stays on the fleet card modal (#fcTransfer, 09-render.js). -->
             <div class="flbtns">
               <button id="flFix">REPAIR</button>
-              <!-- PLAN-fleets run 3: same TRANSFER the fleet card modal offers -->
-              <button id="flTransfer" class="transfer">TRANSFER</button>
             </div>
           </div>
         </div>
@@ -293,22 +293,17 @@
         <div class="sechead2">DARK MATTER</div>
         <div class="grid" id="mktDm"></div>
         <div class="row" style="margin-top:14px">
-          <button class="ghost" id="mktStatsLink">Records &amp; graphs</button>
+          <button class="ghost" id="mktStatsLink">Achievements</button>
         </div>
       </div>
+      <!-- polish batch A #8: "Records & Graphs" (the #kpis stat tiles + #chartBox
+           production history chart) is gone - ACHS turned out to be real, named
+           milestones (each grants a permanent global bonus), so this pane is now
+           just that list, retitled. Reached the same way, Market's ghost link
+           above (#mktStatsLink), no notification dot any more - see checkAchs(). -->
       <div class="pane" id="p-ach">
-        <div id="kpis"></div>
-        <div id="mchips"></div>
-        <div id="chartBox">
-          <div id="chartHead"><span id="chartTtl">Production</span>
-            <span id="chartScale"></span></div>
-          <svg id="chart" viewBox="0 0 300 150" preserveAspectRatio="none"
-            role="img" aria-label="History chart"></svg>
-          <div id="chartEmpty"></div>
-          <div id="chartTip"></div>
-        </div>
-        <div class="sechead2">RECORDS</div>
-        <p class="hint">Each record grants a permanent global production bonus.</p>
+        <div class="sechead2">ACHIEVEMENTS</div>
+        <p class="hint">Each one grants a permanent global production bonus.</p>
         <div class="grid" id="ach"></div>
       </div>
     </div>

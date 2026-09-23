@@ -65,8 +65,8 @@
 .fl-hp.crit i{background:linear-gradient(90deg,#ff6b8a,#ff9a6b)}
 .fl-hp span{position:absolute;inset:0;display:grid;place-items:center;
   font:700 9.5px/1 ui-monospace,monospace;letter-spacing:.1em;color:#04050d}
-/* run 3: REPAIR gained a neighbour (TRANSFER), so both now sit in a flex row
-   instead of REPAIR alone taking the full width. */
+/* polish batch A #9: TRANSFER's own button here is gone (still flex, in case a
+   future button joins REPAIR again) - REPAIR (flex:1) fills the row alone now. */
 .flbtns{display:flex;gap:8px;margin-top:6px}
 #flFix{flex:1;border:1px solid rgba(92,230,165,.5);
   background:rgba(92,230,165,.11);color:var(--gr);border-radius:9px;padding:8px;

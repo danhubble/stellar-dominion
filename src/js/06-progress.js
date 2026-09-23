@@ -198,7 +198,10 @@ function checkAchs(){
   for(const a of ACHS) if(!S.ac[a.id]&&a.k(S)){
     S.ac[a.id]=1; toast("Record unlocked — "+a.n,"y"); blip(1046,.25,"sine",.05);
     grantXp("ac:"+a.id, XPV.record, null);
-    flag("p-mkt"); dirty=true;                /* Records live behind Market's ghost link now */
+    /* polish batch A #8: the stats page's own notification dot is gone with the
+       rest of "Records & Graphs" - the toast above is still the moment, Achievements
+       is a plain reachable page now, not something that needs flagging. */
+    dirty=true;
   }
 }
 function flag(p){ const t=$$(".tab").find(t=>t.dataset.p===p); if(t&&!t.classList.contains("on"))t.classList.add("alert"); }

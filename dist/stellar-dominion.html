@@ -606,8 +606,8 @@ button.ghost{background:transparent;border-color:var(--line);color:var(--mut)}
 .fl-hp.crit i{background:linear-gradient(90deg,#ff6b8a,#ff9a6b)}
 .fl-hp span{position:absolute;inset:0;display:grid;place-items:center;
   font:700 9.5px/1 ui-monospace,monospace;letter-spacing:.1em;color:#04050d}
-/* run 3: REPAIR gained a neighbour (TRANSFER), so both now sit in a flex row
-   instead of REPAIR alone taking the full width. */
+/* polish batch A #9: TRANSFER's own button here is gone (still flex, in case a
+   future button joins REPAIR again) - REPAIR (flex:1) fills the row alone now. */
 .flbtns{display:flex;gap:8px;margin-top:6px}
 #flFix{flex:1;border:1px solid rgba(92,230,165,.5);
   background:rgba(92,230,165,.11);color:var(--gr);border-radius:9px;padding:8px;
@@ -1019,38 +1019,10 @@ button.ghost{background:transparent;border-color:var(--line);color:var(--mut)}
   color:#ffb3c2;border-radius:7px;padding:5px 6px;font:700 10px/1 system-ui;max-width:100%}
 #devp .dvn{white-space:pre-wrap;word-break:break-word;
   font:600 9px/1.4 ui-monospace,monospace;color:var(--dim);margin-top:7px}
-/* ---------- stats ---------- */
-#kpis{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:10px}
-.kpi{border:1px solid var(--line);border-radius:10px;padding:8px 10px;
-  background:rgba(255,255,255,.03);box-shadow:inset 3px 0 0 var(--a)}
-.kpi .kl{font:700 8.5px/1 system-ui;letter-spacing:.15em;color:var(--dim)}
-.kpi .kv{font:700 17px/1.15 ui-monospace,monospace;color:var(--txt);margin-top:4px}
-.kpi .ks{font:600 9.5px/1 ui-monospace,monospace;color:var(--mut);margin-top:3px}
-#mchips{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px}
-.mchip{border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--mut);
-  border-radius:7px;padding:5px 9px;font:600 10.5px/1 system-ui;cursor:pointer}
-.mchip.on{border-color:var(--a);color:var(--a);background:rgba(255,255,255,.07)}
-#chartBox{position:relative;border:1px solid var(--line);border-radius:12px;
-  background:rgba(255,255,255,.02);padding:10px 10px 4px}
-#chartHead{display:flex;align-items:baseline;gap:8px;margin-bottom:6px}
-#chartTtl{font:700 12px/1 system-ui;color:var(--txt)}
-#chartScale{margin-left:auto;font:600 9px/1 system-ui;letter-spacing:.12em;color:var(--dim)}
-#chart{width:100%;height:190px;display:block;touch-action:pan-y}
-#chart .grid{stroke:rgba(255,255,255,.07);stroke-width:1}
-#chart .axis{fill:var(--dim);font:600 8.5px ui-monospace,monospace}
-#chart .ln{fill:none;stroke:var(--a);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
-#chart .fillA{fill:var(--a);opacity:.10}
-#chart .end{fill:var(--a);stroke:var(--bg2);stroke-width:2}
-#chart .cross{stroke:rgba(255,255,255,.30);stroke-width:1}
-#chart .hit{fill:var(--a);stroke:var(--bg2);stroke-width:2}
-#chartTip{position:absolute;pointer-events:none;display:none;transform:translate(-50%,-100%);
-  background:rgba(8,11,28,.96);border:1px solid var(--line2);border-radius:7px;
-  padding:5px 8px;font:600 10.5px/1.4 ui-monospace,monospace;color:var(--txt);white-space:nowrap;
-  box-shadow:0 4px 14px rgba(0,0,0,.5)}
-#chartTip small{display:block;color:var(--dim);font-size:9px;letter-spacing:.08em}
-#chartEmpty{font-size:11.5px;color:var(--mut);line-height:1.5;padding:22px 4px;text-align:center}
+/* polish batch A #8: the stats page's KPI tiles/measure chips/history chart CSS
+   (#kpis/.kpi/#mchips/.mchip/#chartBox and friends) is gone with the "Graphs" half
+   of "Records & Graphs" - see renderAch()'s own header note in 09-render.js. */
 .sechead2{font:700 10px/1 system-ui;letter-spacing:.2em;color:var(--dim);margin:16px 0 8px}
-@media(max-width:460px){ #kpis{grid-template-columns:1fr 1fr} #chart{height:165px} }
 /* ---------- map ---------- */
 #mapWrap{position:relative;width:100%;aspect-ratio:1/1;max-height:52vh;margin:0 auto 10px;
   border:1px solid rgba(120,150,255,.22);border-radius:14px;overflow:hidden;
@@ -1701,10 +1673,10 @@ body.syspage #toasts{bottom:calc(var(--sysbarh) + 8px + env(safe-area-inset-bott
             <!-- PLAN-fleets run 3 (BRIEF commit 2): where the selected tab's own fleet is -->
             <div class="fl-loc" id="flLoc"></div>
             <div class="fl-hp"><i id="flHp"></i><span id="flHpT"></span></div>
+            <!-- polish batch A #9: TRANSFER removed from the Raids tab's own fleet
+                 strip - it stays on the fleet card modal (#fcTransfer, 09-render.js). -->
             <div class="flbtns">
               <button id="flFix">REPAIR</button>
-              <!-- PLAN-fleets run 3: same TRANSFER the fleet card modal offers -->
-              <button id="flTransfer" class="transfer">TRANSFER</button>
             </div>
           </div>
         </div>
@@ -1850,22 +1822,17 @@ body.syspage #toasts{bottom:calc(var(--sysbarh) + 8px + env(safe-area-inset-bott
         <div class="sechead2">DARK MATTER</div>
         <div class="grid" id="mktDm"></div>
         <div class="row" style="margin-top:14px">
-          <button class="ghost" id="mktStatsLink">Records &amp; graphs</button>
+          <button class="ghost" id="mktStatsLink">Achievements</button>
         </div>
       </div>
+      <!-- polish batch A #8: "Records & Graphs" (the #kpis stat tiles + #chartBox
+           production history chart) is gone - ACHS turned out to be real, named
+           milestones (each grants a permanent global bonus), so this pane is now
+           just that list, retitled. Reached the same way, Market's ghost link
+           above (#mktStatsLink), no notification dot any more - see checkAchs(). -->
       <div class="pane" id="p-ach">
-        <div id="kpis"></div>
-        <div id="mchips"></div>
-        <div id="chartBox">
-          <div id="chartHead"><span id="chartTtl">Production</span>
-            <span id="chartScale"></span></div>
-          <svg id="chart" viewBox="0 0 300 150" preserveAspectRatio="none"
-            role="img" aria-label="History chart"></svg>
-          <div id="chartEmpty"></div>
-          <div id="chartTip"></div>
-        </div>
-        <div class="sechead2">RECORDS</div>
-        <p class="hint">Each record grants a permanent global production bonus.</p>
+        <div class="sechead2">ACHIEVEMENTS</div>
+        <p class="hint">Each one grants a permanent global production bonus.</p>
         <div class="grid" id="ach"></div>
       </div>
     </div>
@@ -2600,6 +2567,13 @@ const XPROG=[
  {x:"he", id:"casc",  n:"Cascade Ignition",   max:15, c:15, cg:2.2,
   d:lv=>"\u00d7"+fmt(Math.pow(1.22,lv))+" fleet damage & hull",
   t:"A fusion cascade that never has to be relit."},
+ /* polish batch A #11: Command Lattice only ever paid off in turn mode, which is
+    dev-only - removing it from XPROG outright moved csim4.js's pacing output
+    (doProg() buys the cheapest affordable programme each pass, and something else
+    always ends up cheapest once this slot is gone). Kept as a real, unchanged
+    XPROG entry so csim's own buyXp() calls behave exactly as before; made inert
+    for an actual player instead - INERT_PROGS below (09-render.js reads it to skip
+    the row, 15-wiring.js/buyXp() block a purchase through the UI). */
  {x:"he", id:"comm",  n:"Command Lattice",    max:12, c:24, cg:2.2,
   d:lv=>"+"+Math.floor(lv/3)+" command points in battle",
   t:"More of the fleet answers at once."},
@@ -2624,6 +2598,11 @@ const XPROG=[
   d:lv=>"\u00d7"+fmt(Math.pow(1.35,lv))+" exotic yield everywhere",
   t:"Every system you hold gives up more of what it holds."}
 ];
+/* polish batch A #11: XPROG entries a real player never sees or buys through the
+   UI (Command Lattice, "comm" - see its own header note above). The XPROG data and
+   buyXp() are untouched so csim4.js's own buys are unaffected; renderProg() /
+   updateEmpBars() (09-render.js) skip any row whose id is in this set instead. */
+const INERT_PROGS=new Set(["comm"]);
 /* ---------------- the map ----------------
    Every system carries an `owner`. Nothing owns anything yet, but rival empires are
    the planned next step and retrofitting ownership later would be painful.
@@ -5702,7 +5681,10 @@ function checkAchs(){
   for(const a of ACHS) if(!S.ac[a.id]&&a.k(S)){
     S.ac[a.id]=1; toast("Record unlocked — "+a.n,"y"); blip(1046,.25,"sine",.05);
     grantXp("ac:"+a.id, XPV.record, null);
-    flag("p-mkt"); dirty=true;                /* Records live behind Market's ghost link now */
+    /* polish batch A #8: the stats page's own notification dot is gone with the
+       rest of "Records & Graphs" - the toast above is still the moment, Achievements
+       is a plain reachable page now, not something that needs flagging. */
+    dirty=true;
   }
 }
 function flag(p){ const t=$$(".tab").find(t=>t.dataset.p===p); if(t&&!t.classList.contains("on"))t.classList.add("alert"); }
@@ -6257,7 +6239,7 @@ function updateEmpBars(){
     const have=exo(p.exoId), rate=exoRate(p.exoId);
     const bk=p.head.querySelector("[data-banked]"); if(bk)bk.textContent=fmt(have);
     const rt=p.head.querySelector("[data-rate]"); if(rt)rt.textContent=fmt(rate);
-    const rows=XPROG.filter(z=>z.x===p.exoId);
+    const rows=XPROG.filter(z=>z.x===p.exoId&&!INERT_PROGS.has(z.id));
     const anyAfford=rows.some(r=>{ const l=xlv(r.id); return l<r.max && have>=xpCost(r,l) });
     const badge=p.head.querySelector("[data-badge]");
     if(badge)badge.style.display=anyAfford?"inline-block":"none";
@@ -6305,7 +6287,6 @@ function render(){
   if(misReady()>0)flag("p-mis");
   renderLevel();
   if($("#p-map").classList.contains("on")){ renderMap(); renderFleetBar(); }
-  if($("#p-ach").classList.contains("on"))renderStats();
   if($("#p-mkt").classList.contains("on"))renderMarket();
   if(devOn)devInfo();
 
@@ -7954,7 +7935,9 @@ function renderProg(){
 }
 function progRow(exoId){
   const e=exoDef(exoId), have=exo(exoId), rate=exoRate(exoId);
-  const rows=XPROG.filter(z=>z.x===exoId);
+  /* polish batch A #11: INERT_PROGS rows (Command Lattice) never get a card here -
+     see its own header note (01-content.js). */
+  const rows=XPROG.filter(z=>z.x===exoId&&!INERT_PROGS.has(z.id));
   const anyAfford=rows.some(r=>{ const l=xlv(r.id); return l<r.max && have>=xpCost(r,l) });
   const wrap=document.createElement("div");
   const head=document.createElement("div");
@@ -8365,106 +8348,18 @@ function renderMis(){
   host.appendChild(done);
 }
 /* ---------------- stats ---------------- */
-const CW=300, CH=150, CPL=34, CPR=10, CPT=8, CPB=18;   /* viewBox + plot padding */
-let chartSig="";
-function measDef(id){ return MEAS.find(m=>m.id===id)||MEAS[0] }
 function fmtT2(s){ return s<60 ? Math.round(s)+"s"
   : s<3600 ? Math.round(s/60)+"m" : (s/3600).toFixed(s<36000?1:0)+"h" }
-function renderStats(){
-  const H=histOk();
-  /* headline numbers first - a stat tile beats a one-point chart */
-  const kp=$("#kpis");
-  if(kp)kp.innerHTML=[
-    ["PRODUCTION","#48e2ff",fmt(rate())+" /s",fmt(S.all)+" all-time"],
-    ["LEVEL","#ffd166",String(level()),perkShort()],
-    ["STRUCTURES","#5ce6a5",fmt(tot()),fmt(globalMul())+"\u00d7 bonus"],
-    ["SYSTEMS","#8fb8ff",heldSystems().length+" / "+(SYS.length-1),
-      fmt(S.dm)+" Dark Matter"]
-  ].map(([l,c,v,s])=>`<div class="kpi" style="--a:${c}">
-      <div class="kl">${l}</div><div class="kv">${v}</div><div class="ks">${s}</div></div>`).join("");
-
-  const ch=$("#mchips");
-  if(ch&&ch.childElementCount!==MEAS.length){
-    ch.innerHTML=MEAS.map(m=>`<button class="mchip" data-m="${m.id}" style="--a:${m.col}">${m.n}</button>`).join("");
-    $$("#mchips .mchip").forEach(b=>b.onclick=()=>{ S.mtab=b.dataset.m; dirty=true; render() });
-  }
-  $$("#mchips .mchip").forEach(b=>b.classList.toggle("on",b.dataset.m===S.mtab));
-
-  const m=measDef(S.mtab), data=histSeries(m.id);
-  /* the plot only changes when a sample lands or the measure switches - redrawing it
-     every frame also wiped the crosshair as soon as the pointer stopped moving */
-  const sig=m.id+"|"+data.length+"|"+(data[data.length-1]||0)+"|"+H.iv;
-  if(sig===chartSig)return;
-  chartSig=sig;
-  $("#chartTtl").textContent=m.n+(m.unit?" ("+m.unit+")":"");
-  $("#chartTtl").style.color=m.col;
-  const box=$("#chartBox"); box.style.setProperty("--a",m.col);
-  const svg=$("#chart"), empty=$("#chartEmpty");
-  if(data.length<2){
-    svg.style.display="none"; $("#chartScale").textContent="";
-    empty.style.display="block";
-    empty.textContent="Not enough history yet \u2014 a reading is taken every "
-      +fmtT2(H.iv)+". Come back in a minute.";
-    $("#chartTip").style.display="none";
-    return;
-  }
-  svg.style.display="block"; empty.style.display="none";
-
-  /* log where the measure is exponential, linear where it is a count */
-  const useLog = !!m.log && data.some(v=>v>0);
-  $("#chartScale").textContent = useLog ? "LOG SCALE" : "";
-  const tf = useLog ? (v=>Math.log10(Math.max(v,1e-6))) : (v=>v);
-  let lo=Infinity, hi=-Infinity;
-  for(const v of data){ const t=tf(v); if(t<lo)lo=t; if(t>hi)hi=t }
-  if(!(hi>lo)){ hi=lo+1 }
-  const pad=(hi-lo)*0.08; lo-=pad; hi+=pad;
-  /* a count has no negative half - padding must not invent one */
-  if(!useLog && data.every(v=>v>=0) && lo<0) lo=0;
-  const PW=CW-CPL-CPR, PH=CH-CPT-CPB;
-  const X=i=>CPL+(data.length<2?0:i/(data.length-1))*PW;
-  const Y=v=>CPT+PH-((tf(v)-lo)/(hi-lo))*PH;
-
-  const pts=data.map((v,i)=>X(i).toFixed(1)+","+Y(v).toFixed(1));
-  const area="M"+X(0).toFixed(1)+","+(CPT+PH)+" L"+pts.join(" L")+
-             " L"+X(data.length-1).toFixed(1)+","+(CPT+PH)+" Z";
-  const lab=v=>useLog?fmt(Math.pow(10,v)):fmt(v);
-  const mid=(lo+hi)/2;
-  const last=data[data.length-1], span=histAt(data.length-1);
-  svg.innerHTML=`
-    <line class="grid" x1="${CPL}" y1="${CPT}" x2="${CW-CPR}" y2="${CPT}"/>
-    <line class="grid" x1="${CPL}" y1="${CPT+PH/2}" x2="${CW-CPR}" y2="${CPT+PH/2}"/>
-    <line class="grid" x1="${CPL}" y1="${CPT+PH}" x2="${CW-CPR}" y2="${CPT+PH}"/>
-    <text class="axis" x="${CPL-4}" y="${CPT+3}" text-anchor="end">${lab(hi)}</text>
-    <text class="axis" x="${CPL-4}" y="${CPT+PH/2+3}" text-anchor="end">${lab(mid)}</text>
-    <text class="axis" x="${CPL-4}" y="${CPT+PH}" text-anchor="end">${lab(lo)}</text>
-    <text class="axis" x="${CPL}" y="${CH-5}">${fmtT2(span)} ago</text>
-    <text class="axis" x="${CW-CPR}" y="${CH-5}" text-anchor="end">now</text>
-    <path class="fillA" d="${area}"/>
-    <polyline class="ln" points="${pts.join(" ")}"/>
-    <circle class="end" cx="${X(data.length-1).toFixed(1)}" cy="${Y(last).toFixed(1)}" r="3.2"/>
-    <g id="chOverlay"></g>`;
-
-  /* crosshair + tooltip. Pointer events cover mouse and touch in one path. */
-  const tip=$("#chartTip"), ov=svg.querySelector("#chOverlay");
-  const move=ev=>{
-    const r=svg.getBoundingClientRect();
-    const px=(ev.clientX-r.left)/r.width*CW;
-    let i=Math.round((px-CPL)/PW*(data.length-1));
-    i=Math.max(0,Math.min(data.length-1,i));
-    if(!isFinite(i))return;
-    const x=X(i), y=Y(data[i]);
-    ov.innerHTML=`<line class="cross" x1="${x.toFixed(1)}" y1="${CPT}" x2="${x.toFixed(1)}" y2="${CPT+PH}"/>
-      <circle class="hit" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4"/>`;
-    tip.style.display="block";
-    tip.style.left=(x/CW*r.width)+"px";
-    tip.style.top=(y/CH*r.height-8)+"px";
-    tip.innerHTML=fmt(data[i])+(m.unit?" "+m.unit:"")+
-      `<small>${fmtT2(span-histAt(i))} ago</small>`;
-  };
-  const leave=()=>{ ov.innerHTML=""; tip.style.display="none" };
-  svg.onpointermove=move; svg.onpointerdown=move;
-  svg.onpointerleave=leave; svg.onpointercancel=leave;
-}
+/* polish batch A #8: renderStats() (the KPI tiles + production history chart, the
+   "graphs" half of "Records & Graphs") is gone along with #kpis/#mchips/#chartBox
+   - the owner playthrough flagged the whole stats page, and ACHS/checkAchs() turned
+   out to be real, named milestones worth keeping (each grants a permanent global
+   bonus - see renderAch() right below), so only the achievements half survives,
+   reachable the same way (Market's ghost link, retitled "Achievements" in
+   index.html) rather than gone outright. histTick()/MEAS/the hist* sampling
+   functions and the save format's own S.hist are untouched - deleting the save
+   field for a page that might come back was more risk than it was worth for a
+   fixes batch; they just have no UI reading them any more. */
 function renderAch(){
   const host=$("#ach"); host.innerHTML="";
   ACHS.forEach(a=>{
@@ -11213,13 +11108,6 @@ $("#abFocus").onclick=()=>{ if(BT&&!BT.done&&BT.cd.f<=0){BT.buf.f=5;BT.cd.f=16;b
 $("#abFlak").onclick=()=>{ if(BT&&!BT.done&&BT.cd.k<=0){BT.buf.k=5;BT.cd.k=22;blip(420,.15,"sine",.05)} };
 $("#bRetreat").onclick=()=>{ if(BT&&!BT.done)endBattle("timeout") };
 $("#flFix").onclick=()=>{ if(repairFleet()){ renderAll(); save() } };
-/* run 3: same TRANSFER the fleet card modal offers, reachable from the Raids pane's
-   own fleet strip too - always against curFleet() (the tab currently selected) and
-   the nearest idle fleet sitting at its own system. */
-$("#flTransfer").onclick=()=>{
-  const cf=curFleet(), mates=otherIdleFleetsAt(cf);
-  if(mates.length)transferModal(cf, mates[0]);
-};
 $("#bPause").onclick=()=>{ if(BT&&!BT.done){ BT.paused=!BT.paused; dirty=true } };
 $("#trScr").onclick=()=>{ if(addOrder("scr"))dirty=true };
 $("#trRep").onclick=()=>{ if(addOrder("rep"))dirty=true };
@@ -11279,29 +11167,34 @@ function renderRaids(){
   fx.classList.toggle("hide", !fleetCount(cf) || hp>=1);
   fx.disabled = S.ore<rc || hp>=1;
   fx.textContent = "REPAIR \u00b7 "+fmt(rc)+" ORE";
-  /* run 3: TRANSFER next to REPAIR - only meaningful with another idle fleet at
-     curFleet()'s own system, same rule the fleet card modal's button uses. */
-  const ftBtn=$("#flTransfer");
-  if(ftBtn)ftBtn.disabled = otherIdleFleetsAt(cf).length===0;
   const host=$("#flShips"); host.innerHTML="";
   /* run 3 (decision 6): no idle fleet at home right now - a BUY still queues (see
      buyShip()'s own comment), it just doesn't land in curFleet() immediately. Said
      plainly on the button rather than silently landing somewhere the player can't
      see yet. */
   const noHomeIdle=!fleets().some(fl=>!fl.to&&fl.at==="home");
+  /* polish batch A #12: buyShip() lands a purchase on curFleet() only when IT is
+     idle at home - otherwise the first idle-at-home fleet takes it, same rule
+     buyShip() itself uses (see its own header comment). Worked out once per
+     render, same for every ship class this loop draws a button for. */
+  const buyTgt = (!cf.to&&cf.at==="home") ? cf : fleets().find(fl=>!fl.to&&fl.at==="home");
   SHIPS.forEach((sp,i)=>{
     const d=document.createElement("div"); d.className="shp"; d.style.setProperty("--a",sp.col);
     const k=S.sell?Math.min(S.buy==="max"?cf.sh[i]:S.buy,cf.sh[i]):(S.buy==="max"?Math.max(1,shipMax(i)):S.buy);
     const c=S.sell?(k>0?0.5*sp.b*Math.pow(sp.g,shipTotal(i)-k)*(Math.pow(sp.g,k)-1)/(sp.g-1):0):shipCost(i,k);
     const fits=k*sp.pw<=capLeft();
     const can=S.sell?(k>0&&!cf.to):(S.ore>=c&&fits);
+    /* polish batch A #10/#12: "DELIVERS AT SOL REACH" (nothing here has a shipyard
+       yet, PLACEHOLDER copy either way) when nothing is home to take it, and now
+       also says which fleet it actually lands on when that isn't the selected tab. */
+    const buyLabel = "BUY ×"+k+(buyTgt&&buyTgt!==cf?" → "+buyTgt.n.toUpperCase():"");
     d.innerHTML=`<div class="si"><svg viewBox="0 0 48 48">${sp.ic}</svg></div>
       <div><div class="sn">${sp.n}</div>
         <div class="sd">${fmt(sp.dps*fleetMult())} dps · ${fmt(sp.hp*fleetMult())} hull · ⚡${sp.pw}</div></div>
       <div style="display:flex;align-items:center;gap:10px">
         <div class="sc">${cf.sh[i]}</div>
         <button class="gb"><b>${S.sell||fits?fmt(c)+" ore":"NO CAPACITY"}</b><i>${
-          S.sell?"SCRAP ×"+k:(noHomeIdle?"DELIVERS AT SOL REACH":"BUY ×"+k)}</i></button>
+          S.sell?"SCRAP ×"+k:(noHomeIdle?"NO SHIPYARD HERE":buyLabel)}</i></button>
       </div>`;
     const bt=d.querySelector("button"); bt.disabled=!can;
     bt.onclick=()=>{ if(S.sell)sellShip(i,k); else buyShip(i,k); render(); };
@@ -11828,6 +11721,13 @@ function adopt(o){
   if(!f.xp||typeof f.xp!=="object")f.xp={};
   for(const k in f.xp){ const r=XPROG.find(z=>z.id===k);
     if(!r||!(f.xp[k]>0))delete f.xp[k]; else f.xp[k]=Math.min(r.max,Math.floor(f.xp[k])) }
+  /* polish batch A #11: Command Lattice is inert for a real player (see INERT_PROGS,
+     01-content.js) - a save that already banked levels in it (from before this
+     change) loses them on load, no refund, same as the plan's own instruction for
+     an outright removal. Kept out of the generic pass above because "comm" is still
+     a normal XPROG entry (csim4.js needs it to stay exactly as it was, see its own
+     header note) - this is the one spot that actually drops it for a player save. */
+  if(f.xp.comm)delete f.xp.comm;
   if(!f.exo||typeof f.exo!=="object")f.exo={};
   for(const k in f.exo){ if(!EXO.some(e=>e.id===k)||!(f.exo[k]>0))delete f.exo[k] }
   /* Exotic Nodes (patch582): a separate resource from S.exo, not one of EXO -
@@ -13392,7 +13292,7 @@ window.__SD={get S(){return S},NEXUS,buyNex,openSite,SITE,siteSlots,
   hitEnemy,bUpdate,bDraw,get bScale(){return bScale},
   hireCost,dismissValue,bridgeSlots,crewUnlocked,onBridge,crewMul,svReward,EK,EMIX,comboMul,bTapAt,
   endBattle,rate,cryRate,softCap,clickRaw,clickCap,scanPerkMul,level,earnedLevel,
-  MEAS,HMAX,histTick,histSeries,histAt,histOk,histSample,renderStats,
+  MEAS,HMAX,histTick,histSeries,histAt,histOk,histSample,
   devAction,devToggle,get devOn(){return devOn},devGrantLevels,
   lastError,get frameErrs(){return frameErrs},
   EXO,SYS,SYSMAP,SITE_LEN:SITE.length,exo,exoRate,exoUnlocked,exoCostOf,unlocked,
