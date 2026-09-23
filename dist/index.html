@@ -3974,9 +3974,14 @@ function fresh(){
     fl:[mkFleet(1)], flSel:1, flQ:[0,0,0], tg:[], tgT:0, wins:0, losses:0, plunder:0, flawless:0,
     sv:0, svAll:0, rf:{}, crew:makeDeckhands(), bridge:makeDeckhands().map(c=>c.id), crewPool:[],
     cseed:1, bestCmb:0, flags:0, end:0,
-    /* PLAN-polish batch B item 2: lvEarn is the one-level-per-check ratchet
-       earnedLevel() advances - see its own header comment in 03-defence.js. */
-    rs:{}, nx:{}, ac:{}, mi:0, miq:[], lvSeen:1, lvl:1, lvEarn:1, pk:{}, pkLog:[], lvOffer:null,
+    /* PLAN-polish batch B item 2: lvEarn (the one-level-per-check ratchet
+       checkLevel() advances - see its own header comment in 03-defence.js) is
+       deliberately NOT seeded here. A brand-new game self-seeds it on the first
+       tick (checkLevel()); adopt() always recomputes it from scratch (see there) -
+       so it is never carried through a `{...fresh(), ...}` spread as a stale 1,
+       which would otherwise defeat adopt()'s own backfill for exactly that
+       common test-fixture shape (caught while writing tests). */
+    rs:{}, nx:{}, ac:{}, mi:0, miq:[], lvSeen:1, lvl:1, pk:{}, pkLog:[], lvOffer:null,
     sys:{ home:{ b:{} } },
     exo:{}, xp:{}, taken:{}, lost:{}, occ:{}, occAt:{}, def:{}, han:{}, rv:{}, exoSeen:{}, seen:{}, notifyQueue:[], rvMsg:{},
     thq:[], thqSeq:1, thrRep:[], thrCd:0, rvExp:0, defw:0, defl:0,
@@ -4738,22 +4743,34 @@ function exoUnlocked(id){ return exoRate(id)>0 }
 function exoCostOf(i,k){ const g=GENS[i]; return g.exo ? g.exoC*k : 0 }
 /* cumulative XP needed to be level n (level 1 is free, n past LVMAX is unreachable) */
 function xpNeed(n){ return n<=1 ? 0 : (n<=LVMAX ? LVXP[n] : Infinity) }
-/* what your XP entitles you to; the claim flow (level()/pendingLevels()/takeLevel())
-   is untouched and still keys off S.lvl.
+/* what your XP alone entitles you to, uncapped - no one-per-check gate (see
+   earnedLevel() below). Used only by adopt()'s backfill and the dev "grant
+   levels" shortcut, both of which mean to bypass the gate outright. */
+function trueEarnedLevel(){ const x=S.xpn||0; let n=1; while(n<LVMAX && x>=LVXP[n+1]) n++; return n }
+/* what your XP entitles you to RIGHT NOW; the claim flow (level()/pendingLevels()/
+   takeLevel()) is untouched and still keys off S.lvl.
    PLAN-polish batch B item 2: a burst of XP (four missions claimed at once, several
    firsts paid by one claim) used to jump earnedLevel() - and so pendingLevels() -
    by several levels in a single call, opening a cascade of level-up modals back to
-   back. earnedLevel() now advances S.lvEarn by AT MOST ONE level per call; any XP
-   past that stays banked in S.xpn (untouched) and is picked up by the next call to
-   this function - the next tick's checkLevel(), or the next explicit check -
-   rather than all landing at once. S.lvEarn is seeded (once, on adopt - see there)
-   to whatever the save's XP already truly entitled it to, so loading an old save
-   never rolls back pending levels it already had. */
-function earnedLevel(){
-  if(!(S.lvEarn>=1))S.lvEarn=Math.max(1,level());
-  if(S.lvEarn<LVMAX && (S.xpn||0)>=xpNeed(S.lvEarn+1))S.lvEarn++;
-  return S.lvEarn;
-}
+   back. S.lvEarn is now a ratchet that advances by AT MOST ONE level per CHECK -
+   checkLevel() below is the one place that advances it; any XP past that stays
+   banked in S.xpn (untouched) and is picked up by the next check (the next tick's
+   checkLevel() call) rather than all landing at once. earnedLevel() itself is a
+   plain read of S.lvEarn - it must NOT advance the ratchet, since it's called from
+   many read-only paths (pendingLevels(), lvProgress(), xpNext(), lvSummary(),
+   render) any number of times per frame; gating there instead of in checkLevel()
+   was tried and reverted (caught while writing tests) - a single checkLevel() call
+   already reads pendingLevels() for its own toast text, and reading it again from
+   outside advanced the gate a second and third time, collapsing the whole "one per
+   check" promise inside a single frame. S.lvEarn is seeded (once, on adopt - see
+   there) to whatever the save's XP already truly entitled it to, so loading an old
+   save never rolls back pending levels it already had. */
+/* never below level() - a structural floor, not a second advance path: a claimed
+   level can never exceed what you've earned, so if something set S.lvl directly
+   (a dev tool, a test fixture, adopt()'s own fleet/etc. migrations) without the
+   ratchet having caught up yet, the read here is still honest. Pure and safe to
+   call any number of times - it does not touch S.lvEarn. */
+function earnedLevel(){ return Math.max((S.lvEarn>=1)?S.lvEarn:1, level()); }
 /* the one door XP comes through. Idempotent on key: a milestone fires once, ever. */
 function grantXp(key, amt, label){
   if(!key||!(amt>0))return false;
@@ -5577,6 +5594,10 @@ function claimAllMissions(){
 /* Nothing is ever forced. A new level only announces itself; the player claims it
    when they want to, which is what keeps time away from turning into a wall of popups. */
 function checkLevel(){
+  /* PLAN-polish batch B item 2: the one-level-per-check ratchet - see earnedLevel()'s
+     own header comment for why the advance lives here and not there. */
+  if(!(S.lvEarn>=1))S.lvEarn=Math.max(1,level());
+  if(S.lvEarn<LVMAX && (S.xpn||0)>=xpNeed(S.lvEarn+1))S.lvEarn++;
   const e=earnedLevel();
   if(!S.lvSeen||S.lvSeen<1)S.lvSeen=1;
   if(e<=S.lvSeen)return;
@@ -11845,17 +11866,20 @@ function adopt(o){
        is otherwise unread anywhere in the game. */
     if(!("t0" in o) || !(f.t0>0))f.t0=null;
     if(!("lvSeen" in o))f.lvSeen=f.lvl;
-    /* PLAN-polish batch B item 2: back-fill lvEarn to whatever this save's XP
-       already truly entitled it to (uncapped, one-off, load-time only) - never
-       to less than f.lvl, and only on a save that never had the field (an old
-       save, or a fixture). A save already carrying lvEarn keeps it exactly as
-       adopt()'s own `for(const k in f) if(k in o) f[k]=o[k]` copied it - the
-       ratchet is meant to persist across saves, not re-open every reload. */
-    if(!("lvEarn" in o) || !(f.lvEarn>=f.lvl)){
-      let n=Math.max(1,f.lvl);
-      while(n<LVMAX && (f.xpn||0)>=xpNeed(n+1))n++;
-      f.lvEarn=n;
-    }
+    /* PLAN-polish batch B item 2: lvEarn (the one-level-per-check ratchet) is
+       ALWAYS recomputed here, from this save's own (already-sanitised) xpn/lvl -
+       never carried through from `o` - rather than trying to tell a genuine old
+       save apart from a `{...fresh(), xpn:X}` test fixture (fresh() deliberately
+       never seeds this key any more - see its own comment - so that ambiguity
+       does not arise, but recomputing unconditionally is simpler regardless, and
+       cheap: xpn/lvl are already fixed by the two lines above). This is a
+       load-time-only jump straight to the save's true entitlement, uncapped by
+       the one-per-check gate - the same "an old save catching up past several
+       thresholds in one go gets ONE combined moment, not a cascade" rule
+       ensureFleets()/PLAN-fleets run 3 already applies to Fleet 2/3. */
+    let lvEarn=Math.max(1,f.lvl);
+    while(lvEarn<LVMAX && (f.xpn||0)>=xpNeed(lvEarn+1))lvEarn++;
+    f.lvEarn=lvEarn;
   }
   S=f;
   /* S.han[sysId] - always exactly 3 non-negative integers, never more than HAN_CAP
@@ -13176,6 +13200,10 @@ document.addEventListener("visibilitychange",()=>{ if(document.hidden)save() });
 let devOn=false, devTaps=0, devTapT=0;
 function devGrantLevels(k){
   S.xpn=Math.max(S.xpn||0, xpNeed(level()+k));
+  /* PLAN-polish batch B item 2: a dev cheat means to jump instantly - bypass the
+     one-level-per-check ratchet outright rather than waiting on it one tick at a
+     time (trueEarnedLevel(), never earnedLevel(), see its own header comment). */
+  S.lvEarn=Math.max(S.lvEarn||1, trueEarnedLevel());
   S.lvSeen=earnedLevel();
   let guard=0;
   while(pendingLevels()>0 && guard++<600){
@@ -13377,7 +13405,7 @@ window.__SD={get S(){return S},NEXUS,buyNex,openSite,SITE,siteSlots,
   REFIT,rfl,refitCost,buyRefit,ROLES,RAR,rollCrew,hireCrew,dismissCrew,assignCrew,
   hitEnemy,bUpdate,bDraw,get bScale(){return bScale},
   hireCost,dismissValue,bridgeSlots,crewUnlocked,onBridge,crewMul,svReward,EK,EMIX,comboMul,bTapAt,
-  endBattle,rate,cryRate,softCap,clickRaw,clickCap,scanPerkMul,level,earnedLevel,
+  endBattle,rate,cryRate,softCap,clickRaw,clickCap,scanPerkMul,level,earnedLevel,trueEarnedLevel,
   MEAS,HMAX,histTick,histSeries,histAt,histOk,histSample,
   devAction,devToggle,get devOn(){return devOn},devGrantLevels,
   lastError,get frameErrs(){return frameErrs},
@@ -13446,7 +13474,7 @@ window.__SD={get S(){return S},NEXUS,buyNex,openSite,SITE,siteSlots,
   forecastSplit,evadeOf,landedPips,isRaw,
   resolveRound,forecastIncoming,screenCut,telAll,bTapTurn,pendingLevels,takeLevel,lvOffer,lvModal,lvSummary,
   PERKS,pkl,costMul,perkSummary,xpNeed,grantXp,xpSeed,xpSeedAll,xpOnWins,xpOnDef,xpCrewFull,checkAchs,xpNext,LVXP,LVXP_PTS,lvlMul,UNLOCK,unlockLv,checkLevel,tick,doScan,fmt,fmtT,GENS,adopt,fresh,clickPow,tot,globalMul,RESH,resCur,resBal,resCost,buyRes,
-  LADDER_KINDS,LADDERS,ladderKindOf,sysLadder,sysTierCount,builtSystems,sysNextGi,tierBuildable,
+  LADDER_KINDS,LADDERS,ladderKindOf,sysLadder,sysTierCount,sysState,sysT0,builtSystems,sysNextGi,tierBuildable,
   ladderRate,ladderPerUnit,ladderCost,ladderMaxAff,ladderGain,ladderExoId,ladderExoCost,ladderBuy,
   ladderMarquee,gCount,anyOf,
   KIND_INFO,empFurthestRing,gotoTab,

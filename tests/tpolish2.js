@@ -99,9 +99,12 @@ const { chromium } = require('playwright-core');
  ok('#flTransfer (Raids tab) is gone', transfer.raidsTransferGone);
 
  // ---------- item 10/12: buy-button label ----------
+ // PLAN-polish batch B item 4: Fleet 2 now opens at level 16, not 14 - fixture
+ // bumped so ensureFleets() actually adds it (level 14 would leave fleets()
+ // length 1 and G.fleet(2) null, crashing the line right below).
  const buyLabel=await p.evaluate(()=>{
    const G=window.__SD;
-   G.adopt({...G.fresh(), lvl:14, lvSeen:14, xpn:G.xpNeed(14), ore:1e9, all:1e9});
+   G.adopt({...G.fresh(), lvl:16, lvSeen:16, xpn:G.xpNeed(16), ore:1e9, all:1e9});
    G.ensureFleets();   // adds Fleet 2
    const f2=G.fleet(2); f2.at='home'; f2.to=null;
    G.S.flSel=2;   // select Fleet 2's tab...

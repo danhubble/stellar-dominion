@@ -3,6 +3,10 @@
 let devOn=false, devTaps=0, devTapT=0;
 function devGrantLevels(k){
   S.xpn=Math.max(S.xpn||0, xpNeed(level()+k));
+  /* PLAN-polish batch B item 2: a dev cheat means to jump instantly - bypass the
+     one-level-per-check ratchet outright rather than waiting on it one tick at a
+     time (trueEarnedLevel(), never earnedLevel(), see its own header comment). */
+  S.lvEarn=Math.max(S.lvEarn||1, trueEarnedLevel());
   S.lvSeen=earnedLevel();
   let guard=0;
   while(pendingLevels()>0 && guard++<600){

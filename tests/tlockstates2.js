@@ -49,11 +49,19 @@ const { chromium } = require('playwright-core');
 
  // grant exactly enough all-time ore to earn level 9, then actually CLAIM up to it
  // (checkLevel/takeLevel, not just S.lvl assignment) so this exercises the real path.
+ // PLAN-polish batch B item 2: checkLevel() now advances the one-level-per-check
+ // ratchet by at most one level per call (see its own header comment), so a
+ // single call no longer jumps straight to whatever S.xpn entitles - repeat
+ // checkLevel()+drain until the target level is actually reached, same as real
+ // play repeating it every tick.
  await p.evaluate(async()=>{
    const G=window.__SD;
    G.S.xpn=G.xpNeed(G.SYSMAP.kor.lvl);
-   G.checkLevel();
-   while(G.pendingLevels()>0){ const off=G.lvOffer(); G.takeLevel(off[0]); }
+   let guard=0;
+   while(G.level()<G.SYSMAP.kor.lvl && guard++<200){
+     G.checkLevel();
+     while(G.pendingLevels()>0){ const off=G.lvOffer(); G.takeLevel(off[0]); }
+   }
  });
  // deliberately NOT calling render()/dirty=true by hand, and NOT switching tabs -
  // takeLevel() alone must already be enough (it sets dirty=true; the frame loop's

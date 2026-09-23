@@ -622,22 +622,34 @@ function exoUnlocked(id){ return exoRate(id)>0 }
 function exoCostOf(i,k){ const g=GENS[i]; return g.exo ? g.exoC*k : 0 }
 /* cumulative XP needed to be level n (level 1 is free, n past LVMAX is unreachable) */
 function xpNeed(n){ return n<=1 ? 0 : (n<=LVMAX ? LVXP[n] : Infinity) }
-/* what your XP entitles you to; the claim flow (level()/pendingLevels()/takeLevel())
-   is untouched and still keys off S.lvl.
+/* what your XP alone entitles you to, uncapped - no one-per-check gate (see
+   earnedLevel() below). Used only by adopt()'s backfill and the dev "grant
+   levels" shortcut, both of which mean to bypass the gate outright. */
+function trueEarnedLevel(){ const x=S.xpn||0; let n=1; while(n<LVMAX && x>=LVXP[n+1]) n++; return n }
+/* what your XP entitles you to RIGHT NOW; the claim flow (level()/pendingLevels()/
+   takeLevel()) is untouched and still keys off S.lvl.
    PLAN-polish batch B item 2: a burst of XP (four missions claimed at once, several
    firsts paid by one claim) used to jump earnedLevel() - and so pendingLevels() -
    by several levels in a single call, opening a cascade of level-up modals back to
-   back. earnedLevel() now advances S.lvEarn by AT MOST ONE level per call; any XP
-   past that stays banked in S.xpn (untouched) and is picked up by the next call to
-   this function - the next tick's checkLevel(), or the next explicit check -
-   rather than all landing at once. S.lvEarn is seeded (once, on adopt - see there)
-   to whatever the save's XP already truly entitled it to, so loading an old save
-   never rolls back pending levels it already had. */
-function earnedLevel(){
-  if(!(S.lvEarn>=1))S.lvEarn=Math.max(1,level());
-  if(S.lvEarn<LVMAX && (S.xpn||0)>=xpNeed(S.lvEarn+1))S.lvEarn++;
-  return S.lvEarn;
-}
+   back. S.lvEarn is now a ratchet that advances by AT MOST ONE level per CHECK -
+   checkLevel() below is the one place that advances it; any XP past that stays
+   banked in S.xpn (untouched) and is picked up by the next check (the next tick's
+   checkLevel() call) rather than all landing at once. earnedLevel() itself is a
+   plain read of S.lvEarn - it must NOT advance the ratchet, since it's called from
+   many read-only paths (pendingLevels(), lvProgress(), xpNext(), lvSummary(),
+   render) any number of times per frame; gating there instead of in checkLevel()
+   was tried and reverted (caught while writing tests) - a single checkLevel() call
+   already reads pendingLevels() for its own toast text, and reading it again from
+   outside advanced the gate a second and third time, collapsing the whole "one per
+   check" promise inside a single frame. S.lvEarn is seeded (once, on adopt - see
+   there) to whatever the save's XP already truly entitled it to, so loading an old
+   save never rolls back pending levels it already had. */
+/* never below level() - a structural floor, not a second advance path: a claimed
+   level can never exceed what you've earned, so if something set S.lvl directly
+   (a dev tool, a test fixture, adopt()'s own fleet/etc. migrations) without the
+   ratchet having caught up yet, the read here is still honest. Pure and safe to
+   call any number of times - it does not touch S.lvEarn. */
+function earnedLevel(){ return Math.max((S.lvEarn>=1)?S.lvEarn:1, level()); }
 /* the one door XP comes through. Idempotent on key: a milestone fires once, ever. */
 function grantXp(key, amt, label){
   if(!key||!(amt>0))return false;

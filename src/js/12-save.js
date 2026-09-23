@@ -411,17 +411,20 @@ function adopt(o){
        is otherwise unread anywhere in the game. */
     if(!("t0" in o) || !(f.t0>0))f.t0=null;
     if(!("lvSeen" in o))f.lvSeen=f.lvl;
-    /* PLAN-polish batch B item 2: back-fill lvEarn to whatever this save's XP
-       already truly entitled it to (uncapped, one-off, load-time only) - never
-       to less than f.lvl, and only on a save that never had the field (an old
-       save, or a fixture). A save already carrying lvEarn keeps it exactly as
-       adopt()'s own `for(const k in f) if(k in o) f[k]=o[k]` copied it - the
-       ratchet is meant to persist across saves, not re-open every reload. */
-    if(!("lvEarn" in o) || !(f.lvEarn>=f.lvl)){
-      let n=Math.max(1,f.lvl);
-      while(n<LVMAX && (f.xpn||0)>=xpNeed(n+1))n++;
-      f.lvEarn=n;
-    }
+    /* PLAN-polish batch B item 2: lvEarn (the one-level-per-check ratchet) is
+       ALWAYS recomputed here, from this save's own (already-sanitised) xpn/lvl -
+       never carried through from `o` - rather than trying to tell a genuine old
+       save apart from a `{...fresh(), xpn:X}` test fixture (fresh() deliberately
+       never seeds this key any more - see its own comment - so that ambiguity
+       does not arise, but recomputing unconditionally is simpler regardless, and
+       cheap: xpn/lvl are already fixed by the two lines above). This is a
+       load-time-only jump straight to the save's true entitlement, uncapped by
+       the one-per-check gate - the same "an old save catching up past several
+       thresholds in one go gets ONE combined moment, not a cascade" rule
+       ensureFleets()/PLAN-fleets run 3 already applies to Fleet 2/3. */
+    let lvEarn=Math.max(1,f.lvl);
+    while(lvEarn<LVMAX && (f.xpn||0)>=xpNeed(lvEarn+1))lvEarn++;
+    f.lvEarn=lvEarn;
   }
   S=f;
   /* S.han[sysId] - always exactly 3 non-negative integers, never more than HAN_CAP

@@ -33,6 +33,10 @@ function claimAllMissions(){
 /* Nothing is ever forced. A new level only announces itself; the player claims it
    when they want to, which is what keeps time away from turning into a wall of popups. */
 function checkLevel(){
+  /* PLAN-polish batch B item 2: the one-level-per-check ratchet - see earnedLevel()'s
+     own header comment for why the advance lives here and not there. */
+  if(!(S.lvEarn>=1))S.lvEarn=Math.max(1,level());
+  if(S.lvEarn<LVMAX && (S.xpn||0)>=xpNeed(S.lvEarn+1))S.lvEarn++;
   const e=earnedLevel();
   if(!S.lvSeen||S.lvSeen<1)S.lvSeen=1;
   if(e<=S.lvSeen)return;

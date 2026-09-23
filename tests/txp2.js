@@ -25,19 +25,26 @@ const { chromium } = require('playwright-core');
  ok('grantXp() on the same key again returns false and pays nothing', !r1.second && r1.xpnAfterSecond===10, r1);
 
  // ---------- fresh save / xpNeed / earnedLevel ----------
+ // PLAN-polish batch B item 2: earnedLevel() is now a plain read of the
+ // one-level-per-check ratchet (S.lvEarn, advanced only by checkLevel()) - setting
+ // S.xpn directly no longer moves it by more than one call's worth. This curve
+ // check (given this much XP, what level does xpNeed/LVXP say that is) wants the
+ // UNGATED mapping, so it now reads trueEarnedLevel() instead - see that
+ // function's own header comment in 03-defence.js. The one-per-check gate itself
+ // is covered in tests/tpacing2.js's "item 2" section.
  const r2=await p.evaluate(()=>{
    const G=window.__SD;
    G.adopt(G.fresh());
-   const xpnZero=G.S.xpn, earnedAtZero=G.earnedLevel();
-   G.S.xpn=G.xpNeed(5); const earnedAt5=G.earnedLevel();
+   const xpnZero=G.S.xpn, earnedAtZero=G.trueEarnedLevel();
+   G.S.xpn=G.xpNeed(5); const earnedAt5=G.trueEarnedLevel();
    const need5=G.xpNeed(5);
-   G.S.xpn=G.xpNeed(5)-1; const earnedJustBelow5=G.earnedLevel();
+   G.S.xpn=G.xpNeed(5)-1; const earnedJustBelow5=G.trueEarnedLevel();
    return {xpnZero, earnedAtZero, need5, earnedAt5, earnedJustBelow5};
  });
  ok('fresh save: S.xpn===0', r2.xpnZero===0, r2);
- ok('fresh save: earnedLevel()===1', r2.earnedAtZero===1, r2);
- ok('S.xpn=xpNeed(5): earnedLevel()===5', r2.earnedAt5===5, r2);
- ok('S.xpn=xpNeed(5)-1: earnedLevel()===4 (one XP short of 5)', r2.earnedJustBelow5===4, r2);
+ ok('fresh save: trueEarnedLevel()===1', r2.earnedAtZero===1, r2);
+ ok('S.xpn=xpNeed(5): trueEarnedLevel()===5', r2.earnedAt5===5, r2);
+ ok('S.xpn=xpNeed(5)-1: trueEarnedLevel()===4 (one XP short of 5)', r2.earnedJustBelow5===4, r2);
 
  const r2b=await p.evaluate(()=>({need2:window.__SD.xpNeed(2)}));
  ok('xpNeed(2)===38 (curve anchor)', r2b.need2===38, r2b);
