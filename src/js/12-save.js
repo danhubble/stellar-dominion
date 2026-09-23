@@ -405,6 +405,17 @@ function adopt(o){
        is otherwise unread anywhere in the game. */
     if(!("t0" in o) || !(f.t0>0))f.t0=null;
     if(!("lvSeen" in o))f.lvSeen=f.lvl;
+    /* PLAN-polish batch B item 2: back-fill lvEarn to whatever this save's XP
+       already truly entitled it to (uncapped, one-off, load-time only) - never
+       to less than f.lvl, and only on a save that never had the field (an old
+       save, or a fixture). A save already carrying lvEarn keeps it exactly as
+       adopt()'s own `for(const k in f) if(k in o) f[k]=o[k]` copied it - the
+       ratchet is meant to persist across saves, not re-open every reload. */
+    if(!("lvEarn" in o) || !(f.lvEarn>=f.lvl)){
+      let n=Math.max(1,f.lvl);
+      while(n<LVMAX && (f.xpn||0)>=xpNeed(n+1))n++;
+      f.lvEarn=n;
+    }
   }
   S=f;
   /* S.han[sysId] - always exactly 3 non-negative integers, never more than HAN_CAP

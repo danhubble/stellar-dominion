@@ -605,8 +605,21 @@ function exoCostOf(i,k){ const g=GENS[i]; return g.exo ? g.exoC*k : 0 }
 /* cumulative XP needed to be level n (level 1 is free, n past LVMAX is unreachable) */
 function xpNeed(n){ return n<=1 ? 0 : (n<=LVMAX ? LVXP[n] : Infinity) }
 /* what your XP entitles you to; the claim flow (level()/pendingLevels()/takeLevel())
-   is untouched and still keys off S.lvl */
-function earnedLevel(){ const x=S.xpn||0; let n=1; while(n<LVMAX && x>=LVXP[n+1]) n++; return n }
+   is untouched and still keys off S.lvl.
+   PLAN-polish batch B item 2: a burst of XP (four missions claimed at once, several
+   firsts paid by one claim) used to jump earnedLevel() - and so pendingLevels() -
+   by several levels in a single call, opening a cascade of level-up modals back to
+   back. earnedLevel() now advances S.lvEarn by AT MOST ONE level per call; any XP
+   past that stays banked in S.xpn (untouched) and is picked up by the next call to
+   this function - the next tick's checkLevel(), or the next explicit check -
+   rather than all landing at once. S.lvEarn is seeded (once, on adopt - see there)
+   to whatever the save's XP already truly entitled it to, so loading an old save
+   never rolls back pending levels it already had. */
+function earnedLevel(){
+  if(!(S.lvEarn>=1))S.lvEarn=Math.max(1,level());
+  if(S.lvEarn<LVMAX && (S.xpn||0)>=xpNeed(S.lvEarn+1))S.lvEarn++;
+  return S.lvEarn;
+}
 /* the one door XP comes through. Idempotent on key: a milestone fires once, ever. */
 function grantXp(key, amt, label){
   if(!key||!(amt>0))return false;

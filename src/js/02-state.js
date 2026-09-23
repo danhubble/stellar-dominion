@@ -19,7 +19,9 @@ function fresh(){
     fl:[mkFleet(1)], flSel:1, flQ:[0,0,0], tg:[], tgT:0, wins:0, losses:0, plunder:0, flawless:0,
     sv:0, svAll:0, rf:{}, crew:makeDeckhands(), bridge:makeDeckhands().map(c=>c.id), crewPool:[],
     cseed:1, bestCmb:0, flags:0, end:0,
-    rs:{}, nx:{}, ac:{}, mi:0, miq:[], lvSeen:1, lvl:1, pk:{}, pkLog:[], lvOffer:null,
+    /* PLAN-polish batch B item 2: lvEarn is the one-level-per-check ratchet
+       earnedLevel() advances - see its own header comment in 03-defence.js. */
+    rs:{}, nx:{}, ac:{}, mi:0, miq:[], lvSeen:1, lvl:1, lvEarn:1, pk:{}, pkLog:[], lvOffer:null,
     sys:{ home:{ b:{} } },
     exo:{}, xp:{}, taken:{}, lost:{}, occ:{}, occAt:{}, def:{}, han:{}, rv:{}, exoSeen:{}, seen:{}, notifyQueue:[], rvMsg:{},
     thq:[], thqSeq:1, thrRep:[], thrCd:0, rvExp:0, defw:0, defl:0,
