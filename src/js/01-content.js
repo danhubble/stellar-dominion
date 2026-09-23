@@ -289,7 +289,9 @@ const UNLOCK=[
  {lv:3,  p:"p-mis",  n:"Missions", d:"Objectives that pay crystal and Dark Matter."},
  {lv:5,  p:"p-res",  n:"Research", d:"Spend crystal on a tech tree of lasting upgrades."},
  {lv:5,  p:"p-map",  n:"Map",      d:"Claim other systems for Dark Matter and exotic resources."},
- {lv:6,  p:"p-mkt",  n:"Market",  d:"Sell surplus ore, crystal and exotics for Salvage or Dark Matter."},
+ /* PLAN-polish batch B item 3: Market moved from 6 to 9, so it opens alongside
+    Raids (also 9) - salvage has a use the moment it appears. */
+ {lv:9,  p:"p-mkt",  n:"Market",  d:"Sell surplus ore, crystal and exotics for Salvage or Dark Matter."},
  {lv:9,  p:"p-raid", n:"Raids",    d:"Build a fleet and raid convoys for loot and salvage."},
  {lv:20, p:"p-nex",  n:"Nexus",    d:"Permanent upgrades bought with Dark Matter."}
 ];
