@@ -272,30 +272,32 @@ const { chromium } = require('playwright-core');
  ok('tapping the chip sends the fleet and deselects', nodeTap.flSelAfter===null && nodeTap.toAfter==="kor", nodeTap);
 
  // ================== PLAN-fleets run 3: fleets 2 and 3 ==================
- // BRIEF-fleets-run3.md's "Tests" section: fleetSlots() at 13/14/20, an old
+ // BRIEF-fleets-run3.md's "Tests" section: fleetSlots() at 13/16/22, an old
  // level-22 save gaining two fleets on load with one combined toast, the
  // level-up modal's Fleet-2 line, TRANSFER, buyShip()'s delivery queue,
  // three markers (two stacked), autoResolveTarget() picking the fleet AT the
  // target with two fleets in play, and the final-battle merge with three.
+ // PLAN-polish batch B item 4: FLEET_UNLOCK's 14/20 moved to 16/22 - every
+ // fixture below that relied on the old thresholds is updated to match.
 
- // ---------------- fleetSlots(): 13 -> 1, 14 -> 2, 20 -> 3 ----------------
+ // ---------------- fleetSlots(): 13 -> 1, 16 -> 2, 22 -> 3 ----------------
  const slots=await p.evaluate(()=>{
    const G=window.__SD;
    G.adopt({...G.fresh(), lvl:13, lvSeen:13}); const at13=G.fleetSlots();
-   G.adopt({...G.fresh(), lvl:14, lvSeen:14}); const at14=G.fleetSlots();
-   G.adopt({...G.fresh(), lvl:20, lvSeen:20}); const at20=G.fleetSlots();
-   return { at13, at14, at20 };
+   G.adopt({...G.fresh(), lvl:16, lvSeen:16}); const at16=G.fleetSlots();
+   G.adopt({...G.fresh(), lvl:22, lvSeen:22}); const at22=G.fleetSlots();
+   return { at13, at16, at22 };
  });
  ok('fleetSlots(): level 13 -> 1 slot (only Fleet 1 is unlocked)', slots.at13===1, slots);
- ok('fleetSlots(): level 14 -> 2 slots', slots.at14===2, slots);
- ok('fleetSlots(): level 20 -> 3 slots', slots.at20===3, slots);
+ ok('fleetSlots(): level 16 -> 2 slots', slots.at16===2, slots);
+ ok('fleetSlots(): level 22 -> 3 slots', slots.at22===3, slots);
 
  // ---------------- ensureFleets(): a single new slot queues one VEGA notice ----------------
  const single=await p.evaluate(()=>{
    const G=window.__SD;
-   G.adopt({...G.fresh(), lvl:13, lvSeen:13});
+   G.adopt({...G.fresh(), lvl:15, lvSeen:15});
    document.getElementById('toasts').innerHTML='';
-   G.S.lvl=14;                       // one threshold crossed since the last check
+   G.S.lvl=16;                       // one threshold crossed since the last check
    const added=G.ensureFleets();
    return { added, flLen:G.fleets().length, notifyQueue:G.S.notifyQueue.slice(),
      toastCount:document.querySelectorAll('#toasts .toast').length };
@@ -308,7 +310,7 @@ const { chromium } = require('playwright-core');
  const oldSave=await p.evaluate(()=>{
    const G=window.__SD;
    document.getElementById('toasts').innerHTML='';
-   G.adopt({ lvl:22, sh:[3,1,0], fhp:1 });   // old sh/fhp save, well past level 20
+   G.adopt({ lvl:22, sh:[3,1,0], fhp:1 });   // old sh/fhp save, exactly at the level-22 Fleet 3 threshold
    const toasts=[...document.querySelectorAll('#toasts .toast')].map(t=>t.textContent);
    return {
      flLen:G.S.fl.length,
@@ -326,17 +328,17 @@ const { chromium } = require('playwright-core');
  ok('...and exactly one combined "commissioned" toast fires instead of two',
    oldSave.toasts.length===1 && /commissioned/.test(oldSave.toasts[0]), oldSave);
 
- // ---------------- the level-up modal (13 -> 14) mentions 2nd Fleet ----------------
+ // ---------------- the level-up modal (15 -> 16) mentions 2nd Fleet ----------------
  const lvup=await p.evaluate(()=>{
    const G=window.__SD;
-   G.adopt({...G.fresh(), lvl:13, lvSeen:13, ore:1e9});
-   G.S.xpn=G.xpNeed(14); G.checkLevel();
+   G.adopt({...G.fresh(), lvl:15, lvSeen:15, ore:1e9});
+   G.S.xpn=G.xpNeed(16); G.checkLevel();
    const pending=G.pendingLevels();
    G.lvModal();
    return { pending, html:document.getElementById('modal').innerHTML };
  });
- ok('checkLevel() earns level 14 (one pick pending)', lvup.pending===1, lvup);
- ok('lvModal() at 13 -> 14 mentions 2nd Fleet, same styling as an UNLOCK line',
+ ok('checkLevel() earns level 16 (one pick pending)', lvup.pending===1, lvup);
+ ok('lvModal() at 15 -> 16 mentions 2nd Fleet, same styling as an UNLOCK line',
    /2nd Fleet/.test(lvup.html) && /lvun/.test(lvup.html), lvup);
 
  // ---------------- TRANSFER: moves hulls both ways, refuses when apart ----------------
@@ -416,7 +418,7 @@ const { chromium } = require('playwright-core');
  // ---------------- three markers render; two stacked at the same node offset 14px ----------------
  const markers=await p.evaluate(()=>{
    const G=window.__SD;
-   G.adopt({...G.fresh(), lvl:20, lvSeen:20});
+   G.adopt({...G.fresh(), lvl:22, lvSeen:22});   // 22: all three fleet slots open (item 4)
    G.S.fl[1].sh=[1,0,0]; G.S.fl[2].sh=[1,0,0];
    G.gotoTab("p-map"); G.setMapSec(0); G.dirty=true; G.render();
    const marks=[...document.querySelectorAll('#fleetMarkers .flmark:not(.trav)')];

@@ -3574,7 +3574,9 @@ const FLEET_NAMES=["1st Fleet","2nd Fleet","3rd Fleet"];
    unlockLv("p-raid") rather than a bare literal, so a pacing change to Raids moves
    this with it) - run 2 never actually renders slot 1 locked, since the whole bar
    is hidden below RAIDLV anyway. */
-const FLEET_UNLOCK=[unlockLv("p-raid"),14,20];
+/* PLAN-polish batch B item 4: Fleet 2/3 moved from 14/20 to 16/22 (owner: "should
+   come in later"). */
+const FLEET_UNLOCK=[unlockLv("p-raid"),16,22];
 /* single place every fleet display name is read from, so run 3's level-up modal
    line, the commissioning toast and mkFleet() itself never drift from each other. */
 function ordFleet(id){ return FLEET_NAMES[id-1]||("Fleet "+id) }
@@ -3587,7 +3589,7 @@ function fleetSlots(){ return FLEET_UNLOCK.filter(lv=>level()>=lv).length }
 /* run 3 (PLAN-fleets decision 1): pushes a fresh Fleet 2/3 the moment the player's
    level opens its slot. Called every tick from checkUnlocks() (same idiom every
    other level-gated unlock in that function uses) and once from adopt() right after
-   the fleet array is sanitised, so a save loaded straight at a level past 14/20 (an
+   the fleet array is sanitised, so a save loaded straight at a level past 16/22 (an
    old save from before this run, or one restored from a backup) gets caught up
    immediately rather than waiting for the next tick.
    Normal play only ever crosses one threshold per call (checkUnlocks runs ~11x/s,
@@ -5561,7 +5563,8 @@ function lvModal(){
   const opens=UNLOCK.filter(u=>u.lv===nextL);
   /* PLAN-fleets run 3: FLEET_UNLOCK index 0 (Fleet 1) is the same level as the
      p-raid UNLOCK row above and already gets its own line there - only index >=1
-     (Fleet 2/3, levels 14/20) needs a line here, same styling as an UNLOCK row. */
+     (Fleet 2/3, levels 16/22 - PLAN-polish batch B item 4) needs a line here, same
+     styling as an UNLOCK row. */
   const fleetIdx=FLEET_UNLOCK.findIndex((lv,i)=>i>=1&&lv===nextL);
   showModal(`<h3 class="lvup">Level ${nextL}</h3>
     ${opens.map(un=>`<p class="lvun">This one also opens <b class="lvup">${un.n}</b> \u2014 ${un.d}</p>`).join("")}
@@ -5938,8 +5941,8 @@ const VEGA={
  drift65:   {t:"I need you to hold Nyx. I cannot explain why yet. I will.", go:"p-map"},                          /* PLACEHOLDER */
  /* fires the first time Exotic Nodes are banked - inert until Batch B adds S.en */
  project:   {t:"Exotic Nodes. I do not have a better name for them yet. Bank everything you find.", go:"p-nex"},  /* PLACEHOLDER */
- /* PLAN-fleets run 3: fired by ensureFleets() (01-content.js) the moment level 14/20
-    opens the slot - PLACEHOLDER TEXT. Only reached when exactly one fleet is added
+ /* PLAN-fleets run 3: fired by ensureFleets() (01-content.js) the moment level 16/22
+    (PLAN-polish batch B item 4 - was 14/20) opens the slot - PLACEHOLDER TEXT. Only reached when exactly one fleet is added
     in a single call; an old save that opens both at once gets a combined toast
     instead and never queues either card (see ensureFleets()'s own comment). */
  fleet2:    {t:"Second hull group is fitted out. Command splits, coverage doesn't.", go:"p-map"},   /* PLACEHOLDER */
@@ -6104,7 +6107,7 @@ function checkUnlocks(){
   if(EXO.some(e=>exoEverBanked(e.id)))queueNotice("vega:exoBanked");
   if(unlockedAt("p-raid")){ queueNotice("vega:raids"); queueNotice("vega:raidsBuy");
     queueNotice("vega:raidsFit"); queueNotice("vega:raidsOfficers"); }
-  ensureFleets();   /* PLAN-fleets run 3: pushes Fleet 2/3 the moment level 14/20 opens */
+  ensureFleets();   /* PLAN-fleets run 3: pushes Fleet 2/3 the moment level 16/22 opens */
   if(crewUnlocked())queueNotice("vega:crew");
   if(unlockedAt("p-nex"))queueNotice("vega:nexus");
   if(level()>=23)queueNotice("vega:ring2");

@@ -42,8 +42,8 @@ const VEGA={
  drift65:   {t:"I need you to hold Nyx. I cannot explain why yet. I will.", go:"p-map"},                          /* PLACEHOLDER */
  /* fires the first time Exotic Nodes are banked - inert until Batch B adds S.en */
  project:   {t:"Exotic Nodes. I do not have a better name for them yet. Bank everything you find.", go:"p-nex"},  /* PLACEHOLDER */
- /* PLAN-fleets run 3: fired by ensureFleets() (01-content.js) the moment level 14/20
-    opens the slot - PLACEHOLDER TEXT. Only reached when exactly one fleet is added
+ /* PLAN-fleets run 3: fired by ensureFleets() (01-content.js) the moment level 16/22
+    (PLAN-polish batch B item 4 - was 14/20) opens the slot - PLACEHOLDER TEXT. Only reached when exactly one fleet is added
     in a single call; an old save that opens both at once gets a combined toast
     instead and never queues either card (see ensureFleets()'s own comment). */
  fleet2:    {t:"Second hull group is fitted out. Command splits, coverage doesn't.", go:"p-map"},   /* PLACEHOLDER */

@@ -1326,7 +1326,9 @@ const FLEET_NAMES=["1st Fleet","2nd Fleet","3rd Fleet"];
    unlockLv("p-raid") rather than a bare literal, so a pacing change to Raids moves
    this with it) - run 2 never actually renders slot 1 locked, since the whole bar
    is hidden below RAIDLV anyway. */
-const FLEET_UNLOCK=[unlockLv("p-raid"),14,20];
+/* PLAN-polish batch B item 4: Fleet 2/3 moved from 14/20 to 16/22 (owner: "should
+   come in later"). */
+const FLEET_UNLOCK=[unlockLv("p-raid"),16,22];
 /* single place every fleet display name is read from, so run 3's level-up modal
    line, the commissioning toast and mkFleet() itself never drift from each other. */
 function ordFleet(id){ return FLEET_NAMES[id-1]||("Fleet "+id) }
@@ -1339,7 +1341,7 @@ function fleetSlots(){ return FLEET_UNLOCK.filter(lv=>level()>=lv).length }
 /* run 3 (PLAN-fleets decision 1): pushes a fresh Fleet 2/3 the moment the player's
    level opens its slot. Called every tick from checkUnlocks() (same idiom every
    other level-gated unlock in that function uses) and once from adopt() right after
-   the fleet array is sanitised, so a save loaded straight at a level past 14/20 (an
+   the fleet array is sanitised, so a save loaded straight at a level past 16/22 (an
    old save from before this run, or one restored from a backup) gets caught up
    immediately rather than waiting for the next tick.
    Normal play only ever crosses one threshold per call (checkUnlocks runs ~11x/s,

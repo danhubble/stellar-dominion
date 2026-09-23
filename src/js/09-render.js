@@ -7,7 +7,7 @@ function checkUnlocks(){
   if(EXO.some(e=>exoEverBanked(e.id)))queueNotice("vega:exoBanked");
   if(unlockedAt("p-raid")){ queueNotice("vega:raids"); queueNotice("vega:raidsBuy");
     queueNotice("vega:raidsFit"); queueNotice("vega:raidsOfficers"); }
-  ensureFleets();   /* PLAN-fleets run 3: pushes Fleet 2/3 the moment level 14/20 opens */
+  ensureFleets();   /* PLAN-fleets run 3: pushes Fleet 2/3 the moment level 16/22 opens */
   if(crewUnlocked())queueNotice("vega:crew");
   if(unlockedAt("p-nex"))queueNotice("vega:nexus");
   if(level()>=23)queueNotice("vega:ring2");
