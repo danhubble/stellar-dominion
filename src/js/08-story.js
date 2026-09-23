@@ -6,7 +6,7 @@ const VEGA_NAME="VEGA";
 const VEGA={
  boot:      {t:"Systems online. One rock, one belt, a great deal of nothing. Tap the scanner — we start with our hands.", go:null},
  firstDrone:{t:"First drone out. It will keep working when you stop. That is the whole idea.", go:null},
- missions:  {t:"The Colonial Authority has opened a contracts channel. They pay in crystal. They also watch.", go:"p-mis"},
+ missions:  {t:"The Colonial Authority has opened a missions channel. They pay in crystal. They also watch.", go:"p-mis"},
  research:  {t:"Crystal is enough now for a tech tree. What we learn stays learned.", go:"p-res"},
  /* key kept as "stats" (queueNotice/back-fill both reference "vega:stats") - the beat
     itself now introduces the Market at the same unlock point. */
@@ -16,6 +16,12 @@ const VEGA={
  firstClaim:{t:"That is ours now. It will want its own buildings — the rock here is not the rock at home.", go:"p-map"},
  exoBanked: {t:"First exotic banked. Home's deeper tiers were waiting on exactly this.", go:"p-res"},
  raids:     {t:"We have hulls to spare. Convoys run the dark between systems; nobody guards them well.", go:"p-raid"},
+ /* polish batch A #5: Raids opening was one line and then silence on how to actually
+    use the tab. Three short beats, queued right behind vega:raids in checkUnlocks()
+    below - buy hulls, fit weapons, then crew them. PLACEHOLDER TEXT, owner rewrites. */
+ raidsBuy:  {t:"Buy hulls before anything else. An empty fleet card does nothing.", go:"p-raid"},        /* PLACEHOLDER */
+ raidsFit:  {t:"Fit weapons once you have hulls. A ship with empty slots still loses.", go:"p-raid"},    /* PLACEHOLDER */
+ raidsOfficers: {t:"Officers after that. The right one in the right seat changes what a fleet can do.", go:"p-raid"}, /* PLACEHOLDER */
  firstWin:  {t:"Clean. Salvage buys what ore cannot: guns, refits, people who know how to use them.", go:"p-raid"},
  crew:      {t:"Word has spread that we pay. A few are asking to sign on. Some of them are worth it.", go:"p-raid"},
  rival:     {t:"We are not alone out here. They have noticed us. Expect them to test the fence.", go:"p-map"},
@@ -146,6 +152,10 @@ const NOTICES={
 for(const k in VEGA) NOTICES["vega:"+k]={t:VEGA[k].t, who:VEGA_NAME, go: VEGA[k].go ? ()=>gotoTab(VEGA[k].go) : null};
 NOTICES["vega:claimable"].go=()=>{ const s=SYS.find(x=>!x.home&&sysOpen(x)); S.msel=s?s.id:null; gotoTab("p-map"); };
 NOTICES["vega:exoBanked"].go=()=>{ gotoTab("p-res"); resMode="prog"; syncResMode(); dirty=true; render(); };
+/* polish batch A #4: TAKE ME THERE for vega:map must land on the map itself, not
+   whatever system page happens to be open - close it (S.msel=null) same as
+   vega:claimable does above, then switch tabs. */
+NOTICES["vega:map"].go=()=>{ S.msel=null; gotoTab("p-map"); };
 /* one NOTICES entry per RIVAL_MSG beat, keyed "rival:<beat>" - no static `who`
    (renderNotice() resolves the speaker from S.rvMsg at render time, since it is
    rolled per-save, not fixed like VEGA's). */

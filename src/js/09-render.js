@@ -5,7 +5,8 @@ function checkUnlocks(){
   if(unlockedAt("p-map"))queueNotice("vega:map");
   if(SYS.some(s=>!s.home&&sysOpen(s)))queueNotice("vega:claimable");
   if(EXO.some(e=>exoEverBanked(e.id)))queueNotice("vega:exoBanked");
-  if(unlockedAt("p-raid"))queueNotice("vega:raids");
+  if(unlockedAt("p-raid")){ queueNotice("vega:raids"); queueNotice("vega:raidsBuy");
+    queueNotice("vega:raidsFit"); queueNotice("vega:raidsOfficers"); }
   ensureFleets();   /* PLAN-fleets run 3: pushes Fleet 2/3 the moment level 14/20 opens */
   if(crewUnlocked())queueNotice("vega:crew");
   if(unlockedAt("p-nex"))queueNotice("vega:nexus");
@@ -1101,13 +1102,22 @@ function renderSysBuild(s,held){
     rowsHost.dataset.h=key;
     empSlotEls=[];
     rowsHost.innerHTML="";
-    let shownNext=false;
+    let shownNext=false, nextRowEl=null;
     for(const gi of ladder){
       if(sysTierCount(s.id,gi)>0){ rowsHost.appendChild(ladderTierRow(s.id,gi,false)); }
-      else if(!shownNext){ rowsHost.appendChild(ladderTierRow(s.id,gi,true)); shownNext=true; }
+      else if(!shownNext){ nextRowEl=ladderTierRow(s.id,gi,true); rowsHost.appendChild(nextRowEl); shownNext=true; }
       else break;
     }
-    if(viewEl)viewEl.scrollTop=prevTop;
+    /* polish batch A #2: the very first time a second tier row (Smelter Pod, right
+       after the first Mining Drone) becomes visible, it can sit below the fold on a
+       small screen - scroll it into view instead of restoring the old scroll
+       position. One-time only (S.seen guard), any later reveal keeps the old
+       restore-scrollTop behaviour. */
+    if(!S.seen)S.seen={};
+    if(owned===1 && nextRowEl && !S.seen.tierReveal1){
+      S.seen.tierReveal1=true;
+      if(viewEl)nextRowEl.scrollIntoView({block:"nearest"});
+    } else if(viewEl)viewEl.scrollTop=prevTop;
   }
 }
 /* PLAN-governors owner decision 3: the GOVERNOR toggle chip, under the BUILDINGS
@@ -2259,7 +2269,7 @@ function renderMis(){
     d.appendChild(btn); host.appendChild(d);
   });
   if(S.mi>=MISSIONS.length){
-    if(!q.length)host.innerHTML='<div class="card done"><h5>All contracts fulfilled</h5><p>The Colonial Authority has nothing left to ask of you.</p></div>';
+    if(!q.length)host.innerHTML='<div class="card done"><h5>All missions fulfilled</h5><p>The Colonial Authority has nothing left to ask of you.</p></div>';
     return;
   }
   MISSIONS.slice(S.mi,S.mi+3).forEach((m,k)=>{
@@ -2269,7 +2279,7 @@ function renderMis(){
     host.appendChild(d);
   });
   const done=document.createElement("div"); done.className="card done";
-  done.innerHTML=`<h5>Completed</h5><p>${misDone()} of ${MISSIONS.length} contracts fulfilled.</p>`;
+  done.innerHTML=`<h5>Completed</h5><p>${misDone()} of ${MISSIONS.length} missions fulfilled.</p>`;
   host.appendChild(done);
 }
 /* ---------------- stats ---------------- */

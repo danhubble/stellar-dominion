@@ -9,7 +9,7 @@ function checkMissions(){
   while(S.mi<MISSIONS.length && MISSIONS[S.mi].k(S) && guard++<50){
     const m=MISSIONS[S.mi];
     S.miq.push(S.mi); S.mi++;
-    toast("Contract ready — "+m.d,"g"); blip(880,.2,"square",.05);
+    toast("Mission ready — "+m.d,"g"); blip(880,.2,"square",.05);
     flag("p-mis"); dirty=true;
   }
 }
@@ -39,9 +39,14 @@ function checkLevel(){
   S.lvSeen=e; dirty=true;
   blip(880,.3,"square",.05);
   const pend=pendingLevels();
-  toast(pend>1 ? pend+" levels ready \u2014 tap the LEVEL chip"
-               : "Level "+e+" ready \u2014 tap the LEVEL chip", "y");
+  /* polish batch A #1: the very first level-up used to show both this toast AND the
+     lvClaim notice card below - two messages for the same event. The notice card is
+     the fuller explanation (what the LEVEL chip does), so it wins; the toast only
+     fires once lvClaim has already been seen. */
+  const lvClaimSeen=!!(S.seen&&S.seen.lvClaim);
   if(pend>0)queueNotice("lvClaim");
+  if(lvClaimSeen) toast(pend>1 ? pend+" levels ready \u2014 tap the LEVEL chip"
+                                : "Level "+e+" ready \u2014 tap the LEVEL chip", "y");
 }
 function lvModal(){
   if(pendingLevels()<1)return;
@@ -116,7 +121,7 @@ function xpNext(){
     const amt=XPV.mission(S.mi);
     if(amt>0){
       const already=(S.miq||[]).includes(S.mi);
-      const m=MISSIONS[S.mi]; out.push({label:already?"Claim contract: "+m.d:m.d, amt, p:already?1:(m.p?m.p(S):(m.k(S)?1:0))});
+      const m=MISSIONS[S.mi]; out.push({label:already?"Claim mission: "+m.d:m.d, amt, p:already?1:(m.p?m.p(S):(m.k(S)?1:0))});
     }
   }
   if(unlockedAt("p-raid")){

@@ -461,7 +461,8 @@ function adopt(o){
   if(unlockedAt("p-map"))S.seen["vega:map"]=true;
   if(SYS.some(s=>!s.home&&sysOpen(s)))S.seen["vega:claimable"]=true;
   if(EXO.some(e=>exoEverBanked(e.id)))S.seen["vega:exoBanked"]=true;
-  if(unlockedAt("p-raid"))S.seen["vega:raids"]=true;
+  if(unlockedAt("p-raid")){ S.seen["vega:raids"]=true; S.seen["vega:raidsBuy"]=true;
+    S.seen["vega:raidsFit"]=true; S.seen["vega:raidsOfficers"]=true; }
   /* PLAN-fleets run 3: catches an old save up on Fleet 2/3 the instant it loads,
      same reasoning as every backfill around it - a level-22 save from before this
      run existed should not wait for the next tick to gain fleets it has clearly

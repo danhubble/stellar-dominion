@@ -1739,7 +1739,7 @@ body.syspage #toasts{bottom:calc(var(--sysbarh) + 8px + env(safe-area-inset-bott
         </div>
       </div>
       <div class="pane" id="p-mis">
-        <p class="hint">Sequential contracts from the Colonial Authority. Complete one to reveal the next.</p>
+        <p class="hint">Sequential missions from the Colonial Authority. Complete one to reveal the next.</p>
         <div class="grid" id="mis"></div>
       </div>
       <div class="pane on" id="p-map">
@@ -5502,7 +5502,7 @@ function checkMissions(){
   while(S.mi<MISSIONS.length && MISSIONS[S.mi].k(S) && guard++<50){
     const m=MISSIONS[S.mi];
     S.miq.push(S.mi); S.mi++;
-    toast("Contract ready — "+m.d,"g"); blip(880,.2,"square",.05);
+    toast("Mission ready — "+m.d,"g"); blip(880,.2,"square",.05);
     flag("p-mis"); dirty=true;
   }
 }
@@ -5532,9 +5532,14 @@ function checkLevel(){
   S.lvSeen=e; dirty=true;
   blip(880,.3,"square",.05);
   const pend=pendingLevels();
-  toast(pend>1 ? pend+" levels ready \u2014 tap the LEVEL chip"
-               : "Level "+e+" ready \u2014 tap the LEVEL chip", "y");
+  /* polish batch A #1: the very first level-up used to show both this toast AND the
+     lvClaim notice card below - two messages for the same event. The notice card is
+     the fuller explanation (what the LEVEL chip does), so it wins; the toast only
+     fires once lvClaim has already been seen. */
+  const lvClaimSeen=!!(S.seen&&S.seen.lvClaim);
   if(pend>0)queueNotice("lvClaim");
+  if(lvClaimSeen) toast(pend>1 ? pend+" levels ready \u2014 tap the LEVEL chip"
+                                : "Level "+e+" ready \u2014 tap the LEVEL chip", "y");
 }
 function lvModal(){
   if(pendingLevels()<1)return;
@@ -5609,7 +5614,7 @@ function xpNext(){
     const amt=XPV.mission(S.mi);
     if(amt>0){
       const already=(S.miq||[]).includes(S.mi);
-      const m=MISSIONS[S.mi]; out.push({label:already?"Claim contract: "+m.d:m.d, amt, p:already?1:(m.p?m.p(S):(m.k(S)?1:0))});
+      const m=MISSIONS[S.mi]; out.push({label:already?"Claim mission: "+m.d:m.d, amt, p:already?1:(m.p?m.p(S):(m.k(S)?1:0))});
     }
   }
   if(unlockedAt("p-raid")){
@@ -5882,7 +5887,7 @@ const VEGA_NAME="VEGA";
 const VEGA={
  boot:      {t:"Systems online. One rock, one belt, a great deal of nothing. Tap the scanner — we start with our hands.", go:null},
  firstDrone:{t:"First drone out. It will keep working when you stop. That is the whole idea.", go:null},
- missions:  {t:"The Colonial Authority has opened a contracts channel. They pay in crystal. They also watch.", go:"p-mis"},
+ missions:  {t:"The Colonial Authority has opened a missions channel. They pay in crystal. They also watch.", go:"p-mis"},
  research:  {t:"Crystal is enough now for a tech tree. What we learn stays learned.", go:"p-res"},
  /* key kept as "stats" (queueNotice/back-fill both reference "vega:stats") - the beat
     itself now introduces the Market at the same unlock point. */
@@ -5892,6 +5897,12 @@ const VEGA={
  firstClaim:{t:"That is ours now. It will want its own buildings — the rock here is not the rock at home.", go:"p-map"},
  exoBanked: {t:"First exotic banked. Home's deeper tiers were waiting on exactly this.", go:"p-res"},
  raids:     {t:"We have hulls to spare. Convoys run the dark between systems; nobody guards them well.", go:"p-raid"},
+ /* polish batch A #5: Raids opening was one line and then silence on how to actually
+    use the tab. Three short beats, queued right behind vega:raids in checkUnlocks()
+    below - buy hulls, fit weapons, then crew them. PLACEHOLDER TEXT, owner rewrites. */
+ raidsBuy:  {t:"Buy hulls before anything else. An empty fleet card does nothing.", go:"p-raid"},        /* PLACEHOLDER */
+ raidsFit:  {t:"Fit weapons once you have hulls. A ship with empty slots still loses.", go:"p-raid"},    /* PLACEHOLDER */
+ raidsOfficers: {t:"Officers after that. The right one in the right seat changes what a fleet can do.", go:"p-raid"}, /* PLACEHOLDER */
  firstWin:  {t:"Clean. Salvage buys what ore cannot: guns, refits, people who know how to use them.", go:"p-raid"},
  crew:      {t:"Word has spread that we pay. A few are asking to sign on. Some of them are worth it.", go:"p-raid"},
  rival:     {t:"We are not alone out here. They have noticed us. Expect them to test the fence.", go:"p-map"},
@@ -6022,6 +6033,10 @@ const NOTICES={
 for(const k in VEGA) NOTICES["vega:"+k]={t:VEGA[k].t, who:VEGA_NAME, go: VEGA[k].go ? ()=>gotoTab(VEGA[k].go) : null};
 NOTICES["vega:claimable"].go=()=>{ const s=SYS.find(x=>!x.home&&sysOpen(x)); S.msel=s?s.id:null; gotoTab("p-map"); };
 NOTICES["vega:exoBanked"].go=()=>{ gotoTab("p-res"); resMode="prog"; syncResMode(); dirty=true; render(); };
+/* polish batch A #4: TAKE ME THERE for vega:map must land on the map itself, not
+   whatever system page happens to be open - close it (S.msel=null) same as
+   vega:claimable does above, then switch tabs. */
+NOTICES["vega:map"].go=()=>{ S.msel=null; gotoTab("p-map"); };
 /* one NOTICES entry per RIVAL_MSG beat, keyed "rival:<beat>" - no static `who`
    (renderNotice() resolves the speaker from S.rvMsg at render time, since it is
    rolled per-save, not fixed like VEGA's). */
@@ -6072,7 +6087,8 @@ function checkUnlocks(){
   if(unlockedAt("p-map"))queueNotice("vega:map");
   if(SYS.some(s=>!s.home&&sysOpen(s)))queueNotice("vega:claimable");
   if(EXO.some(e=>exoEverBanked(e.id)))queueNotice("vega:exoBanked");
-  if(unlockedAt("p-raid"))queueNotice("vega:raids");
+  if(unlockedAt("p-raid")){ queueNotice("vega:raids"); queueNotice("vega:raidsBuy");
+    queueNotice("vega:raidsFit"); queueNotice("vega:raidsOfficers"); }
   ensureFleets();   /* PLAN-fleets run 3: pushes Fleet 2/3 the moment level 14/20 opens */
   if(crewUnlocked())queueNotice("vega:crew");
   if(unlockedAt("p-nex"))queueNotice("vega:nexus");
@@ -7168,13 +7184,22 @@ function renderSysBuild(s,held){
     rowsHost.dataset.h=key;
     empSlotEls=[];
     rowsHost.innerHTML="";
-    let shownNext=false;
+    let shownNext=false, nextRowEl=null;
     for(const gi of ladder){
       if(sysTierCount(s.id,gi)>0){ rowsHost.appendChild(ladderTierRow(s.id,gi,false)); }
-      else if(!shownNext){ rowsHost.appendChild(ladderTierRow(s.id,gi,true)); shownNext=true; }
+      else if(!shownNext){ nextRowEl=ladderTierRow(s.id,gi,true); rowsHost.appendChild(nextRowEl); shownNext=true; }
       else break;
     }
-    if(viewEl)viewEl.scrollTop=prevTop;
+    /* polish batch A #2: the very first time a second tier row (Smelter Pod, right
+       after the first Mining Drone) becomes visible, it can sit below the fold on a
+       small screen - scroll it into view instead of restoring the old scroll
+       position. One-time only (S.seen guard), any later reveal keeps the old
+       restore-scrollTop behaviour. */
+    if(!S.seen)S.seen={};
+    if(owned===1 && nextRowEl && !S.seen.tierReveal1){
+      S.seen.tierReveal1=true;
+      if(viewEl)nextRowEl.scrollIntoView({block:"nearest"});
+    } else if(viewEl)viewEl.scrollTop=prevTop;
   }
 }
 /* PLAN-governors owner decision 3: the GOVERNOR toggle chip, under the BUILDINGS
@@ -8326,7 +8351,7 @@ function renderMis(){
     d.appendChild(btn); host.appendChild(d);
   });
   if(S.mi>=MISSIONS.length){
-    if(!q.length)host.innerHTML='<div class="card done"><h5>All contracts fulfilled</h5><p>The Colonial Authority has nothing left to ask of you.</p></div>';
+    if(!q.length)host.innerHTML='<div class="card done"><h5>All missions fulfilled</h5><p>The Colonial Authority has nothing left to ask of you.</p></div>';
     return;
   }
   MISSIONS.slice(S.mi,S.mi+3).forEach((m,k)=>{
@@ -8336,7 +8361,7 @@ function renderMis(){
     host.appendChild(d);
   });
   const done=document.createElement("div"); done.className="card done";
-  done.innerHTML=`<h5>Completed</h5><p>${misDone()} of ${MISSIONS.length} contracts fulfilled.</p>`;
+  done.innerHTML=`<h5>Completed</h5><p>${misDone()} of ${MISSIONS.length} missions fulfilled.</p>`;
   host.appendChild(done);
 }
 /* ---------------- stats ---------------- */
@@ -11895,7 +11920,8 @@ function adopt(o){
   if(unlockedAt("p-map"))S.seen["vega:map"]=true;
   if(SYS.some(s=>!s.home&&sysOpen(s)))S.seen["vega:claimable"]=true;
   if(EXO.some(e=>exoEverBanked(e.id)))S.seen["vega:exoBanked"]=true;
-  if(unlockedAt("p-raid"))S.seen["vega:raids"]=true;
+  if(unlockedAt("p-raid")){ S.seen["vega:raids"]=true; S.seen["vega:raidsBuy"]=true;
+    S.seen["vega:raidsFit"]=true; S.seen["vega:raidsOfficers"]=true; }
   /* PLAN-fleets run 3: catches an old save up on Fleet 2/3 the instant it loads,
      same reasoning as every backfill around it - a level-22 save from before this
      run existed should not wait for the next tick to gain fleets it has clearly
@@ -13125,6 +13151,13 @@ $("#noticeX").onclick=dismissNotice;
 $("#notice").onclick=(e)=>{ if(e.target.id==="notice")dismissNotice(); };  /* patch629: backdrop tap = dismiss */
 $("#noticeGo").onclick=()=>{
   const key=S.notifyQueue&&S.notifyQueue[0], n=key&&NOTICES[key];
+  /* polish batch A #4: vega:raids' own go switches to the Raids tab. If a level is
+     already pending, dismissNotice() below immediately shows the lvClaim notice
+     card next (and from there its own GO opens the perk-pick modal) - racing the
+     tab switch and, on a small screen, looking like it never happened. Navigate
+     first for this one beat so the tab change always wins, then let the queue
+     advance as normal. Every other beat keeps the old dismiss-then-go order. */
+  if(key==="vega:raids" && n&&n.go){ n.go(); dismissNotice(); return; }
   dismissNotice();
   if(n&&n.go)n.go();
 };

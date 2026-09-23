@@ -243,6 +243,13 @@ $("#noticeX").onclick=dismissNotice;
 $("#notice").onclick=(e)=>{ if(e.target.id==="notice")dismissNotice(); };  /* patch629: backdrop tap = dismiss */
 $("#noticeGo").onclick=()=>{
   const key=S.notifyQueue&&S.notifyQueue[0], n=key&&NOTICES[key];
+  /* polish batch A #4: vega:raids' own go switches to the Raids tab. If a level is
+     already pending, dismissNotice() below immediately shows the lvClaim notice
+     card next (and from there its own GO opens the perk-pick modal) - racing the
+     tab switch and, on a small screen, looking like it never happened. Navigate
+     first for this one beat so the tab change always wins, then let the queue
+     advance as normal. Every other beat keeps the old dismiss-then-go order. */
+  if(key==="vega:raids" && n&&n.go){ n.go(); dismissNotice(); return; }
   dismissNotice();
   if(n&&n.go)n.go();
 };
