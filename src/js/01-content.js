@@ -231,7 +231,12 @@ const GROW=1.15;
    per system). Retune by moving/adding LVXP_PTS anchors, not by re-deriving a
    formula. */
 const LVMAX=80;
-const LVXP_PTS={1:0,2:38,8:330,12:600,14:760,16:920,18:1200,20:1500,22:1900,23:2300,25:2900,27:3450,29:3700,31:3950,33:4450,36:5300,38:5700,41:7300,45:9300,51:11500,55:13000,63:15000,69:16000,80:20000};
+/* PLAN-polish batch B item 1: LVXP_PTS[3] is a new anchor, not an interpolated
+   point - it used to fall out of the straight line from 2 (38) to 8 (330), i.e.
+   ~87 (49 XP for the 2->3 step). Owner: too much for the second level-up. Anchored
+   lower instead, at 55 (17 XP for the 2->3 step) - see docs/HANDOVER.md for the
+   before/after csim table this moved. */
+const LVXP_PTS={1:0,2:38,3:55,8:330,12:600,14:760,16:920,18:1200,20:1500,22:1900,23:2300,25:2900,27:3450,29:3700,31:3950,33:4450,36:5300,38:5700,41:7300,45:9300,51:11500,55:13000,63:15000,69:16000,80:20000};
 const LVXP=(()=>{ const ks=Object.keys(LVXP_PTS).map(Number).sort((a,b)=>a-b), t=[0];
   for(let n=1;n<=LVMAX;n++){ let i=0; while(i<ks.length-1&&ks[i+1]<n)i++;
     const a=ks[i], b=ks[Math.min(i+1,ks.length-1)];
