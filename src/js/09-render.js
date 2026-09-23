@@ -203,7 +203,10 @@ function render(){
   { const cv="+"+fmt(clickPow());
     $("#clickv").textContent=cv;
     const sv=$("#sshScanV"); if(sv)sv.textContent=cv; }
-  const tut=$("#tut"); if(tut&&(anyOf(0)||S.clicks>25))tut.remove();
+  /* polish batch A #13: also hides once a system is claimed - the owner playthrough
+     still had it up post-claim (claiming needs ore, not necessarily a built
+     structure or 25 scans, so neither existing condition is guaranteed by then). */
+  const tut=$("#tut"); if(tut&&(anyOf(0)||S.clicks>25||heldSystems().length>0))tut.remove();
   $("#kStruct").textContent=fmt(tot());
   $("#kMult").textContent="×"+fmt(globalMul());
   $("#kAll").textContent=fmt(S.all);
