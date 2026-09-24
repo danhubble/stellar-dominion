@@ -2642,16 +2642,17 @@ function renderRaids(){
   fx.disabled = S.ore<rc || hp>=1;
   fx.textContent = "REPAIR \u00b7 "+fmt(rc)+" ORE";
   const host=$("#flShips"); host.innerHTML="";
-  /* run 3 (decision 6): no idle fleet at home right now - a BUY still queues (see
-     buyShip()'s own comment), it just doesn't land in curFleet() immediately. Said
-     plainly on the button rather than silently landing somewhere the player can't
-     see yet. */
-  const noHomeIdle=!fleets().some(fl=>!fl.to&&fl.at==="home");
-  /* polish batch A #12: buyShip() lands a purchase on curFleet() only when IT is
-     idle at home - otherwise the first idle-at-home fleet takes it, same rule
-     buyShip() itself uses (see its own header comment). Worked out once per
-     render, same for every ship class this loop draws a button for. */
-  const buyTgt = (!cf.to&&cf.at==="home") ? cf : fleets().find(fl=>!fl.to&&fl.at==="home");
+  /* run 3 (decision 6): no idle fleet at a yard (home, or batch C's Shipyard) right
+     now - a BUY still queues (see buyShip()'s own comment), it just doesn't land in
+     curFleet() immediately. Said plainly on the button rather than silently landing
+     somewhere the player can't see yet. */
+  const noHomeIdle=!fleets().some(idleAtYard);
+  /* polish batch A #12, extended batch C #1: buyShip() lands a purchase on
+     curFleet() only when IT is idle at a yard - otherwise the first idle-at-yard
+     fleet takes it, same rule buyShip() itself uses (idleAtYard(), 01-content.js).
+     Worked out once per render, same for every ship class this loop draws a button
+     for. */
+  const buyTgt = idleAtYard(cf) ? cf : fleets().find(idleAtYard);
   SHIPS.forEach((sp,i)=>{
     const d=document.createElement("div"); d.className="shp"; d.style.setProperty("--a",sp.col);
     const k=S.sell?Math.min(S.buy==="max"?cf.sh[i]:S.buy,cf.sh[i]):(S.buy==="max"?Math.max(1,shipMax(i)):S.buy);

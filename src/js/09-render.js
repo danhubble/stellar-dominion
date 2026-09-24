@@ -919,11 +919,12 @@ const DEF_GLYPH={
  min:'<circle cx="12" cy="12" r="2.5"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M19.1 4.9l-2.8 2.8M7.7 16.3l-2.8 2.8"/>',
  shd:'<path d="M12 3l7 3.2v5.3c0 4.6-3 7.6-7 8.7-4-1.1-7-4.1-7-8.7V6.2z"/>',
  sen:'<path d="M12 21v-9M7.8 9.6a5.2 5.2 0 018.4 0M4.6 6.6a9.4 9.4 0 0114.8 0"/><circle cx="12" cy="11" r="1.6" fill="currentColor" stroke="none"/>',
- han:'<path d="M4 20h16M6 20v-6.5a6 6 0 0112 0V20"/><path d="M9.5 20l1-4h3l1 4"/>'
+ han:'<path d="M4 20h16M6 20v-6.5a6 6 0 0112 0V20"/><path d="M9.5 20l1-4h3l1 4"/>',
+ shy:'<path d="M4 18l8-13 8 13"/><path d="M4 18h16"/><path d="M9 18v-4h6v4"/>'
 };
 function defIconHTML(m){ return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${DEF_GLYPH[m]||""}</svg>`; }
 const DEF_ICON=DEF_GLYPH;   /* kept as an alias so the existing __SD export name still resolves */
-const DEF_COLOR={ tur:"var(--cy)", min:"var(--gd)", shd:"var(--vi)", sen:"var(--gr)", han:"var(--sv)" };
+const DEF_COLOR={ tur:"var(--cy)", min:"var(--gd)", shd:"var(--vi)", sen:"var(--gr)", han:"var(--sv)", shy:"#ffb45c" };
 function defClearSel(){ defSel=null; defSelSys=null; }
 /* the balance this system can actually spend on its own defences right now -
    its own exotic if it produces one, ore otherwise (same rule dmodPrice() uses). */

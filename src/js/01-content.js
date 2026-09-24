@@ -1645,11 +1645,16 @@ function shipMax(i,f){ const S1=SHIPS[i];
    purchase actually LANDS on (tgt, or Fleet 1 if it queues - flQPower() counts
    against Fleet 1, see fleetTotalPower()) rather than an empire-wide total, since
    the cap itself is per fleet now - price is still off the empire-wide cost curve
-   (shipCost() unchanged). */
+   (shipCost() unchanged).
+   PLAN-polish batch C #1 (Shipyard): "home" is no longer the only place a purchase
+   can land on the spot - any system with a built Shipyard (sysHasShipyard(),
+   03-defence.js) counts too. idleAtYard() is the one predicate both the routing
+   below and the buy button's own label (11-combat.js) read, so they can never
+   disagree about which fleet a purchase would land on. */
+function idleAtYard(fl){ return !fl.to && (fl.at==="home" || sysHasShipyard(fl.at)); }
 function buyShip(i,k){ if(k<1)return false;
   const cf=curFleet();
-  const idleHome=fl=>!fl.to&&fl.at==="home";
-  const tgt = idleHome(cf) ? cf : fleets().find(idleHome);
+  const tgt = idleAtYard(cf) ? cf : fleets().find(idleAtYard);
   const capFleet = tgt || fleet(1);
   if(k*SHIPS[i].pw>capLeft(capFleet))return false;    /* capacity is checked before price */
   const c=shipCost(i,k); if(S.ore<c)return false;

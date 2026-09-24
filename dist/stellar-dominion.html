@@ -3904,11 +3904,16 @@ function shipMax(i,f){ const S1=SHIPS[i];
    purchase actually LANDS on (tgt, or Fleet 1 if it queues - flQPower() counts
    against Fleet 1, see fleetTotalPower()) rather than an empire-wide total, since
    the cap itself is per fleet now - price is still off the empire-wide cost curve
-   (shipCost() unchanged). */
+   (shipCost() unchanged).
+   PLAN-polish batch C #1 (Shipyard): "home" is no longer the only place a purchase
+   can land on the spot - any system with a built Shipyard (sysHasShipyard(),
+   03-defence.js) counts too. idleAtYard() is the one predicate both the routing
+   below and the buy button's own label (11-combat.js) read, so they can never
+   disagree about which fleet a purchase would land on. */
+function idleAtYard(fl){ return !fl.to && (fl.at==="home" || sysHasShipyard(fl.at)); }
 function buyShip(i,k){ if(k<1)return false;
   const cf=curFleet();
-  const idleHome=fl=>!fl.to&&fl.at==="home";
-  const tgt = idleHome(cf) ? cf : fleets().find(idleHome);
+  const tgt = idleAtYard(cf) ? cf : fleets().find(idleAtYard);
   const capFleet = tgt || fleet(1);
   if(k*SHIPS[i].pw>capLeft(capFleet))return false;    /* capacity is checked before price */
   const c=shipCost(i,k); if(S.ore<c)return false;
@@ -4153,7 +4158,7 @@ const SD_C0=14,            /* first level, in THIS slot's own exotic (or ore-equ
 /* TUNING-PENDING: every module's own per-level (min/sen: flat, since they never go
    past level 1) contribution to defStrength() - garrison strength fed straight into
    holdOdds(), the exact job the old sdLv()*1.0 term did. */
-const DEF_STR={ tur:0.6, min:0.9, shd:0.4, sen:0.3, han:0 };
+const DEF_STR={ tur:0.6, min:0.9, shd:0.4, sen:0.3, han:0, shy:0 };
 const SHD_HULL_PER=0.25;   /* TUNING-PENDING: Shield Array's own hull mult per level -
                                the mini-game's DT.hullMul slot, replacing the old flat
                                SD_HULL (which applied to every level of the one-size-
@@ -4179,7 +4184,16 @@ const DEF_MODULES={
    desc:"Extends this system's warning window and names exactly who is coming and how they fight, including what rearming now would do to the odds. Useless once a fleet is already inbound \u2014 fit it before you need it." },
  han:{ id:"han", n:"Hangar", maxLv:1, oneUse:false,
    guidance:"Best against the Covenant \u2014 stations fleet, not firepower.",
-   desc:"Stations part of your fleet at this system, fighting beside the garrison and the automated defences. The more (and the heavier) you station, the stronger this gets \u2014 open STATION FLEET to assign hulls." }
+   desc:"Stations part of your fleet at this system, fighting beside the garrison and the automated defences. The more (and the heavier) you station, the stronger this gets \u2014 open STATION FLEET to assign hulls." },
+ /* PLAN-polish batch C #1 (Shipyard): no garrison strength of its own (DEF_STR.shy
+    above) - buildable on any ring>=1 HELD system (dmodBuild() checks s.ring<1
+    explicitly, on top of the s.home exclusion every module already gets - home is
+    ring 0 and would be the only other system that check could ever catch, so this
+    is redundant with s.home today, but says the actual rule rather than leaning on
+    a coincidence). Its only effect is buyShip() routing - see 01-content.js. */
+ shy:{ id:"shy", n:"Shipyard", maxLv:1, oneUse:false,
+   guidance:"Ships bought while a fleet is here land right on it.",
+   desc:"A forward yard. A fleet idle here can take new hulls the moment they're bought, same as home \u2014 no trip back first." }
 };
 /* PLAN-defences.md Run 3 (patch600): Hangar stationing. S.han[sysId]=[n0,n1,n2] -
    counts of each SHIPS[] hull class stationed at that system, moved OUT of S.sh (the
@@ -4317,6 +4331,7 @@ function dmodComplete(){
 function dmodBuild(s,slotIdx,moduleId){
   if(!s||s.home||!sysHeld(s.id)||slotIdx<0||slotIdx>2)return false;
   const def=DEF_MODULES[moduleId]; if(!def||def.disabled)return false;
+  if(moduleId==="shy" && (!s.ring||s.ring<1))return false;   /* PLAN-polish batch C #1 */
   const d=dmodEnsure(s.id); if(d.s[slotIdx])return false;      /* BUILD is for an empty slot */
   if(dmodBusy(s.id))return false;
   const price=dmodPrice(s,0);
@@ -4432,6 +4447,9 @@ function dmodConsumeMines(sysId){
    this same function, so "without one, none of it appears" cannot drift into three
    different checks that disagree. */
 function hasSensorMast(id){ return dmodLv(id,"sen")>0 }
+/* PLAN-polish batch C #1: the one thing a Shipyard does - buyShip() (01-content.js)
+   routes a purchase to a fleet sitting idle here, same as it always has for "home". */
+function sysHasShipyard(id){ return dmodLv(id,"shy")>0 }
 /* the single best RIGHT NOW rearm/upgrade across a system's three slots (only
    these two actions - the plan's own wording - never a fresh BUILD), gated on
    being affordable this instant so the preview never promises a move the player
@@ -7095,11 +7113,12 @@ const DEF_GLYPH={
  min:'<circle cx="12" cy="12" r="2.5"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M19.1 4.9l-2.8 2.8M7.7 16.3l-2.8 2.8"/>',
  shd:'<path d="M12 3l7 3.2v5.3c0 4.6-3 7.6-7 8.7-4-1.1-7-4.1-7-8.7V6.2z"/>',
  sen:'<path d="M12 21v-9M7.8 9.6a5.2 5.2 0 018.4 0M4.6 6.6a9.4 9.4 0 0114.8 0"/><circle cx="12" cy="11" r="1.6" fill="currentColor" stroke="none"/>',
- han:'<path d="M4 20h16M6 20v-6.5a6 6 0 0112 0V20"/><path d="M9.5 20l1-4h3l1 4"/>'
+ han:'<path d="M4 20h16M6 20v-6.5a6 6 0 0112 0V20"/><path d="M9.5 20l1-4h3l1 4"/>',
+ shy:'<path d="M4 18l8-13 8 13"/><path d="M4 18h16"/><path d="M9 18v-4h6v4"/>'
 };
 function defIconHTML(m){ return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${DEF_GLYPH[m]||""}</svg>`; }
 const DEF_ICON=DEF_GLYPH;   /* kept as an alias so the existing __SD export name still resolves */
-const DEF_COLOR={ tur:"var(--cy)", min:"var(--gd)", shd:"var(--vi)", sen:"var(--gr)", han:"var(--sv)" };
+const DEF_COLOR={ tur:"var(--cy)", min:"var(--gd)", shd:"var(--vi)", sen:"var(--gr)", han:"var(--sv)", shy:"#ffb45c" };
 function defClearSel(){ defSel=null; defSelSys=null; }
 /* the balance this system can actually spend on its own defences right now -
    its own exotic if it produces one, ore otherwise (same rule dmodPrice() uses). */
@@ -11310,16 +11329,17 @@ function renderRaids(){
   fx.disabled = S.ore<rc || hp>=1;
   fx.textContent = "REPAIR \u00b7 "+fmt(rc)+" ORE";
   const host=$("#flShips"); host.innerHTML="";
-  /* run 3 (decision 6): no idle fleet at home right now - a BUY still queues (see
-     buyShip()'s own comment), it just doesn't land in curFleet() immediately. Said
-     plainly on the button rather than silently landing somewhere the player can't
-     see yet. */
-  const noHomeIdle=!fleets().some(fl=>!fl.to&&fl.at==="home");
-  /* polish batch A #12: buyShip() lands a purchase on curFleet() only when IT is
-     idle at home - otherwise the first idle-at-home fleet takes it, same rule
-     buyShip() itself uses (see its own header comment). Worked out once per
-     render, same for every ship class this loop draws a button for. */
-  const buyTgt = (!cf.to&&cf.at==="home") ? cf : fleets().find(fl=>!fl.to&&fl.at==="home");
+  /* run 3 (decision 6): no idle fleet at a yard (home, or batch C's Shipyard) right
+     now - a BUY still queues (see buyShip()'s own comment), it just doesn't land in
+     curFleet() immediately. Said plainly on the button rather than silently landing
+     somewhere the player can't see yet. */
+  const noHomeIdle=!fleets().some(idleAtYard);
+  /* polish batch A #12, extended batch C #1: buyShip() lands a purchase on
+     curFleet() only when IT is idle at a yard - otherwise the first idle-at-yard
+     fleet takes it, same rule buyShip() itself uses (idleAtYard(), 01-content.js).
+     Worked out once per render, same for every ship class this loop draws a button
+     for. */
+  const buyTgt = idleAtYard(cf) ? cf : fleets().find(idleAtYard);
   SHIPS.forEach((sp,i)=>{
     const d=document.createElement("div"); d.className="shp"; d.style.setProperty("--a",sp.col);
     const k=S.sell?Math.min(S.buy==="max"?cf.sh[i]:S.buy,cf.sh[i]):(S.buy==="max"?Math.max(1,shipMax(i)):S.buy);
@@ -13477,7 +13497,7 @@ window.__SD={get S(){return S},NEXUS,buyNex,openSite,SITE,siteSlots,
   dmodSlots,dmodSlot,dmodEnsure,dmodBusy,dmodCost,dmodCostOre,dmodPrice,dmodBuildSecs,dmodComplete,
   dmodBuild,dmodUpgrade,dmodRearm,dmodSwap,dmodLv,dmodSummary,dmodConsumeMines,
   renderSysDef,renderSysOdds,defCardPct,defBalanceLabel,defClearSel,get defSel(){return defSel},openDefPicker,
-  DEF_ICON,DEF_COLOR,DEF_GLYPH,defIconHTML,hasSensorMast,defBestPreview,
+  DEF_ICON,DEF_COLOR,DEF_GLYPH,defIconHTML,hasSensorMast,defBestPreview,sysHasShipyard,idleAtYard,
   HAN_CAP,HAN_STR_MULT,hanFleet,hanFrom,hanCount,hanLeft,hanDPS,hanHP,hanTotalPower,hanPowerFor,hanStrength,
   stationHan,recallHan,recallHanAll,renderSysHan,hanModal,hanModalHTML,
   defStrength,bestHeldDefStrength,bestHeldDefSys,defRate,defAutoFire,

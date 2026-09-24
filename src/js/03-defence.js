@@ -14,7 +14,7 @@ const SD_C0=14,            /* first level, in THIS slot's own exotic (or ore-equ
 /* TUNING-PENDING: every module's own per-level (min/sen: flat, since they never go
    past level 1) contribution to defStrength() - garrison strength fed straight into
    holdOdds(), the exact job the old sdLv()*1.0 term did. */
-const DEF_STR={ tur:0.6, min:0.9, shd:0.4, sen:0.3, han:0 };
+const DEF_STR={ tur:0.6, min:0.9, shd:0.4, sen:0.3, han:0, shy:0 };
 const SHD_HULL_PER=0.25;   /* TUNING-PENDING: Shield Array's own hull mult per level -
                                the mini-game's DT.hullMul slot, replacing the old flat
                                SD_HULL (which applied to every level of the one-size-
@@ -40,7 +40,16 @@ const DEF_MODULES={
    desc:"Extends this system's warning window and names exactly who is coming and how they fight, including what rearming now would do to the odds. Useless once a fleet is already inbound \u2014 fit it before you need it." },
  han:{ id:"han", n:"Hangar", maxLv:1, oneUse:false,
    guidance:"Best against the Covenant \u2014 stations fleet, not firepower.",
-   desc:"Stations part of your fleet at this system, fighting beside the garrison and the automated defences. The more (and the heavier) you station, the stronger this gets \u2014 open STATION FLEET to assign hulls." }
+   desc:"Stations part of your fleet at this system, fighting beside the garrison and the automated defences. The more (and the heavier) you station, the stronger this gets \u2014 open STATION FLEET to assign hulls." },
+ /* PLAN-polish batch C #1 (Shipyard): no garrison strength of its own (DEF_STR.shy
+    above) - buildable on any ring>=1 HELD system (dmodBuild() checks s.ring<1
+    explicitly, on top of the s.home exclusion every module already gets - home is
+    ring 0 and would be the only other system that check could ever catch, so this
+    is redundant with s.home today, but says the actual rule rather than leaning on
+    a coincidence). Its only effect is buyShip() routing - see 01-content.js. */
+ shy:{ id:"shy", n:"Shipyard", maxLv:1, oneUse:false,
+   guidance:"Ships bought while a fleet is here land right on it.",
+   desc:"A forward yard. A fleet idle here can take new hulls the moment they're bought, same as home \u2014 no trip back first." }
 };
 /* PLAN-defences.md Run 3 (patch600): Hangar stationing. S.han[sysId]=[n0,n1,n2] -
    counts of each SHIPS[] hull class stationed at that system, moved OUT of S.sh (the
@@ -178,6 +187,7 @@ function dmodComplete(){
 function dmodBuild(s,slotIdx,moduleId){
   if(!s||s.home||!sysHeld(s.id)||slotIdx<0||slotIdx>2)return false;
   const def=DEF_MODULES[moduleId]; if(!def||def.disabled)return false;
+  if(moduleId==="shy" && (!s.ring||s.ring<1))return false;   /* PLAN-polish batch C #1 */
   const d=dmodEnsure(s.id); if(d.s[slotIdx])return false;      /* BUILD is for an empty slot */
   if(dmodBusy(s.id))return false;
   const price=dmodPrice(s,0);
@@ -293,6 +303,9 @@ function dmodConsumeMines(sysId){
    this same function, so "without one, none of it appears" cannot drift into three
    different checks that disagree. */
 function hasSensorMast(id){ return dmodLv(id,"sen")>0 }
+/* PLAN-polish batch C #1: the one thing a Shipyard does - buyShip() (01-content.js)
+   routes a purchase to a fleet sitting idle here, same as it always has for "home". */
+function sysHasShipyard(id){ return dmodLv(id,"shy")>0 }
 /* the single best RIGHT NOW rearm/upgrade across a system's three slots (only
    these two actions - the plan's own wording - never a fresh BUILD), gated on
    being affordable this instant so the preview never promises a move the player
