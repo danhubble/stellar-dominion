@@ -13507,10 +13507,18 @@ window.__SD={get S(){return S},NEXUS,buyNex,openSite,SITE,siteSlots,
 .g.mB{box-shadow:inset 3px 0 0 var(--gd)}
 .g .mline{font:600 10px/1.3 system-ui;color:var(--gd);margin-top:3px}
 .g .mline b{font-family:ui-monospace,monospace}
+/* C: thin accordion strip hanging under the row, in the row's own accent colour */
+.g.mC{border-bottom-left-radius:0;border-bottom-right-radius:0;margin-bottom:0}
+.mstrip{display:flex;justify-content:space-between;align-items:center;gap:8px;
+  margin:0 0 7px;padding:4px 10px 4px 12px;border:1px solid var(--line);border-top:none;
+  border-radius:0 0 11px 11px;background:var(--panel);
+  box-shadow:inset 3px 0 0 var(--a);font:600 10px/1.3 system-ui;color:var(--mut)}
+.mstrip b{color:var(--a);font-family:ui-monospace,monospace}
+.mstrip i{font-style:normal;color:var(--a);letter-spacing:.14em;font-size:8.5px;margin-right:6px}
 </style>
 <script>
 (function(){
-  const V=(location.search.match(/v=([AB])/)||[])[1]||"A";
+  const V=(location.search.match(/v=([ABC])/)||[])[1]||"C";
   const NAMES={0:"Mining Drone",1:"Smelter Pod",2:"Crust Borer",3:"Fabricator",4:"Orbital Harvester",5:"Fusion Forge"};
   function active(){ const S=window.__SD.S; return window.__SD.MISSIONS.slice(S.mi,S.mi+3); }
   function need(m){ const n=m.d.match(/(\d+)/); return n?+n[1]:1; }
@@ -13523,13 +13531,19 @@ window.__SD={get S(){return S},NEXUS,buyNex,openSite,SITE,siteSlots,
       let gi=null; for(const k in NAMES)if(base.startsWith(NAMES[k]))gi=+k;
       if(gi===null)return;
       const m=act.find(x=>x.d.includes(NAMES[gi]));
-      row.querySelectorAll('.mtag,.mline').forEach(e=>e.remove()); row.classList.remove('mB');
+      row.querySelectorAll('.mtag,.mline').forEach(e=>e.remove()); row.classList.remove('mB','mC'); if(row.nextElementSibling&&row.nextElementSibling.classList.contains('mstrip'))row.nextElementSibling.remove();
       if(!m)return;
       const have=SD.gCount(gi), n=need(m);
       if(V==="A"){
         const t=document.createElement('span'); t.className='mtag';
         t.innerHTML='Mission<b>'+Math.min(have,n)+'/'+n+'</b>';
         name.appendChild(t);
+      } else if(V==="C"){
+        row.classList.add('mC');
+        const st=document.createElement('div'); st.className='mstrip';
+        st.style.setProperty('--a',row.style.getPropertyValue('--a'));
+        st.innerHTML='<span><i>MISSION</i>'+m.d+'</span><b>'+Math.min(have,n)+'/'+n+'</b>';
+        row.after(st);
       } else {
         row.classList.add('mB');
         const l=document.createElement('div'); l.className='mline';
