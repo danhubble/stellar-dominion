@@ -15,23 +15,23 @@ const { chromium } = require('playwright-core');
  await p.waitForFunction(()=>{ const el=document.getElementById('scene'); return !el||getComputedStyle(el).display==='none'; });
  const out=[]; const ok=(n,c,x)=>out.push((c?'PASS ':'FAIL ')+n+(x!==undefined?'  '+JSON.stringify(x):''));
 
- // ---------------- node: max 3, cost curve unchanged ----------------
+ // ---------------- node: max 6 (Governors v2, PLAN-polish batch C #2), cost curve unchanged ----------------
  const node=await p.evaluate(()=>{
    const G=window.__SD;
    const r=G.RESH.find(x=>x.id==="auto");
    return { max:r.max, name:r.n, c:r.c, cg:r.cg };
  });
- ok('the "auto" node (id unchanged) has max:3', node.max===3, node);
+ ok('the "auto" node (id unchanged) has max:6 (Governors v2: 3->6)', node.max===6, node);
  ok('renamed Governors in copy', node.name==="Governors", node);
  ok('cost curve (c/cg) unchanged from the old Automation Cores', node.c===25&&node.cg===3.2, node);
 
  // ---------------- adopt() clamps an over-max save ----------------
  const clamp=await p.evaluate(()=>{
    const G=window.__SD;
-   G.adopt({...G.fresh(), rs:{auto:7}});
+   G.adopt({...G.fresh(), rs:{auto:9}});
    return G.S.rs.auto;
  });
- ok('a save with S.rs.auto>3 (bought under the old max:10) is clamped to 3', clamp===3, clamp);
+ ok('a save with S.rs.auto>6 (bought under a still-older max) is clamped to 6', clamp===6, clamp);
 
  // ---------------- toggle: appointing gates on govCount() < lv(S.rs,"auto") ----------------
  const toggle=await p.evaluate(()=>{
@@ -140,6 +140,52 @@ const { chromium } = require('playwright-core');
    offline.buysShort>0 && offline.buysShort<=37, offline);
  ok('offline catch-up is capped at 50 attempts no matter how long the absence',
    offline.buysLong>0 && offline.buysLong<=50, offline);
+
+ // ---------------- Governors v2 (PLAN-polish batch C #2) ----------------
+ const share=await p.evaluate(()=>window.__SD.GOV_SHARE);
+ ok('GOV_SHARE raised 0.5->0.75', share===0.75, share);
+
+ const fit=await p.evaluate(()=>{
+   const G=window.__SD;
+   G.adopt({...G.fresh(), ore:1e12, all:1e12, exo:{ir:1e9}, dm:1e6,
+     rs:{drill:4,auto:1}, lvl:20, sys:{kor:{b:{0:5},gov:1,gb:1e9,gft:0}}});
+   const before=JSON.stringify(G.dmodSlots('kor'));
+   G.govTick(G.GOV_FIT_EVERY-1);   // one second short - must not fit yet
+   const early=JSON.stringify(G.dmodSlots('kor'));
+   G.govTick(1);                   // now at exactly GOV_FIT_EVERY
+   const slots=G.dmodSlots('kor');
+   const filled=slots.filter(Boolean);
+   const gbAfter=G.sysState('kor').gb;
+   return { before, early, filledCount:filled.length, moduleIds:filled.map(s=>s.m), gbAfter };
+ });
+ ok('a governed system with an empty slot and budget fits a module once it reaches GOV_FIT_EVERY',
+   fit.before===fit.early && fit.filledCount===1, fit);
+ ok('the fitted module is never a Shipyard', !fit.moduleIds.includes("shy"), fit);
+ ok('fitting spends from the same per-governor bank (gb), never straight ore/exotic beyond it',
+   fit.gbAfter<1e9, fit);
+
+ const noFitTwice=await p.evaluate(()=>{
+   const G=window.__SD;
+   G.adopt({...G.fresh(), ore:1e12, all:1e12, exo:{ir:1e9}, dm:1e6,
+     rs:{drill:4,auto:1}, lvl:20, sys:{kor:{b:{0:5},gov:1,gb:1e9,gft:0}}});
+   G.govTick(G.GOV_FIT_EVERY);
+   const filledAfterFirst=G.dmodSlots('kor').filter(Boolean).length;
+   G.govTick(G.GOV_FIT_EVERY-1);   // under a second GOV_FIT_EVERY since the first fit
+   const filledStill=G.dmodSlots('kor').filter(Boolean).length;
+   return { filledAfterFirst, filledStill };
+ });
+ ok('a second module is not fitted before another full GOV_FIT_EVERY has elapsed',
+   noFitTwice.filledAfterFirst===1 && noFitTwice.filledStill===1, noFitTwice);
+
+ const budgetGate=await p.evaluate(()=>{
+   const G=window.__SD;
+   G.adopt({...G.fresh(), ore:1e12, all:1e12, exo:{ir:1e9}, dm:1e6,
+     rs:{drill:4,auto:1}, lvl:20, sys:{kor:{b:{0:5},gov:1,gb:0,gft:0}}});
+   G.govTick(G.GOV_FIT_EVERY);   // no bank at all - nothing to spend
+   return G.dmodSlots('kor').filter(Boolean).length;
+ });
+ ok('with no bank, a governor does not fit a module even once GOV_FIT_EVERY has elapsed',
+   budgetGate===0, budgetGate);
 
  // ---------------- csim invariant: governors are inert unless S.sys[id].gov is set ----------------
  // The actual byte-identical proof is `node tests/csim4.js | cmp - docs/sim/csim-

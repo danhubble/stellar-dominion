@@ -607,8 +607,10 @@ const RESH=[
     Cartography's req:{id:"auto",lv:2} are untouched. max 10->3 (a save with
     S.rs.auto>3 is clamped in adopt()); cost curve (c/cg) unchanged. The node's old
     per-tier auto-buy effect was retired in patch403 - see the comment at govTick()'s
-    call site in tick() (06-progress.js) for what actually spends these levels now. */
- {id:"auto",  n:"Governors",   max:3, c:25, cg:3.2, col:"#ffd166", req:{id:"drill",lv:4},
+    call site in tick() (06-progress.js) for what actually spends these levels now.
+    PLAN-polish batch C #2 (Governors v2): max 3->6 (adopt()'s own clamp raised to
+    match); cost curve still unchanged. */
+ {id:"auto",  n:"Governors",   max:6, c:25, cg:3.2, col:"#ffd166", req:{id:"drill",lv:4},
   ic:`<rect x="14" y="14" width="20" height="20" rx="3" fill="none" stroke="currentColor" stroke-width="3"/><rect x="21" y="21" width="6" height="6" fill="currentColor"/><g stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M19 14V7M29 14V7M19 41v-7M29 41v-7M14 19H7M14 29H7M41 19h-7M41 29h-7"/></g>`,
   d:lv=>lv?("Appoint up to "+lv+" governor"+(lv>1?"s":"")):"No governors yet",
   t:"Each level hands one more system's buildings to a governor who buys on their own."}, /* PLACEHOLDER */

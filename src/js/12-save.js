@@ -261,9 +261,12 @@ function adopt(o){
      A save from before that (still legitimately at levels 4-10, bought under the old
      max) is clamped down - "a save with S.rs.auto>3 is clamped to 3" (owner decision
      1). Nothing else about S.rs needs sanitising - buyRes() itself already refuses
-     past a node's own max going forward, this only guards an existing save. */
+     past a node's own max going forward, this only guards an existing save.
+     PLAN-polish batch C #2 (Governors v2): max raised 3->6, clamp raised to match -
+     a save already sitting at exactly 3 (last run's real ceiling) is untouched, one
+     already over 6 from further back is still caught. */
   if(!f.rs||typeof f.rs!=="object")f.rs={};
-  if((f.rs.auto||0)>3)f.rs.auto=3;
+  if((f.rs.auto||0)>6)f.rs.auto=6;
   if(!f.sys||typeof f.sys!=="object")f.sys={};
   for(const k in f.sys){
     if(!SYSMAP[k]){ delete f.sys[k]; continue }
@@ -290,13 +293,22 @@ function adopt(o){
     const gt=Math.max(0,+gin.gt||0);
     const gl=(gin.gl&&typeof gin.gl==="object"&&GENS[Math.floor(gin.gl.gi)]&&+gin.gl.t>0)
       ? {gi:Math.floor(gin.gl.gi), t:+gin.gl.t} : null;
+    /* PLAN-polish batch C #2 (Governors v2): gft/gfl are the module-fitting side's
+       own timer/last-fit, sanitised the same way gt/gl are just above. gfl.m must
+       still name a real, non-Shipyard module - a save from a build that once
+       allowed something else here (there isn't one, but the check costs nothing
+       and matches gl's own belt-and-braces reading of `gi`). */
+    const gft=Math.max(0,+gin.gft||0);
+    const gfl=(gin.gfl&&typeof gin.gfl==="object"&&DEF_MODULES[gin.gfl.m]&&gin.gfl.m!=="shy"&&+gin.gfl.t>0)
+      ? {m:gin.gfl.m, t:+gin.gfl.t} : null;
     /* PLAN-polish batch B item 5: t0 is a GENS index (never negative) naming a real
        tier, or absent - a save from before this batch (or any system claimed
        before it) simply never carries the key, which sysT0() already reads as 0
        ("nothing skipped"), exactly the old behaviour. */
     const t0raw=Math.floor(gin.t0||0);
     const t0=(t0raw>0 && GENS[t0raw]) ? t0raw : 0;
-    f.sys[k]={b, ...(gov?{gov}:{}), ...(gb?{gb}:{}), ...(gt?{gt}:{}), ...(gl?{gl}:{}), ...(t0?{t0}:{})};
+    f.sys[k]={b, ...(gov?{gov}:{}), ...(gb?{gb}:{}), ...(gt?{gt}:{}), ...(gl?{gl}:{}),
+      ...(gft?{gft}:{}), ...(gfl?{gfl}:{}), ...(t0?{t0}:{})};
   }
   /* home is always held - a save that predates a claim, or one that simply never had
      home in S.sys, still needs its count map to exist */

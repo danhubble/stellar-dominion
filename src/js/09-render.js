@@ -1190,7 +1190,17 @@ function renderSysGov(s,held){
   }
   const lastEl=$("#sysGovLast");
   if(lastEl){
-    if(st.gl && GENS[st.gl.gi]){
+    /* PLAN-polish batch C #2 (Governors v2): a governor now does two kinds of
+       thing (buy a tier, or fit a module into an empty slot) - the line shows
+       whichever happened more recently, same plain textContent-every-render idiom
+       (never a churn risk - tchurn2 only fingerprints <button>). */
+    const buyT=(st.gl&&GENS[st.gl.gi])?st.gl.t:-1;
+    const fitT=(st.gfl&&DEF_MODULES[st.gfl.m])?st.gfl.t:-1;
+    if(fitT>buyT && fitT>=0){
+      const agoS=Math.max(0,(Date.now()-st.gfl.t)/1000);
+      lastEl.hidden=false;
+      lastEl.textContent="Governor fitted "+DEF_MODULES[st.gfl.m].n+" · "+fmtT2(agoS)+" ago";
+    } else if(buyT>=0){
       const agoS=Math.max(0,(Date.now()-st.gl.t)/1000);
       lastEl.hidden=false;
       lastEl.textContent="Governor bought "+GENS[st.gl.gi].n+" · "+fmtT2(agoS)+" ago";

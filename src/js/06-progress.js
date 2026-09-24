@@ -219,7 +219,11 @@ function flag(p){ const t=$$(".tab").find(t=>t.dataset.p===p); if(t&&!t.classLis
    budget (gb) that accrues GOV_SHARE of the empire's ore rate, split evenly across
    every appointed governor, and is spent down by purchases - it never dips into ore
    the player already had. TUNING-PENDING: both constants. */
-const GOV_EVERY=20, GOV_SHARE=0.5;
+/* PLAN-polish batch C #2 (Governors v2, owner: "more involved, fine if they spend
+   more"): GOV_SHARE 0.5->0.75. GOV_FIT_EVERY is new - the "fit the cheapest
+   affordable module in an empty slot, once per 60s" side of a governor's job,
+   TUNING-PENDING like its two siblings. */
+const GOV_EVERY=20, GOV_SHARE=0.75, GOV_FIT_EVERY=60;
 /* every system currently appointed a governor - regardless of occupation, since
    "suspends" (owner decision 3) means govTick() skips it this tick, not that it
    stops being appointed; sysHeld() is what actually gates whether it can buy. */
@@ -265,15 +269,48 @@ function govBuyStep(id, st){
   dirty=true;
   return true;
 }
+/* PLAN-polish batch C #2 (Governors v2): the second thing a governor does now,
+   alongside govBuyStep() - fit the cheapest affordable module into an empty
+   defence slot, at most once per GOV_FIT_EVERY of game time, from the exact same
+   per-governor bank govBuyStep() spends. Every module is priced identically for an
+   empty slot (dmodPrice(s,0) - the same base price regardless of which module goes
+   in), so "cheapest" never has to break a tie: the eligible list is walked in a
+   fixed order and the first one affordable is fitted. Shipyard is never in that
+   list - "never a Shipyard (player's choice)" (owner decision). Silent unless the
+   system's own page is open, same rule govBuyStep() follows and for the same
+   reason (dmodBuild()'s own toast/blip already respect `hush`). Returns whether
+   anything was actually fitted. */
+const GOV_FIT_MODULES=Object.keys(DEF_MODULES).filter(id=>id!=="shy");
+function govFitStep(id, st){
+  const s=SYSMAP[id]; if(!s)return false;
+  const d=dmodEnsure(id);
+  let slotIdx=-1; for(let i=0;i<d.s.length;i++) if(!d.s[i]){ slotIdx=i; break; }
+  if(slotIdx<0 || dmodBusy(id))return false;
+  const price=dmodPrice(s,0);
+  if(price>st.gb)return false;
+  const afford = s.res ? exo(s.res)>=price : S.ore>=price;
+  if(!afford)return false;
+  const moduleId=GOV_FIT_MODULES.find(m=>!DEF_MODULES[m].disabled); if(!moduleId)return false;
+  const open=document.body.classList.contains("syspage") && S.msel===id;
+  hush=!open;
+  const built=dmodBuild(s,slotIdx,moduleId);
+  hush=false;
+  if(!built)return false;
+  st.gb-=price;
+  st.gfl={m:moduleId,t:Date.now()};
+  dirty=true;
+  return true;
+}
 /* dt is game seconds elapsed (tick()'s own small dt, or GOV_EVERY repeated from
    offlineGovCatchup() below). effMul scales the bank accrual down to match the
    discounted ore offline already banked at (offlineEff()) - a governor never gets a
    richer cut than the empire's own production did. capPerSys bounds how many buy
-   attempts a single call may make per system - only offlineGovCatchup() ever passes
-   it; live tick()'s dt is always far under GOV_EVERY, so the while loop below never
-   needs a cap during ordinary play. csim4.js never sets S.sys[id].gov anywhere, so
-   govSystems() is always empty there and this returns before touching rate() or
-   S.ore - the pacing baseline cannot move from this function. No Math.random(). */
+   (and fit) attempts a single call may make per system - only offlineGovCatchup()
+   ever passes it; live tick()'s dt is always far under GOV_EVERY, so the while
+   loops below never need a cap during ordinary play. csim4.js never sets
+   S.sys[id].gov anywhere, so govSystems() is always empty there and this returns
+   before touching rate() or S.ore - the pacing baseline cannot move from this
+   function. No Math.random(). */
 function govTick(dt, effMul, capPerSys){
   if(!(dt>0))return;
   effMul = effMul===undefined?1:effMul;
@@ -284,11 +321,18 @@ function govTick(dt, effMul, capPerSys){
     const st=sysState(id); if(!st)continue;
     st.gb=(st.gb||0)+r*dt*share*effMul;
     st.gt=(st.gt||0)+dt;
+    st.gft=(st.gft||0)+dt;
     let bought=0;
     while(st.gt>=GOV_EVERY && (capPerSys===undefined || bought<capPerSys)){
       st.gt-=GOV_EVERY;
       govBuyStep(id, st);
       bought++;
+    }
+    let fitted=0;
+    while(st.gft>=GOV_FIT_EVERY && (capPerSys===undefined || fitted<capPerSys)){
+      st.gft-=GOV_FIT_EVERY;
+      govFitStep(id, st);
+      fitted++;
     }
   }
 }

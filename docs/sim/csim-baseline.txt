@@ -1,79 +1,79 @@
 t= 10m rate=126/s all=12.5K cry=5.51 exo=0 structs=38 mult=1.42 miss=3 LVL=6 xp=236 gm=1.42 frame=0 yield=0 latt=0 drill=2 sys=1 tiersOwned=3
 t= 30m rate=22.7K/s all=8.25M cry=99.9 exo=17.4 structs=160 mult=2.48 miss=10 LVL=18 xp=1246 gm=2.48 frame=0 yield=0 latt=0 drill=4 sys=4 tiersOwned=6
-t= 60m rate=115K/s all=143M cry=449 exo=114 structs=246 mult=3.93 miss=10 LVL=20 xp=1618 gm=3.93 frame=0 yield=0 latt=0 drill=7 sys=4 tiersOwned=6
-t=120m rate=41.3M/s all=42.1B cry=17.5K exo=1.45K structs=541 mult=10.7 miss=10 LVL=25 xp=3045 gm=10.7 frame=5 yield=0 latt=4 drill=10 sys=6 tiersOwned=15
-t=180m rate=213M/s all=440B cry=2.33M exo=5.39K structs=814 mult=17.8 miss=13 LVL=30 xp=3865 gm=17.8 frame=6 yield=0 latt=6 drill=12 sys=7 tiersOwned=18
-t=240m rate=404M/s all=1.47T cry=14.0M exo=15.1K structs=834 mult=31.3 miss=13 LVL=32 xp=4324 gm=31.3 frame=8 yield=5 latt=7 drill=12 sys=8 tiersOwned=19
-t=300m rate=2.58B/s all=5.61T cry=35.9M exo=58.2K structs=1161 mult=48.1 miss=13 LVL=35 xp=5138 gm=48.1 frame=9 yield=8 latt=8 drill=12 sys=9 tiersOwned=26
-t=360m rate=3.93B/s all=17.8T cry=74.7M exo=139K structs=1169 mult=60.1 miss=13 LVL=36 xp=5412 gm=60.1 frame=10 yield=10 latt=10 drill=12 sys=9 tiersOwned=27
-t=420m rate=3.93B/s all=31.9T cry=122M exo=387K structs=1169 mult=60.1 miss=13 LVL=36 xp=5471 gm=60.1 frame=10 yield=10 latt=10 drill=12 sys=9 tiersOwned=27
-t=480m rate=4.04B/s all=46.1T cry=176M exo=633K structs=1181 mult=61.5 miss=13 LVL=37 xp=5860 gm=61.5 frame=10 yield=10 latt=10 drill=12 sys=10 tiersOwned=28
-t=600m rate=8.43B/s all=99.3T cry=320M exo=2.01M structs=1414 mult=61.5 miss=13 LVL=38 xp=6048 gm=61.5 frame=10 yield=10 latt=10 drill=12 sys=10 tiersOwned=28
-t=720m rate=8.43B/s all=160T cry=497M exo=3.61M structs=1414 mult=61.5 miss=13 LVL=38 xp=6126 gm=61.5 frame=10 yield=10 latt=10 drill=12 sys=10 tiersOwned=28
-  [phase2] day=10 elapsed=10.5d rate=591Qa/s sys=11/10 exo=1.99B lvl=51
-  [phase2] day=20 elapsed=20.5d rate=1.67Qi/s sys=11/10 exo=6.14B lvl=52
+t= 60m rate=98.7K/s all=140M cry=1.50K exo=114 structs=243 mult=3.42 miss=10 LVL=20 xp=1618 gm=3.42 frame=0 yield=0 latt=0 drill=6 sys=4 tiersOwned=6
+t=120m rate=32.5M/s all=35.5B cry=115K exo=1.26K structs=518 mult=8.73 miss=10 LVL=25 xp=3050 gm=8.73 frame=4 yield=0 latt=4 drill=9 sys=6 tiersOwned=15
+t=180m rate=213M/s all=400B cry=1.83M exo=3.87K structs=802 mult=17.8 miss=13 LVL=30 xp=3895 gm=17.8 frame=6 yield=0 latt=6 drill=12 sys=7 tiersOwned=18
+t=240m rate=350M/s all=1.34T cry=13.0M exo=9.66K structs=816 mult=27.1 miss=13 LVL=32 xp=4304 gm=27.1 frame=7 yield=4 latt=7 drill=12 sys=8 tiersOwned=19
+t=300m rate=1.90B/s all=4.27T cry=31.7M exo=40.2K structs=1124 mult=42.2 miss=13 LVL=34 xp=4953 gm=42.2 frame=9 yield=7 latt=8 drill=12 sys=9 tiersOwned=21
+t=360m rate=3.73B/s all=15.6T cry=68.0M exo=134K structs=1186 mult=55.6 miss=13 LVL=36 xp=5427 gm=55.6 frame=10 yield=9 latt=10 drill=12 sys=9 tiersOwned=27
+t=420m rate=4.03B/s all=30.0T cry=115M exo=312K structs=1186 mult=60.1 miss=13 LVL=36 xp=5501 gm=60.1 frame=10 yield=10 latt=10 drill=12 sys=9 tiersOwned=27
+t=480m rate=4.03B/s all=44.5T cry=168M exo=549K structs=1186 mult=60.1 miss=13 LVL=37 xp=5560 gm=60.1 frame=10 yield=10 latt=10 drill=12 sys=9 tiersOwned=27
+t=600m rate=8.52B/s all=96.2T cry=309M exo=1.72M structs=1412 mult=61.5 miss=13 LVL=38 xp=6078 gm=61.5 frame=10 yield=10 latt=10 drill=12 sys=10 tiersOwned=28
+t=720m rate=8.52B/s all=158T cry=486M exo=3.30M structs=1412 mult=61.5 miss=13 LVL=38 xp=6156 gm=61.5 frame=10 yield=10 latt=10 drill=12 sys=10 tiersOwned=28
+  [phase2] day=10 elapsed=10.5d rate=591Qa/s sys=11/10 exo=1.98B lvl=51
+  [phase2] day=20 elapsed=20.5d rate=1.67Qi/s sys=11/10 exo=6.12B lvl=52
   [phase2] day=30 elapsed=30.5d rate=1.90Qi/s sys=11/10 exo=10.4B lvl=53
   [phase2] day=40 elapsed=40.5d rate=2.00Qi/s sys=11/10 exo=14.3B lvl=54
   [phase2] day=50 elapsed=50.5d rate=2.13Qi/s sys=11/10 exo=17.0B lvl=55
   [phase2] day=60 elapsed=60.5d rate=2.18Qi/s sys=11/10 exo=22.0B lvl=56
-  [phase2] day=70 elapsed=70.5d rate=2.20Qi/s sys=11/10 exo=23.2B lvl=57
-  [phase2] day=80 elapsed=80.5d rate=2.21Qi/s sys=11/10 exo=28.3B lvl=58
-  [phase2] day=90 elapsed=90.5d rate=2.22Qi/s sys=11/10 exo=31.6B lvl=59
+  [phase2] day=70 elapsed=70.5d rate=2.26Qi/s sys=11/10 exo=22.0B lvl=57
+  [phase2] day=80 elapsed=80.5d rate=2.26Qi/s sys=11/10 exo=27.1B lvl=58
+  [phase2] day=90 elapsed=90.5d rate=2.27Qi/s sys=11/10 exo=29.6B lvl=59
 
 =========== MILESTONE REPORT ===========
 [1&2] First claim per ring (active-play minutes):
    ring 1: 23.0m
-   ring 2: 97.0m
-   ring 3: 247.0m
-   ratio ring2/ring1 = 4.22x
-   ratio ring3/ring2 = 2.55x
+   ring 2: 99.0m
+   ring 3: 254.0m
+   ratio ring2/ring1 = 4.30x
+   ratio ring3/ring2 = 2.57x
    ring 4 is 100% rival-held (GARRISON) — first "claim" there requires an
    invasion this sim does not model. Not reported as a claim time; see
    write-up for the level-gate proxy used instead.
 [3] Exotic-gated ore-tier afford delay vs its feeder (elapsed minutes, mixed active+offline):
    tier 4 (Orbital Harvester, needs ir): feeder-ready=never afford=0.06d
    tier 5 (Fusion Forge, needs he): feeder-ready=0.06d afford=0.06d  delay=0.00d
-   tier 6 (Dyson Swarm, needs xe): feeder-ready=0.20d afford=0.08d  delay=-0.13d
-   tier 7 (Wormhole Crucible, needs am): feeder-ready=0.20d afford=0.15d  delay=-0.06d
-   tier 8 (Singularity Well, needs am): feeder-ready=0.20d afford=0.22d  delay=0.02d
-   tier 9 (Galactic Nexus, needs am): feeder-ready=0.20d afford=2.50d  delay=2.30d
+   tier 6 (Dyson Swarm, needs xe): feeder-ready=0.21d afford=0.08d  delay=-0.13d
+   tier 7 (Wormhole Crucible, needs am): feeder-ready=0.21d afford=0.15d  delay=-0.06d
+   tier 8 (Singularity Well, needs am): feeder-ready=0.21d afford=0.23d  delay=0.02d
+   tier 9 (Galactic Nexus, needs am): feeder-ready=0.21d afford=2.50d  delay=2.29d
    tier 10 (Iridium Foundry, needs ir): feeder-ready=never afford=2.50d
    tier 11 (Helium Spindle, needs he): feeder-ready=0.06d afford=3.50d  delay=3.44d
-   tier 12 (Xenon Array, needs xe): feeder-ready=0.20d afford=3.50d  delay=3.30d
-   tier 13 (Antimatter Loom, needs am): feeder-ready=0.20d afford=4.50d  delay=4.30d
+   tier 12 (Xenon Array, needs xe): feeder-ready=0.21d afford=3.50d  delay=3.29d
+   tier 13 (Antimatter Loom, needs am): feeder-ready=0.21d afford=4.50d  delay=4.29d
 [4] Map maxed (10 claimable systems + every ladder marquee owned): 5 days
 [5] Level-ups past level 10 - ACTIVE-ONLY (Phase 1, one continuous 720m session, no offline jumps): 28 taken. Smallest gap=0.02m (levels 13->14 at t=23.0/23.0). Violations (<4m apart): 8/27 gaps.
      Including Phase-2 offline-jump catch-up levels (NOT active play, not counted against milestone 5): 50 total, 11/49 gaps <4m.
 [5b] Level-range cascade check, ACTIVE PLAY ONLY (both phases, offline catch-up excluded), <4m gap = violation:
    levels 11-20: 10 active level-ups, 6/9 gaps <4m (smallest=0.02m, levels 13->14 at t=23.0/23.0)  [FAIL]
-   levels 21-60: 36 active level-ups, 5/35 gaps <4m (smallest=0.02m, levels 45->46 at t=5041.0/5041.0)  [FAIL]
+   levels 21-60: 35 active level-ups, 4/34 gaps <4m (smallest=0.02m, levels 45->46 at t=5041.0/5041.0)  [FAIL]
    highest level reached this run: 60 (range 21-60 fully exercised)
-[5c] Offline catch-up burst size, levels 21-60 (informational, not a milestone-5 violation): 4 bursts, sizes=[1,1,1,1], largest=1 levels at once
-[6] Core research tree (drill,amp,cryo,cold,auto,void) fully cleared at: 165.0m  (target: NOT clearable within a 90m sitting)
+[5c] Offline catch-up burst size, levels 21-60 (informational, not a milestone-5 violation): 3 bursts, sizes=[1,3,1], largest=3 levels at once
+[6] Core research tree (drill,amp,cryo,cold,auto,void) fully cleared at: 169.0m  (target: NOT clearable within a 90m sitting)
    (pdef/bat/bul excluded — salvage-priced, combat-gated, unreachable by this sim's buy-everything-affordable policy)
 
 ---- raw per-system claim times (active-phase minutes, NEVER = not claimed within phase 1) ----
    kor (ring1, lvl12, cost18.0K): claimed=23.0m lvlReady=23.0m costReady=15.0m xpAtCost=311 need=600
    dra (ring1, lvl12, cost100K): claimed=23.0m lvlReady=23.0m costReady=19.0m xpAtCost=545 need=600
    vel (ring1, lvl14, cost610K): claimed=24.0m lvlReady=24.0m costReady=24.0m xpAtCost=908 need=760
-   tan (ring1, lvl17, cost8.40M): claimed=NEVER lvlReady=27.0m costReady=49.0m xpAtCost=1526 need=1060
-   mir (ring1, lvl20, cost120M): claimed=67.0m lvlReady=48.0m costReady=67.0m xpAtCost=1633 need=1500
-   ash (ring2, lvl23, cost3.90B): claimed=97.0m lvlReady=88.0m costReady=97.0m xpAtCost=2463 need=2300
-   fer (ring2, lvl25, cost50.0B): claimed=131.0m lvlReady=109.0m costReady=131.0m xpAtCost=3115 need=2900
-   cor (ring2, lvl27, cost130B): claimed=NEVER lvlReady=151.0m costReady=174.0m xpAtCost=3853 need=3450
-   hal (ring2, lvl29, cost500B): claimed=202.0m lvlReady=163.0m costReady=202.0m xpAtCost=3885 need=3700
-   lys (ring2, lvl30, cost700B): claimed=NEVER lvlReady=163.0m costReady=239.0m xpAtCost=4312 need=3825
-   anv (ring3, lvl31, cost900B): claimed=247.0m lvlReady=203.0m costReady=247.0m xpAtCost=4339 need=3950
-   noc (ring2, lvl33, cost20.0T): claimed=NEVER lvlReady=248.0m costReady=395.0m xpAtCost=5454 need=4450
-   thu (ring3, lvl36, cost40.0T): claimed=480.0m lvlReady=303.0m costReady=480.0m xpAtCost=5530 need=5300
-   wra (ring3, lvl38, cost120T): claimed=764.0m lvlReady=481.0m costReady=764.0m xpAtCost=6143 need=5700
-   cal (ring3, lvl41, cost28.0Qa): claimed=NEVER lvlReady=2173.0m costReady=3601.0m xpAtCost=7773 need=7300
-   erb (ring3, lvl43, cost160Qa): claimed=NEVER lvlReady=3602.0m costReady=3601.0m xpAtCost=7773 need=8300
-   sab (ring3, lvl45, cost900Qa): claimed=NEVER lvlReady=5042.0m costReady=5041.0m xpAtCost=9126 need=9300
-   zen (ring3, lvl51, cost170Qi): claimed=NEVER lvlReady=10833.0m costReady=7921.0m xpAtCost=10939 need=11500
-   vor (ring4, lvl55, cost5.70Sx): claimed=NEVER lvlReady=71281.0m costReady=10801.0m xpAtCost=11292 need=13000
-   aur (ring4, lvl57, cost32.0Sx): claimed=NEVER lvlReady=98641.0m costReady=20881.0m xpAtCost=11955 need=13500
-   kal (ring4, lvl59, cost190Sx): claimed=NEVER lvlReady=126001.0m costReady=never xpAtCost=- need=14000
+   tan (ring1, lvl17, cost8.40M): claimed=NEVER lvlReady=27.0m costReady=49.0m xpAtCost=1536 need=1060
+   mir (ring1, lvl20, cost120M): claimed=67.0m lvlReady=48.0m costReady=67.0m xpAtCost=1643 need=1500
+   ash (ring2, lvl23, cost3.90B): claimed=99.0m lvlReady=89.0m costReady=99.0m xpAtCost=2498 need=2300
+   fer (ring2, lvl25, cost50.0B): claimed=133.0m lvlReady=110.0m costReady=133.0m xpAtCost=3145 need=2900
+   cor (ring2, lvl27, cost130B): claimed=NEVER lvlReady=154.0m costReady=176.0m xpAtCost=3873 need=3450
+   hal (ring2, lvl29, cost500B): claimed=204.0m lvlReady=165.0m costReady=204.0m xpAtCost=3915 need=3700
+   lys (ring2, lvl30, cost700B): claimed=NEVER lvlReady=166.0m costReady=244.0m xpAtCost=4309 need=3825
+   anv (ring3, lvl31, cost900B): claimed=254.0m lvlReady=205.0m costReady=254.0m xpAtCost=4334 need=3950
+   noc (ring2, lvl33, cost20.0T): claimed=NEVER lvlReady=255.0m costReady=405.0m xpAtCost=5479 need=4450
+   thu (ring3, lvl36, cost40.0T): claimed=488.0m lvlReady=310.0m costReady=488.0m xpAtCost=5560 need=5300
+   wra (ring3, lvl38, cost120T): claimed=768.0m lvlReady=489.0m costReady=768.0m xpAtCost=6173 need=5700
+   cal (ring3, lvl41, cost28.0Qa): claimed=NEVER lvlReady=2174.0m costReady=3601.0m xpAtCost=7713 need=7300
+   erb (ring3, lvl43, cost160Qa): claimed=NEVER lvlReady=3602.0m costReady=3601.0m xpAtCost=7713 need=8300
+   sab (ring3, lvl45, cost900Qa): claimed=NEVER lvlReady=5042.0m costReady=5041.0m xpAtCost=9176 need=9300
+   zen (ring3, lvl51, cost170Qi): claimed=NEVER lvlReady=10824.0m costReady=7921.0m xpAtCost=10969 need=11500
+   vor (ring4, lvl55, cost5.70Sx): claimed=NEVER lvlReady=69841.0m costReady=10801.0m xpAtCost=11322 need=13000
+   aur (ring4, lvl57, cost32.0Sx): claimed=NEVER lvlReady=95762.0m costReady=20881.0m xpAtCost=11985 need=13500
+   kal (ring4, lvl59, cost190Sx): claimed=NEVER lvlReady=124561.0m costReady=never xpAtCost=- need=14000
    umb (ring4, lvl63, cost6.20Sp): claimed=NEVER lvlReady=never costReady=never xpAtCost=- need=15000
    sev (ring4, lvl67, cost210Sp): claimed=NEVER lvlReady=never costReady=never xpAtCost=- need=15667
    tha (ring4, lvl69, cost1.20Oc): claimed=NEVER lvlReady=never costReady=never xpAtCost=- need=16000
@@ -114,38 +114,44 @@ highest tier bought per kind ladder: {"rock":16,"gas":19,"belt":-1,"ice":25,"voi
     34m L18 +30  rs:cold:4 pg:casc:1
     36m L18 +10  rs:void:3
     37m L18 +20  pg:core:2
-    39m L18 +40  rs:cryo:5 pg:comm:1 um:home:3:25
+    39m L18 +40  rs:auto:4 pg:comm:1 um:home:3:25
     40m L19 +55  ac:a21 mi:200 um:dra:3:25
-    41m L19 +10  rs:amp:6
-    43m L19 +30  rs:drill:6 pg:casc:2
+    41m L19 +10  rs:cryo:5
+    43m L19 +30  rs:amp:6 pg:casc:2
     44m L19 +15  um:home:1:50
-    46m L19 +10  rs:cold:5
+    45m L19 +10  rs:drill:6
     47m L19 +30  pg:core:3 um:vel:17:25
-    50m L20 +10  rs:void:4
+    48m L20 +10  rs:cold:5
+    51m L20 +10  rs:auto:5
     52m L20 +20  pg:comm:2
-    54m L20 +10  rs:cryo:6
-    56m L20 +10  rs:amp:7
+    55m L20 +10  rs:void:4
     58m L20 +20  pg:casc:3
-    60m L20 +22  sim:rw:60 rs:drill:7
-    65m L20 +10  rs:cold:6
+    59m L20 +10  rs:cryo:6
+    60m L20 +12  sim:rw:60
+    62m L20 +10  rs:amp:7
+    65m L20 +10  rs:drill:7
     66m L20 +5  pg:core:4
-    67m L20 +95  cl:mir sf:mir:17 um:mir:17:10
-    71m L21 +80  tf:15
-    72m L21 +93  rs:amp:8 pg:comm:3 tf:4 sf:dra:4
-    73m L22 +75  ac:a14 tf:5
-    74m L22 +25  sf:dra:5 um:mir:17:25
-    75m L22 +30  mi:300
-    77m L22 +5  um:home:4:10
-    78m L22 +30  ac:a10 rs:cryo:7 um:dra:4:10
+    67m L20 +90  cl:mir sf:mir:17
+    68m L21 +5  um:mir:17:10
+    70m L21 +10  rs:cold:6
+    72m L21 +100  pg:comm:3 tf:15
+    73m L21 +63  tf:4 sf:dra:4
+    74m L22 +75  ac:a14 tf:5
+    75m L22 +25  sf:dra:5 um:mir:17:25
+    76m L22 +30  mi:300
+    77m L22 +25  ac:a10 rs:auto:6
+    78m L22 +5  um:home:4:10
     79m L22 +5  pg:casc:4
-    81m L22 +30  rs:void:5 pg:frame:1
-    82m L22 +5  um:home:5:10
-    83m L22 +25  pg:found:1 um:dra:5:10
-    84m L22 +10  rs:drill:8
-    85m L22 +35  ac:a6 pg:latt:1
-    86m L22 +65  mi:400 pg:frame:2 um:home:2:50
-    87m L22 +105  rs:cold:7 pg:core:5 tf:18 um:home:4:25
-    88m L23 +20  pg:found:2
-    90m L23 +32  sim:rw:90 pg:latt:2
-final elapsed: 98.5 days, level 60, systems 11/26
+    80m L22 +5  um:dra:4:10
+    81m L22 +10  rs:amp:8
+    82m L22 +20  pg:frame:1
+    83m L22 +5  um:home:5:10
+    84m L22 +25  pg:found:1 um:dra:5:10
+    85m L22 +10  rs:cryo:7
+    86m L22 +50  ac:a6 pg:latt:1 um:home:2:50
+    87m L22 +35  rs:void:5 pg:frame:2 pg:core:5
+    88m L22 +115  mi:400 tf:18 um:kor:15:10
+    89m L23 +30  rs:drill:8 pg:found:2
+    90m L23 +12  sim:rw:90
+final elapsed: 97.5 days, level 60, systems 11/26
 NO JS ERRORS
