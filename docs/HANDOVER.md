@@ -12023,3 +12023,9 @@ the ambush (16 assertions) including the csim-inertness check run directly
 (`tools/runall.sh`) clean. Screenshots: `tests/shotsBatchC.js` (manual, not part
 of the suite) → `shots/batchc-{01-mission-strip,02-shipyard-slot,
 03-governor-fitted,04-ambush-threat}-{667,844}.png`.
+
+## release b645 — PLAN-polish batch C (mission strip, Shipyard, Governors v2, ambush)
+
+Coordinator: four features verified in screenshots at 667; suite clean; sim identical to
+the baseline regenerated in the governors-v2 commit (csim's greedy research now buys
+auto to 6). Bundle sd-b645.bundle covers GitHub tip..main.

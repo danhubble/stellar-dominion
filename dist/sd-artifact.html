@@ -362,6 +362,17 @@ button.ghost{background:transparent;border-color:var(--line);color:var(--mut)}
 .g.sellmode .gm{color:var(--rd)}
 .g.locked .gm{color:var(--mut);font-weight:600;font-size:10.5px}
 .gx{font-size:10px;color:var(--dim);font-family:ui-monospace,monospace}
+/* PLAN-polish Parked item (decided 24 Sep, mock variant C): a thin strip hanging
+   under any .g row whose tier feeds one of the current three missions - always
+   gold (var(--gd)), never the row's own --a accent. .mstripped squares the row's
+   own bottom corners off so the two read as one piece. */
+.g.mstripped{border-bottom-left-radius:0;border-bottom-right-radius:0;margin-bottom:0}
+.mstrip{display:flex;justify-content:space-between;align-items:center;gap:8px;
+  margin:0 0 5px;padding:2px 10px 2px 12px;border:1px solid var(--line);border-top:none;
+  border-radius:0 0 11px 11px;background:var(--panel);
+  box-shadow:inset 3px 0 0 var(--gd);font:600 10px/1.25 system-ui;color:var(--mut)}
+.mstrip b{color:var(--gd);font-family:ui-monospace,monospace}
+.mstrip i{font-style:normal;color:var(--gd);letter-spacing:.14em;font-size:8.5px;margin-right:6px}
 .gb{
   border:1px solid var(--line2);border-radius:9px;padding:7px 10px;min-width:104px;cursor:pointer;
   background:rgba(72,226,255,.07);color:var(--txt);text-align:right
@@ -1913,7 +1924,7 @@ body.syspage #toasts{bottom:calc(var(--sysbarh) + 8px + env(safe-area-inset-bott
 "use strict";
 /* bumped by hand, one per patch that ships - shown in the dev panel so the owner
    can tell which build a report/screenshot came from. */
-const BUILD=644;
+const BUILD=645;
 /* ============================ storage (safe) ============================ */
 const Store=(()=>{let mem={},ok=false;
   try{const k="__sd";window.localStorage.setItem(k,"1");window.localStorage.removeItem(k);ok=true}catch(e){ok=false}
@@ -2859,8 +2870,10 @@ const RESH=[
     Cartography's req:{id:"auto",lv:2} are untouched. max 10->3 (a save with
     S.rs.auto>3 is clamped in adopt()); cost curve (c/cg) unchanged. The node's old
     per-tier auto-buy effect was retired in patch403 - see the comment at govTick()'s
-    call site in tick() (06-progress.js) for what actually spends these levels now. */
- {id:"auto",  n:"Governors",   max:3, c:25, cg:3.2, col:"#ffd166", req:{id:"drill",lv:4},
+    call site in tick() (06-progress.js) for what actually spends these levels now.
+    PLAN-polish batch C #2 (Governors v2): max 3->6 (adopt()'s own clamp raised to
+    match); cost curve still unchanged. */
+ {id:"auto",  n:"Governors",   max:6, c:25, cg:3.2, col:"#ffd166", req:{id:"drill",lv:4},
   ic:`<rect x="14" y="14" width="20" height="20" rx="3" fill="none" stroke="currentColor" stroke-width="3"/><rect x="21" y="21" width="6" height="6" fill="currentColor"/><g stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M19 14V7M29 14V7M19 41v-7M29 41v-7M14 19H7M14 29H7M41 19h-7M41 29h-7"/></g>`,
   d:lv=>lv?("Appoint up to "+lv+" governor"+(lv>1?"s":"")):"No governors yet",
   t:"Each level hands one more system's buildings to a governor who buys on their own."}, /* PLACEHOLDER */
@@ -2969,19 +2982,26 @@ const NEXUS=[
   d:lv=>lv?"The turn begins.":"Unknown",
   t:""}
 ];
+/* PLAN-polish batch C (Parked "mission tag", decided mock variant C): missions whose
+   `k` gates on a specific GENS tier via gCount(gi) now name that tier explicitly as
+   `gi` (and how many it takes as `need`) instead of the strip having to parse `d`'s
+   own English text back apart to find it - see ladderTierRow()'s own header note
+   (09-render.js) for the reader. Every other mission (scans, ore/rate thresholds,
+   level, wins, salvage, crew, warships, structure totals) has no single tier behind
+   it, so it carries neither field and the strip never matches a row for it. */
 const MISSIONS=[
- {d:"Own 15 Mining Drones",          k:s=>gCount(0)>=15,       p:s=>gCount(0)/15,             r:{c:4}},
+ {d:"Own 15 Mining Drones",          k:s=>gCount(0)>=15,       p:s=>gCount(0)/15,             r:{c:4},  gi:0, need:15},
  {d:"Perform 25 manual scans",       k:s=>s.clicks>=25,        p:s=>s.clicks/25,               r:{c:5}},
- {d:"Own 10 Smelter Pods",             k:s=>gCount(1)>=10,       p:s=>gCount(1)/10,             r:{c:8}},
+ {d:"Own 10 Smelter Pods",             k:s=>gCount(1)>=10,       p:s=>gCount(1)/10,             r:{c:8},  gi:1, need:10},
  {d:"Bank 50,000 ore at once",       k:s=>s.ore>=5e4,          p:s=>s.ore/5e4,                 r:{c:12}},
  {d:"Reach 250 ore per second",      k:s=>rate()>=250,         p:s=>rate()/250,                r:{c:14}},
- {d:"Sink your first Crust Borer",     k:s=>gCount(2)>=1,        p:s=>gCount(2)>=1?1:0,         r:{c:15}},
+ {d:"Sink your first Crust Borer",     k:s=>gCount(2)>=1,        p:s=>gCount(2)>=1?1:0,         r:{c:15}, gi:2, need:1},
  {d:"Perform 100 manual scans",       k:s=>s.clicks>=100,       p:s=>s.clicks/100,              r:{c:22}},
  {d:"Reach 5,000 ore per second",    k:s=>rate()>=5000,        p:s=>rate()/5000,               r:{c:35}},
- {d:"Own 25 Fabricators",            k:s=>gCount(3)>=25,       p:s=>gCount(3)/25,              r:{c:60,dm:2}},
+ {d:"Own 25 Fabricators",            k:s=>gCount(3)>=25,       p:s=>gCount(3)/25,              r:{c:60,dm:2},  gi:3, need:25},
  {d:"Reach level 12",                k:s=>level()>=12,         p:s=>level()/12,                r:{c:80,dm:5}},
- {d:"Own 100 Mining Drones",         k:s=>gCount(0)>=100,      p:s=>gCount(0)/100,             r:{c:120}},
- {d:"Build an Orbital Harvester",         k:s=>gCount(4)>=1,        p:s=>gCount(4)>=1?1:0,         r:{c:180,dm:3}},
+ {d:"Own 100 Mining Drones",         k:s=>gCount(0)>=100,      p:s=>gCount(0)/100,             r:{c:120}, gi:0, need:100},
+ {d:"Build an Orbital Harvester",         k:s=>gCount(4)>=1,        p:s=>gCount(4)>=1?1:0,         r:{c:180,dm:3}, gi:4, need:1},
  {d:"Hold 250 crystal at once",      k:s=>s.cry>=250,          p:s=>s.cry/250,                 r:{dm:6}},
  {d:"Win your first raid",           k:s=>(s.wins||0)>=1,      p:s=>(s.wins||0)>=1?1:0,        r:{c:220,dm:4}},
  {d:"Field 20 warships",             k:s=>allFleetShips(s)>=20, p:s=>allFleetShips(s)/20, r:{c:500,dm:7}},
@@ -2989,16 +3009,16 @@ const MISSIONS=[
  {d:"Sign your first crew",          k:s=>(s.crew||[]).length>=1, p:s=>(s.crew||[]).length>=1?1:0, r:{c:800,dm:8}},
  {d:"Reach 1M ore per second",       k:s=>rate()>=1e6,         p:s=>rate()/1e6,                r:{c:400,dm:8}},
  {d:"Reach level 20",                k:s=>level()>=20,         p:s=>level()/20,                r:{c:600,dm:14}},
- {d:"Own 50 Fusion Forges",          k:s=>gCount(5)>=50,       p:s=>gCount(5)/50,              r:{c:900,dm:18}},
+ {d:"Own 50 Fusion Forges",          k:s=>gCount(5)>=50,       p:s=>gCount(5)/50,              r:{c:900,dm:18}, gi:5, need:50},
  {d:"Own 400 structures in total",   k:s=>tot()>=400,          p:s=>tot()/400,                 r:{c:1500,dm:25}},
- {d:"Build a Dyson Swarm",           k:s=>gCount(6)>=1,        p:s=>gCount(6)>=1?1:0,          r:{c:2500,dm:35}},
+ {d:"Build a Dyson Swarm",           k:s=>gCount(6)>=1,        p:s=>gCount(6)>=1?1:0,          r:{c:2500,dm:35}, gi:6, need:1},
  {d:"Reach 1B ore per second",       k:s=>rate()>=1e9,         p:s=>rate()/1e9,                r:{c:5000,dm:50}},
  {d:"Reach level 30",                k:s=>level()>=30,         p:s=>level()/30,                r:{c:9000,dm:90}},
- {d:"Open a Wormhole Crucible",         k:s=>gCount(7)>=1,        p:s=>gCount(7)>=1?1:0,         r:{c:2e4,dm:150}},
+ {d:"Open a Wormhole Crucible",         k:s=>gCount(7)>=1,        p:s=>gCount(7)>=1?1:0,         r:{c:2e4,dm:150}, gi:7, need:1},
  {d:"Reach 1T ore per second",       k:s=>rate()>=1e12,        p:s=>rate()/1e12,               r:{c:6e4,dm:300}},
- {d:"Sink a Singularity Well",     k:s=>gCount(8)>=1,        p:s=>gCount(8)>=1?1:0,           r:{c:2e5,dm:600}},
+ {d:"Sink a Singularity Well",     k:s=>gCount(8)>=1,        p:s=>gCount(8)>=1?1:0,           r:{c:2e5,dm:600}, gi:8, need:1},
  {d:"Own 1,000 structures in total", k:s=>tot()>=1000,         p:s=>tot()/1000,                r:{c:8e5,dm:1200}},
- {d:"Claim the Galactic Nexus",      k:s=>gCount(9)>=1,        p:s=>gCount(9)>=1?1:0,          r:{c:5e6,dm:5000}}
+ {d:"Claim the Galactic Nexus",      k:s=>gCount(9)>=1,        p:s=>gCount(9)>=1?1:0,          r:{c:5e6,dm:5000}, gi:9, need:1}
 ];
 const ACHS=[
  {id:"a1", n:"First Contact",     d:"Perform a manual scan",        k:s=>s.clicks>=1,   b:.01},
@@ -3890,11 +3910,16 @@ function shipMax(i,f){ const S1=SHIPS[i];
    purchase actually LANDS on (tgt, or Fleet 1 if it queues - flQPower() counts
    against Fleet 1, see fleetTotalPower()) rather than an empire-wide total, since
    the cap itself is per fleet now - price is still off the empire-wide cost curve
-   (shipCost() unchanged). */
+   (shipCost() unchanged).
+   PLAN-polish batch C #1 (Shipyard): "home" is no longer the only place a purchase
+   can land on the spot - any system with a built Shipyard (sysHasShipyard(),
+   03-defence.js) counts too. idleAtYard() is the one predicate both the routing
+   below and the buy button's own label (11-combat.js) read, so they can never
+   disagree about which fleet a purchase would land on. */
+function idleAtYard(fl){ return !fl.to && (fl.at==="home" || sysHasShipyard(fl.at)); }
 function buyShip(i,k){ if(k<1)return false;
   const cf=curFleet();
-  const idleHome=fl=>!fl.to&&fl.at==="home";
-  const tgt = idleHome(cf) ? cf : fleets().find(idleHome);
+  const tgt = idleAtYard(cf) ? cf : fleets().find(idleAtYard);
   const capFleet = tgt || fleet(1);
   if(k*SHIPS[i].pw>capLeft(capFleet))return false;    /* capacity is checked before price */
   const c=shipCost(i,k); if(S.ore<c)return false;
@@ -4139,7 +4164,7 @@ const SD_C0=14,            /* first level, in THIS slot's own exotic (or ore-equ
 /* TUNING-PENDING: every module's own per-level (min/sen: flat, since they never go
    past level 1) contribution to defStrength() - garrison strength fed straight into
    holdOdds(), the exact job the old sdLv()*1.0 term did. */
-const DEF_STR={ tur:0.6, min:0.9, shd:0.4, sen:0.3, han:0 };
+const DEF_STR={ tur:0.6, min:0.9, shd:0.4, sen:0.3, han:0, shy:0 };
 const SHD_HULL_PER=0.25;   /* TUNING-PENDING: Shield Array's own hull mult per level -
                                the mini-game's DT.hullMul slot, replacing the old flat
                                SD_HULL (which applied to every level of the one-size-
@@ -4165,7 +4190,16 @@ const DEF_MODULES={
    desc:"Extends this system's warning window and names exactly who is coming and how they fight, including what rearming now would do to the odds. Useless once a fleet is already inbound \u2014 fit it before you need it." },
  han:{ id:"han", n:"Hangar", maxLv:1, oneUse:false,
    guidance:"Best against the Covenant \u2014 stations fleet, not firepower.",
-   desc:"Stations part of your fleet at this system, fighting beside the garrison and the automated defences. The more (and the heavier) you station, the stronger this gets \u2014 open STATION FLEET to assign hulls." }
+   desc:"Stations part of your fleet at this system, fighting beside the garrison and the automated defences. The more (and the heavier) you station, the stronger this gets \u2014 open STATION FLEET to assign hulls." },
+ /* PLAN-polish batch C #1 (Shipyard): no garrison strength of its own (DEF_STR.shy
+    above) - buildable on any ring>=1 HELD system (dmodBuild() checks s.ring<1
+    explicitly, on top of the s.home exclusion every module already gets - home is
+    ring 0 and would be the only other system that check could ever catch, so this
+    is redundant with s.home today, but says the actual rule rather than leaning on
+    a coincidence). Its only effect is buyShip() routing - see 01-content.js. */
+ shy:{ id:"shy", n:"Shipyard", maxLv:1, oneUse:false,
+   guidance:"Ships bought while a fleet is here land right on it.",
+   desc:"A forward yard. A fleet idle here can take new hulls the moment they're bought, same as home \u2014 no trip back first." }
 };
 /* PLAN-defences.md Run 3 (patch600): Hangar stationing. S.han[sysId]=[n0,n1,n2] -
    counts of each SHIPS[] hull class stationed at that system, moved OUT of S.sh (the
@@ -4303,6 +4337,7 @@ function dmodComplete(){
 function dmodBuild(s,slotIdx,moduleId){
   if(!s||s.home||!sysHeld(s.id)||slotIdx<0||slotIdx>2)return false;
   const def=DEF_MODULES[moduleId]; if(!def||def.disabled)return false;
+  if(moduleId==="shy" && (!s.ring||s.ring<1))return false;   /* PLAN-polish batch C #1 */
   const d=dmodEnsure(s.id); if(d.s[slotIdx])return false;      /* BUILD is for an empty slot */
   if(dmodBusy(s.id))return false;
   const price=dmodPrice(s,0);
@@ -4418,6 +4453,9 @@ function dmodConsumeMines(sysId){
    this same function, so "without one, none of it appears" cannot drift into three
    different checks that disagree. */
 function hasSensorMast(id){ return dmodLv(id,"sen")>0 }
+/* PLAN-polish batch C #1: the one thing a Shipyard does - buyShip() (01-content.js)
+   routes a purchase to a fleet sitting idle here, same as it always has for "home". */
+function sysHasShipyard(id){ return dmodLv(id,"shy")>0 }
 /* the single best RIGHT NOW rearm/upgrade across a system's three slots (only
    these two actions - the plan's own wording - never a fresh BUILD), gated on
    being affordable this instant so the preview never promises a move the player
@@ -5391,6 +5429,29 @@ function thqAt(id){ return thq().find(q=>q.id===id)||null }
    see patch587b's own header for how this was actually found and confirmed. */
 function thqAtSys(sysId){ return thq().find(q=>q.sysId===sysId)||null }
 function thqDrop(id){ const q=thq(); const i=q.findIndex(x=>x.id===id); if(i>=0)q.splice(i,1) }
+/* PLAN-polish batch C #3: the first-planet ambush - a small scripted threat on the
+   FIRST non-home system a player ever claims, due AMBUSH_DELAY seconds later, weak
+   enough (AMBUSH_DIF, far under a real threat's own dif=1+ring*0.34+... - see
+   holdOdds()) that one freshly-fitted module comfortably holds it. One-time,
+   S.seen.ambush guarded.
+   Deliberately called ONLY from the real claim button's own onclick (09-render.js)
+   - NEVER from claimSystem() itself, which csim4.js calls directly for every claim
+   its own run makes (see csim4.js's own header note and this repo's README on the
+   byte-identical requirement). Putting this here instead keeps claimSystem() the
+   one function both the UI and the sim can share with no behavioural fork - see
+   claimSystem()'s own header comment for why that matters. */
+const AMBUSH_DELAY=90, AMBUSH_DIF=0.2;
+function queueFirstAmbush(s){
+  if(!s||s.home)return false;
+  if(!S.seen||typeof S.seen!=="object")S.seen={};
+  if(S.seen.ambush)return false;
+  S.seen.ambush=true;
+  S.thqSeq=Math.max(1,(S.thqSeq||1))+1;
+  thq().push({ id:S.thqSeq, rv:"hel", sysId:s.id, dif:AMBUSH_DIF, t:AMBUSH_DELAY, life:AMBUSH_DELAY });
+  queueNotice("vega:ambush");
+  dirty=true;
+  return true;
+}
 /* an attack aimed at a system you no longer hold cannot be fought or defended, so it is
    quietly withdrawn rather than sitting on the page as an impossible card */
 function thqPrune(){
@@ -5784,7 +5845,11 @@ function flag(p){ const t=$$(".tab").find(t=>t.dataset.p===p); if(t&&!t.classLis
    budget (gb) that accrues GOV_SHARE of the empire's ore rate, split evenly across
    every appointed governor, and is spent down by purchases - it never dips into ore
    the player already had. TUNING-PENDING: both constants. */
-const GOV_EVERY=20, GOV_SHARE=0.5;
+/* PLAN-polish batch C #2 (Governors v2, owner: "more involved, fine if they spend
+   more"): GOV_SHARE 0.5->0.75. GOV_FIT_EVERY is new - the "fit the cheapest
+   affordable module in an empty slot, once per 60s" side of a governor's job,
+   TUNING-PENDING like its two siblings. */
+const GOV_EVERY=20, GOV_SHARE=0.75, GOV_FIT_EVERY=60;
 /* every system currently appointed a governor - regardless of occupation, since
    "suspends" (owner decision 3) means govTick() skips it this tick, not that it
    stops being appointed; sysHeld() is what actually gates whether it can buy. */
@@ -5830,15 +5895,48 @@ function govBuyStep(id, st){
   dirty=true;
   return true;
 }
+/* PLAN-polish batch C #2 (Governors v2): the second thing a governor does now,
+   alongside govBuyStep() - fit the cheapest affordable module into an empty
+   defence slot, at most once per GOV_FIT_EVERY of game time, from the exact same
+   per-governor bank govBuyStep() spends. Every module is priced identically for an
+   empty slot (dmodPrice(s,0) - the same base price regardless of which module goes
+   in), so "cheapest" never has to break a tie: the eligible list is walked in a
+   fixed order and the first one affordable is fitted. Shipyard is never in that
+   list - "never a Shipyard (player's choice)" (owner decision). Silent unless the
+   system's own page is open, same rule govBuyStep() follows and for the same
+   reason (dmodBuild()'s own toast/blip already respect `hush`). Returns whether
+   anything was actually fitted. */
+const GOV_FIT_MODULES=Object.keys(DEF_MODULES).filter(id=>id!=="shy");
+function govFitStep(id, st){
+  const s=SYSMAP[id]; if(!s)return false;
+  const d=dmodEnsure(id);
+  let slotIdx=-1; for(let i=0;i<d.s.length;i++) if(!d.s[i]){ slotIdx=i; break; }
+  if(slotIdx<0 || dmodBusy(id))return false;
+  const price=dmodPrice(s,0);
+  if(price>st.gb)return false;
+  const afford = s.res ? exo(s.res)>=price : S.ore>=price;
+  if(!afford)return false;
+  const moduleId=GOV_FIT_MODULES.find(m=>!DEF_MODULES[m].disabled); if(!moduleId)return false;
+  const open=document.body.classList.contains("syspage") && S.msel===id;
+  hush=!open;
+  const built=dmodBuild(s,slotIdx,moduleId);
+  hush=false;
+  if(!built)return false;
+  st.gb-=price;
+  st.gfl={m:moduleId,t:Date.now()};
+  dirty=true;
+  return true;
+}
 /* dt is game seconds elapsed (tick()'s own small dt, or GOV_EVERY repeated from
    offlineGovCatchup() below). effMul scales the bank accrual down to match the
    discounted ore offline already banked at (offlineEff()) - a governor never gets a
    richer cut than the empire's own production did. capPerSys bounds how many buy
-   attempts a single call may make per system - only offlineGovCatchup() ever passes
-   it; live tick()'s dt is always far under GOV_EVERY, so the while loop below never
-   needs a cap during ordinary play. csim4.js never sets S.sys[id].gov anywhere, so
-   govSystems() is always empty there and this returns before touching rate() or
-   S.ore - the pacing baseline cannot move from this function. No Math.random(). */
+   (and fit) attempts a single call may make per system - only offlineGovCatchup()
+   ever passes it; live tick()'s dt is always far under GOV_EVERY, so the while
+   loops below never need a cap during ordinary play. csim4.js never sets
+   S.sys[id].gov anywhere, so govSystems() is always empty there and this returns
+   before touching rate() or S.ore - the pacing baseline cannot move from this
+   function. No Math.random(). */
 function govTick(dt, effMul, capPerSys){
   if(!(dt>0))return;
   effMul = effMul===undefined?1:effMul;
@@ -5849,11 +5947,18 @@ function govTick(dt, effMul, capPerSys){
     const st=sysState(id); if(!st)continue;
     st.gb=(st.gb||0)+r*dt*share*effMul;
     st.gt=(st.gt||0)+dt;
+    st.gft=(st.gft||0)+dt;
     let bought=0;
     while(st.gt>=GOV_EVERY && (capPerSys===undefined || bought<capPerSys)){
       st.gt-=GOV_EVERY;
       govBuyStep(id, st);
       bought++;
+    }
+    let fitted=0;
+    while(st.gft>=GOV_FIT_EVERY && (capPerSys===undefined || fitted<capPerSys)){
+      st.gft-=GOV_FIT_EVERY;
+      govFitStep(id, st);
+      fitted++;
     }
   }
 }
@@ -6011,7 +6116,10 @@ const VEGA={
  fleet3:    {t:"Third fleet is yours. Three fronts, if you can hold them.", go:"p-map"},            /* PLACEHOLDER */
  /* PLAN-governors: fired by govSetAppointed() (04-actions.js) the moment a system's
     GOVERNOR chip is first switched ON - PLACEHOLDER TEXT. */
- governor:  {t:"A governor is running that system now. It will spend what it earns and nothing more.", go:"p-map"} /* PLACEHOLDER */
+ governor:  {t:"A governor is running that system now. It will spend what it earns and nothing more.", go:"p-map"}, /* PLACEHOLDER */
+ /* PLAN-polish batch C #3: fired by queueFirstAmbush() (05-rivals.js) the moment
+    the FIRST non-home system is claimed - points at DEFENCES, PLACEHOLDER TEXT. */
+ ambush:    {t:"That system has no garrison yet. Something is already inbound — fit a defence before it arrives.", go:"p-map"} /* PLACEHOLDER */
 };
 /* ---------------- RIVAL_MSG · intercepted transmissions ----------------
    Same rule as VEGA: PLACEHOLDER TEXT, the owner edits it here and nowhere else.
@@ -6239,10 +6347,34 @@ function empFurthestRing(){
     if(sysHeld(s.id)||sysContested(s)||sysOpen(s))r=Math.max(r,s.ring); }
   return Math.min(4,r+1);
 }
+/* PLAN-polish Parked item, decided 24 Sep (mock variant C, tools/mkmissiontagmock.py):
+   the active/queued mission (one of MISSIONS.slice(S.mi,S.mi+3)) that feeds THIS
+   tier, if any - matched on the mission's own `gi` field (never parsed off `d`'s
+   text, see MISSIONS' own header note). At most one can match a given gi since a
+   tier only ever appears once across the whole table. */
+function missionForTier(gi){
+  const win=MISSIONS.slice(S.mi||0,(S.mi||0)+3);
+  return win.find(m=>m.gi===gi)||null;
+}
+/* the thin gold strip itself - flush under the row, its own bottom corners rounded,
+   the row's squared off to meet it (row.classList "mstripped", 01-empire.css). Gold
+   (var(--gd)) always, never the row's own --a accent - a mission is the Colonial
+   Authority's claim on this tier, not the tier's own identity. */
+function missionStrip(m){
+  const have=Math.min(gCount(m.gi), m.need||1);
+  const el=document.createElement("div"); el.className="mstrip";
+  el.innerHTML=`<span><i>MISSION</i>${m.d}</span><b>${have}/${m.need||1}</b>`;
+  return el;
+}
 /* one ladder tier row - owned (buy more) or the next reveal (greyed, dimmed via the
    .next class, never via opacity - see the header note by .g.next in the stylesheet
    for why opacity is the wrong tool here). Reuses the .g markup/CSS every structure
-   row has always used. No separate picker: the row IS the buy action. */
+   row has always used. No separate picker: the row IS the buy action. Returns the
+   .g element alone, or (a tier fed by a live mission) a fragment of the row plus its
+   own mission strip right under it - renderSysBuild()'s rowsHost.appendChild() takes
+   either the same way, and the strip rebuilds in the exact same pass as the row
+   itself (its own churn key below folds in S.mi and the mission's own gCount, so a
+   claim or a mission rolling over rebuilds it with no extra flicker window). */
 function ladderTierRow(sysId,gi,isNext){
   const g=GENS[gi];
   const el=document.createElement("div"); el.className="g"+(isNext?" next":"");
@@ -6283,7 +6415,12 @@ function ladderTierRow(sysId,gi,isNext){
       syncMapZoomBack(); dirty=true; render();
     };
   }
-  return el;
+  const m=missionForTier(gi);
+  if(!m)return el;
+  el.classList.add("mstripped");
+  const frag=document.createDocumentFragment();
+  frag.appendChild(el); frag.appendChild(missionStrip(m));
+  return frag;
 }
 /* PATCH 1: empDevBlock() (the pinned Extraction pseudo-row - Development level,
    DEVELOP/EXTRACTION button) is deleted outright along with the mechanic it drove.
@@ -7052,11 +7189,12 @@ const DEF_GLYPH={
  min:'<circle cx="12" cy="12" r="2.5"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M19.1 4.9l-2.8 2.8M7.7 16.3l-2.8 2.8"/>',
  shd:'<path d="M12 3l7 3.2v5.3c0 4.6-3 7.6-7 8.7-4-1.1-7-4.1-7-8.7V6.2z"/>',
  sen:'<path d="M12 21v-9M7.8 9.6a5.2 5.2 0 018.4 0M4.6 6.6a9.4 9.4 0 0114.8 0"/><circle cx="12" cy="11" r="1.6" fill="currentColor" stroke="none"/>',
- han:'<path d="M4 20h16M6 20v-6.5a6 6 0 0112 0V20"/><path d="M9.5 20l1-4h3l1 4"/>'
+ han:'<path d="M4 20h16M6 20v-6.5a6 6 0 0112 0V20"/><path d="M9.5 20l1-4h3l1 4"/>',
+ shy:'<path d="M4 18l8-13 8 13"/><path d="M4 18h16"/><path d="M9 18v-4h6v4"/>'
 };
 function defIconHTML(m){ return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${DEF_GLYPH[m]||""}</svg>`; }
 const DEF_ICON=DEF_GLYPH;   /* kept as an alias so the existing __SD export name still resolves */
-const DEF_COLOR={ tur:"var(--cy)", min:"var(--gd)", shd:"var(--vi)", sen:"var(--gr)", han:"var(--sv)" };
+const DEF_COLOR={ tur:"var(--cy)", min:"var(--gd)", shd:"var(--vi)", sen:"var(--gr)", han:"var(--sv)", shy:"#ffb45c" };
 function defClearSel(){ defSel=null; defSelSys=null; }
 /* the balance this system can actually spend on its own defences right now -
    its own exotic if it produces one, ore otherwise (same rule dmodPrice() uses). */
@@ -7249,7 +7387,12 @@ function renderSysBuild(s,held){
   if(countEl&&countEl.textContent!==countTxt)countEl.textContent=countTxt;
   let nextGi=null;
   for(const gi of ladder){ if(sysTierCount(s.id,gi)<=0){ nextGi=gi; break; } }
-  const key=s.id+"|"+ladder.map(gi=>sysTierCount(s.id,gi)).join(",")+"|"+S.buy+"|"+nextGi;
+  /* the mission strip (Parked item, decided 24 Sep) needs its own rebuild trigger
+     folded in here: which tiers are fed by the current mission window (S.mi can
+     advance with no ladder count on THIS system changing at all) and each fed
+     tier's own empire-wide gCount (a claim on a DIFFERENT system still moves it). */
+  const misKey=MISSIONS.slice(S.mi||0,(S.mi||0)+3).map(m=>m.gi!=null?m.gi+":"+gCount(m.gi):"").join(",");
+  const key=s.id+"|"+ladder.map(gi=>sysTierCount(s.id,gi)).join(",")+"|"+S.buy+"|"+nextGi+"|"+misKey;
   if(rowsHost.dataset.h!==key){
     /* patch611, retargeted patch626: #view is the scrolling ancestor now (the
        page itself is in-flow - see #sysSheet's own CSS comment) and a shorter
@@ -7317,7 +7460,17 @@ function renderSysGov(s,held){
   }
   const lastEl=$("#sysGovLast");
   if(lastEl){
-    if(st.gl && GENS[st.gl.gi]){
+    /* PLAN-polish batch C #2 (Governors v2): a governor now does two kinds of
+       thing (buy a tier, or fit a module into an empty slot) - the line shows
+       whichever happened more recently, same plain textContent-every-render idiom
+       (never a churn risk - tchurn2 only fingerprints <button>). */
+    const buyT=(st.gl&&GENS[st.gl.gi])?st.gl.t:-1;
+    const fitT=(st.gfl&&DEF_MODULES[st.gfl.m])?st.gfl.t:-1;
+    if(fitT>buyT && fitT>=0){
+      const agoS=Math.max(0,(Date.now()-st.gfl.t)/1000);
+      lastEl.hidden=false;
+      lastEl.textContent="Governor fitted "+DEF_MODULES[st.gfl.m].n+" · "+fmtT2(agoS)+" ago";
+    } else if(buyT>=0){
       const agoS=Math.max(0,(Date.now()-st.gl.t)/1000);
       lastEl.hidden=false;
       lastEl.textContent="Governor bought "+GENS[st.gl.gi].n+" · "+fmtT2(agoS)+" ago";
@@ -7769,7 +7922,7 @@ function renderMap(){
       level()<s.lvl ? "LOCKED \u00b7 LEVEL "+s.lvl : "CLAIM \u00b7 "+fmt(s.cost)+" ORE"}</button>`;
     if(act.dataset.h!==ah){
       act.dataset.h=ah; act.innerHTML=ah;
-      $("#sysClaim").onclick=()=>{ if(claimSystem(s)){ render(); save() } };
+      $("#sysClaim").onclick=()=>{ if(claimSystem(s)){ queueFirstAmbush(s); render(); save() } };
     }
   } else {
     /* patch598: FORTIFY is retired - the defences row (renderSysDef(), below)
@@ -11262,16 +11415,17 @@ function renderRaids(){
   fx.disabled = S.ore<rc || hp>=1;
   fx.textContent = "REPAIR \u00b7 "+fmt(rc)+" ORE";
   const host=$("#flShips"); host.innerHTML="";
-  /* run 3 (decision 6): no idle fleet at home right now - a BUY still queues (see
-     buyShip()'s own comment), it just doesn't land in curFleet() immediately. Said
-     plainly on the button rather than silently landing somewhere the player can't
-     see yet. */
-  const noHomeIdle=!fleets().some(fl=>!fl.to&&fl.at==="home");
-  /* polish batch A #12: buyShip() lands a purchase on curFleet() only when IT is
-     idle at home - otherwise the first idle-at-home fleet takes it, same rule
-     buyShip() itself uses (see its own header comment). Worked out once per
-     render, same for every ship class this loop draws a button for. */
-  const buyTgt = (!cf.to&&cf.at==="home") ? cf : fleets().find(fl=>!fl.to&&fl.at==="home");
+  /* run 3 (decision 6): no idle fleet at a yard (home, or batch C's Shipyard) right
+     now - a BUY still queues (see buyShip()'s own comment), it just doesn't land in
+     curFleet() immediately. Said plainly on the button rather than silently landing
+     somewhere the player can't see yet. */
+  const noHomeIdle=!fleets().some(idleAtYard);
+  /* polish batch A #12, extended batch C #1: buyShip() lands a purchase on
+     curFleet() only when IT is idle at a yard - otherwise the first idle-at-yard
+     fleet takes it, same rule buyShip() itself uses (idleAtYard(), 01-content.js).
+     Worked out once per render, same for every ship class this loop draws a button
+     for. */
+  const buyTgt = idleAtYard(cf) ? cf : fleets().find(idleAtYard);
   SHIPS.forEach((sp,i)=>{
     const d=document.createElement("div"); d.className="shp"; d.style.setProperty("--a",sp.col);
     const k=S.sell?Math.min(S.buy==="max"?cf.sh[i]:S.buy,cf.sh[i]):(S.buy==="max"?Math.max(1,shipMax(i)):S.buy);
@@ -11720,9 +11874,12 @@ function adopt(o){
      A save from before that (still legitimately at levels 4-10, bought under the old
      max) is clamped down - "a save with S.rs.auto>3 is clamped to 3" (owner decision
      1). Nothing else about S.rs needs sanitising - buyRes() itself already refuses
-     past a node's own max going forward, this only guards an existing save. */
+     past a node's own max going forward, this only guards an existing save.
+     PLAN-polish batch C #2 (Governors v2): max raised 3->6, clamp raised to match -
+     a save already sitting at exactly 3 (last run's real ceiling) is untouched, one
+     already over 6 from further back is still caught. */
   if(!f.rs||typeof f.rs!=="object")f.rs={};
-  if((f.rs.auto||0)>3)f.rs.auto=3;
+  if((f.rs.auto||0)>6)f.rs.auto=6;
   if(!f.sys||typeof f.sys!=="object")f.sys={};
   for(const k in f.sys){
     if(!SYSMAP[k]){ delete f.sys[k]; continue }
@@ -11749,13 +11906,22 @@ function adopt(o){
     const gt=Math.max(0,+gin.gt||0);
     const gl=(gin.gl&&typeof gin.gl==="object"&&GENS[Math.floor(gin.gl.gi)]&&+gin.gl.t>0)
       ? {gi:Math.floor(gin.gl.gi), t:+gin.gl.t} : null;
+    /* PLAN-polish batch C #2 (Governors v2): gft/gfl are the module-fitting side's
+       own timer/last-fit, sanitised the same way gt/gl are just above. gfl.m must
+       still name a real, non-Shipyard module - a save from a build that once
+       allowed something else here (there isn't one, but the check costs nothing
+       and matches gl's own belt-and-braces reading of `gi`). */
+    const gft=Math.max(0,+gin.gft||0);
+    const gfl=(gin.gfl&&typeof gin.gfl==="object"&&DEF_MODULES[gin.gfl.m]&&gin.gfl.m!=="shy"&&+gin.gfl.t>0)
+      ? {m:gin.gfl.m, t:+gin.gfl.t} : null;
     /* PLAN-polish batch B item 5: t0 is a GENS index (never negative) naming a real
        tier, or absent - a save from before this batch (or any system claimed
        before it) simply never carries the key, which sysT0() already reads as 0
        ("nothing skipped"), exactly the old behaviour. */
     const t0raw=Math.floor(gin.t0||0);
     const t0=(t0raw>0 && GENS[t0raw]) ? t0raw : 0;
-    f.sys[k]={b, ...(gov?{gov}:{}), ...(gb?{gb}:{}), ...(gt?{gt}:{}), ...(gl?{gl}:{}), ...(t0?{t0}:{})};
+    f.sys[k]={b, ...(gov?{gov}:{}), ...(gb?{gb}:{}), ...(gt?{gt}:{}), ...(gl?{gl}:{}),
+      ...(gft?{gft}:{}), ...(gfl?{gfl}:{}), ...(t0?{t0}:{})};
   }
   /* home is always held - a save that predates a claim, or one that simply never had
      home in S.sys, still needs its count map to exist */
@@ -11981,6 +12147,11 @@ function adopt(o){
      perfectly reconstruct history) - acceptable for flavour text that fires once, ever. */
   if(tot()>0)S.seen["vega:firstDrone"]=true;
   if(heldSystems().length>0)S.seen["vega:firstClaim"]=true;
+  /* PLAN-polish batch C #3: "old saves that already hold systems never get it" -
+     S.seen.ambush is the same guard queueFirstAmbush() checks (05-rivals.js), so a
+     save that already holds a non-home system on load is backfilled true here, same
+     rule vega:firstClaim just above already follows for the exact same condition. */
+  if(heldSystems().length>0)S.seen.ambush=true;
   if((S.wins||0)>=1)S.seen["vega:firstWin"]=true;
   if((S.defw||0)>=1)S.seen["vega:firstHold"]=true;
   if((S.thqSeq||1)>1)S.seen["vega:threat"]=true;
@@ -13429,11 +13600,12 @@ window.__SD={get S(){return S},NEXUS,buyNex,openSite,SITE,siteSlots,
   dmodSlots,dmodSlot,dmodEnsure,dmodBusy,dmodCost,dmodCostOre,dmodPrice,dmodBuildSecs,dmodComplete,
   dmodBuild,dmodUpgrade,dmodRearm,dmodSwap,dmodLv,dmodSummary,dmodConsumeMines,
   renderSysDef,renderSysOdds,defCardPct,defBalanceLabel,defClearSel,get defSel(){return defSel},openDefPicker,
-  DEF_ICON,DEF_COLOR,DEF_GLYPH,defIconHTML,hasSensorMast,defBestPreview,
+  DEF_ICON,DEF_COLOR,DEF_GLYPH,defIconHTML,hasSensorMast,defBestPreview,sysHasShipyard,idleAtYard,
   HAN_CAP,HAN_STR_MULT,hanFleet,hanFrom,hanCount,hanLeft,hanDPS,hanHP,hanTotalPower,hanPowerFor,hanStrength,
   stationHan,recallHan,recallHanAll,renderSysHan,hanModal,hanModalHTML,
   defStrength,bestHeldDefStrength,bestHeldDefSys,defRate,defAutoFire,
   holdOdds,holdLine,holdResolve,thq,thqAt,thqAtSys,thqDrop,thqTick,thqPrune,thqClock,
+  AMBUSH_DELAY,AMBUSH_DIF,queueFirstAmbush,
   THQ_MAX,THQ_LIFE,SAB_CHANCE,SAB_STEAL,SAB_EN_MIN,
   RIVALS,RIVALMAP,GARRISON,sysOwner,sysContested,assaultTarget,canAssault,engageTarget,
   TRIP_BASE,TRIP_PER_RING,TRIP_WAIT_MS,tripSecsFor,tripFor,tripArrived,launchAssault,tripTick,renderTripMarker,
@@ -13494,6 +13666,6 @@ window.__SD={get S(){return S},NEXUS,buyNex,openSite,SITE,siteSlots,
   mktSvKinds,exoModal,exoEverBanked,exoEverBankedAny,
   renderSysBuild,
   /* PLAN-governors */
-  GOV_EVERY,GOV_SHARE,govSystems,govCount,govPickTier,govBuyStep,govTick,offlineGovCatchup,
+  GOV_EVERY,GOV_SHARE,GOV_FIT_EVERY,GOV_FIT_MODULES,govSystems,govCount,govPickTier,govBuyStep,govFitStep,govTick,offlineGovCatchup,
   govSetAppointed,renderSysGov};
 </script>
