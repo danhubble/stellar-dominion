@@ -11979,3 +11979,47 @@ fixture — drain added). Batch B's late-game levels land ~2–3 lower in csim b
 economy-matched ladder starts mean fewer cheap structures (less deeds XP); nothing late
 is gated on those levels. Not pushed to GitHub (no push path this session): bundle
 sd-b644.bundle covers 1fffc3b..main.
+
+## PLAN-polish batch C — shipyard, governors v2, first-planet ambush, mission strip
+
+Five commits: mission strip (Parked item, mock variant C, gold), a CSS fix for the
+strip breaking patch632's fresh-save no-scroll layout, the Shipyard defence module +
+buyShip() routing, Governors v2 (node max 3→6, GOV_SHARE 0.75, module-fitting), and
+the first-planet ambush.
+
+Mission strip: `ladderTierRow()` now returns a DocumentFragment (row + `.mstrip`)
+for any tier fed by `MISSIONS.slice(S.mi,S.mi+3)`, matched on a new `gi`/`need`
+field on those MISSIONS entries instead of parsing `d`'s own text. Caught by
+`topen2.js`'s own pixel-tight layout test (a fresh save's first, only row is
+exactly the tier the first mission feeds) - fixed by tightening `.mstrip`'s own
+padding, a same-commit-adjacent follow-up commit.
+
+Shipyard: a sixth `DEF_MODULES` entry (`shy`), no combat strength of its own,
+gated on `s.ring>=1` (redundant with the existing `s.home` exclusion today, since
+home is the only ring-0 system, but says the actual rule). `buyShip()` and its
+button's label now share one `idleAtYard()` predicate: home OR a system with a
+built Shipyard.
+
+Governors v2: max 3→6 (`adopt()`'s clamp raised to match - **this moves the
+pacing sim on purpose**: csim's own greedy core-research loop already buys the
+"auto" node to its max, so raising that max means it buys further; new baseline
+committed alongside). GOV_SHARE 0.5→0.75. A governor now also fits the cheapest
+affordable module into an empty slot once per new `GOV_FIT_EVERY=60s`, from the
+same per-governor bank, never a Shipyard - own timer/last-fit fields (`gft`/`gfl`)
+sanitised in `adopt()` the same way `gt`/`gl` already are.
+
+Ambush: `queueFirstAmbush()` (05-rivals.js) is called only from the real claim
+button's own `onclick` (09-render.js), never from `claimSystem()` itself, which
+csim4.js calls directly for every claim - keeping csim untouched by this feature
+without forking `claimSystem()`'s own behaviour between the UI and the sim. Weak
+(`dif:0.2`, life 90s) - `holdOdds()` favours the defender comfortably even with
+nothing fitted, more so with one module. `S.seen.ambush` backfilled true on load
+for any save already holding a non-home system.
+
+Tests: `tgov2.js` extended in place (max/clamp numbers, GOV_SHARE, four new
+module-fit assertions); new `tests/tbatchc2.js` covers the strip, Shipyard, and
+the ambush (16 assertions) including the csim-inertness check run directly
+(`claimSystem()` alone never touches `S.seen.ambush`/`S.thq`). Full suite
+(`tools/runall.sh`) clean. Screenshots: `tests/shotsBatchC.js` (manual, not part
+of the suite) → `shots/batchc-{01-mission-strip,02-shipyard-slot,
+03-governor-fitted,04-ambush-threat}-{667,844}.png`.
