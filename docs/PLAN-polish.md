@@ -58,5 +58,10 @@ he saw. No new content systems beyond what is here; the game is being finished.
 ## Parked
 
 - Fleet must be present to claim (owner: leave it).
-- Mission tag on building tabs (needs a mock; maybe later).
+- ~~Mission tag on building tabs~~ → DECIDED (24 Sep, mock variant C): a thin strip
+  hanging under any building row whose tier feeds one of the three current missions
+  (active or queued): "MISSION · Own 15 Mining Drones · 3/15", GOLD (`--gd`) not the
+  row's accent colour, flush under the row with the row's bottom corners squared.
+  Rendered by `ladderTierRow` under the row's churn key (no flicker), keyed on the
+  mission index + count. Goes into Batch C.
 - Owner copy pass (all PLACEHOLDER lines) — coordinator pulls them into one file.
