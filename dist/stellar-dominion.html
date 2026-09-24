@@ -5425,6 +5425,29 @@ function thqAt(id){ return thq().find(q=>q.id===id)||null }
    see patch587b's own header for how this was actually found and confirmed. */
 function thqAtSys(sysId){ return thq().find(q=>q.sysId===sysId)||null }
 function thqDrop(id){ const q=thq(); const i=q.findIndex(x=>x.id===id); if(i>=0)q.splice(i,1) }
+/* PLAN-polish batch C #3: the first-planet ambush - a small scripted threat on the
+   FIRST non-home system a player ever claims, due AMBUSH_DELAY seconds later, weak
+   enough (AMBUSH_DIF, far under a real threat's own dif=1+ring*0.34+... - see
+   holdOdds()) that one freshly-fitted module comfortably holds it. One-time,
+   S.seen.ambush guarded.
+   Deliberately called ONLY from the real claim button's own onclick (09-render.js)
+   - NEVER from claimSystem() itself, which csim4.js calls directly for every claim
+   its own run makes (see csim4.js's own header note and this repo's README on the
+   byte-identical requirement). Putting this here instead keeps claimSystem() the
+   one function both the UI and the sim can share with no behavioural fork - see
+   claimSystem()'s own header comment for why that matters. */
+const AMBUSH_DELAY=90, AMBUSH_DIF=0.2;
+function queueFirstAmbush(s){
+  if(!s||s.home)return false;
+  if(!S.seen||typeof S.seen!=="object")S.seen={};
+  if(S.seen.ambush)return false;
+  S.seen.ambush=true;
+  S.thqSeq=Math.max(1,(S.thqSeq||1))+1;
+  thq().push({ id:S.thqSeq, rv:"hel", sysId:s.id, dif:AMBUSH_DIF, t:AMBUSH_DELAY, life:AMBUSH_DELAY });
+  queueNotice("vega:ambush");
+  dirty=true;
+  return true;
+}
 /* an attack aimed at a system you no longer hold cannot be fought or defended, so it is
    quietly withdrawn rather than sitting on the page as an impossible card */
 function thqPrune(){
@@ -6089,7 +6112,10 @@ const VEGA={
  fleet3:    {t:"Third fleet is yours. Three fronts, if you can hold them.", go:"p-map"},            /* PLACEHOLDER */
  /* PLAN-governors: fired by govSetAppointed() (04-actions.js) the moment a system's
     GOVERNOR chip is first switched ON - PLACEHOLDER TEXT. */
- governor:  {t:"A governor is running that system now. It will spend what it earns and nothing more.", go:"p-map"} /* PLACEHOLDER */
+ governor:  {t:"A governor is running that system now. It will spend what it earns and nothing more.", go:"p-map"}, /* PLACEHOLDER */
+ /* PLAN-polish batch C #3: fired by queueFirstAmbush() (05-rivals.js) the moment
+    the FIRST non-home system is claimed - points at DEFENCES, PLACEHOLDER TEXT. */
+ ambush:    {t:"That system has no garrison yet. Something is already inbound — fit a defence before it arrives.", go:"p-map"} /* PLACEHOLDER */
 };
 /* ---------------- RIVAL_MSG · intercepted transmissions ----------------
    Same rule as VEGA: PLACEHOLDER TEXT, the owner edits it here and nowhere else.
@@ -7892,7 +7918,7 @@ function renderMap(){
       level()<s.lvl ? "LOCKED \u00b7 LEVEL "+s.lvl : "CLAIM \u00b7 "+fmt(s.cost)+" ORE"}</button>`;
     if(act.dataset.h!==ah){
       act.dataset.h=ah; act.innerHTML=ah;
-      $("#sysClaim").onclick=()=>{ if(claimSystem(s)){ render(); save() } };
+      $("#sysClaim").onclick=()=>{ if(claimSystem(s)){ queueFirstAmbush(s); render(); save() } };
     }
   } else {
     /* patch598: FORTIFY is retired - the defences row (renderSysDef(), below)
@@ -12117,6 +12143,11 @@ function adopt(o){
      perfectly reconstruct history) - acceptable for flavour text that fires once, ever. */
   if(tot()>0)S.seen["vega:firstDrone"]=true;
   if(heldSystems().length>0)S.seen["vega:firstClaim"]=true;
+  /* PLAN-polish batch C #3: "old saves that already hold systems never get it" -
+     S.seen.ambush is the same guard queueFirstAmbush() checks (05-rivals.js), so a
+     save that already holds a non-home system on load is backfilled true here, same
+     rule vega:firstClaim just above already follows for the exact same condition. */
+  if(heldSystems().length>0)S.seen.ambush=true;
   if((S.wins||0)>=1)S.seen["vega:firstWin"]=true;
   if((S.defw||0)>=1)S.seen["vega:firstHold"]=true;
   if((S.thqSeq||1)>1)S.seen["vega:threat"]=true;
@@ -13570,6 +13601,7 @@ window.__SD={get S(){return S},NEXUS,buyNex,openSite,SITE,siteSlots,
   stationHan,recallHan,recallHanAll,renderSysHan,hanModal,hanModalHTML,
   defStrength,bestHeldDefStrength,bestHeldDefSys,defRate,defAutoFire,
   holdOdds,holdLine,holdResolve,thq,thqAt,thqAtSys,thqDrop,thqTick,thqPrune,thqClock,
+  AMBUSH_DELAY,AMBUSH_DIF,queueFirstAmbush,
   THQ_MAX,THQ_LIFE,SAB_CHANCE,SAB_STEAL,SAB_EN_MIN,
   RIVALS,RIVALMAP,GARRISON,sysOwner,sysContested,assaultTarget,canAssault,engageTarget,
   TRIP_BASE,TRIP_PER_RING,TRIP_WAIT_MS,tripSecsFor,tripFor,tripArrived,launchAssault,tripTick,renderTripMarker,

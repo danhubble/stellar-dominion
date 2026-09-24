@@ -204,6 +204,29 @@ function thqAt(id){ return thq().find(q=>q.id===id)||null }
    see patch587b's own header for how this was actually found and confirmed. */
 function thqAtSys(sysId){ return thq().find(q=>q.sysId===sysId)||null }
 function thqDrop(id){ const q=thq(); const i=q.findIndex(x=>x.id===id); if(i>=0)q.splice(i,1) }
+/* PLAN-polish batch C #3: the first-planet ambush - a small scripted threat on the
+   FIRST non-home system a player ever claims, due AMBUSH_DELAY seconds later, weak
+   enough (AMBUSH_DIF, far under a real threat's own dif=1+ring*0.34+... - see
+   holdOdds()) that one freshly-fitted module comfortably holds it. One-time,
+   S.seen.ambush guarded.
+   Deliberately called ONLY from the real claim button's own onclick (09-render.js)
+   - NEVER from claimSystem() itself, which csim4.js calls directly for every claim
+   its own run makes (see csim4.js's own header note and this repo's README on the
+   byte-identical requirement). Putting this here instead keeps claimSystem() the
+   one function both the UI and the sim can share with no behavioural fork - see
+   claimSystem()'s own header comment for why that matters. */
+const AMBUSH_DELAY=90, AMBUSH_DIF=0.2;
+function queueFirstAmbush(s){
+  if(!s||s.home)return false;
+  if(!S.seen||typeof S.seen!=="object")S.seen={};
+  if(S.seen.ambush)return false;
+  S.seen.ambush=true;
+  S.thqSeq=Math.max(1,(S.thqSeq||1))+1;
+  thq().push({ id:S.thqSeq, rv:"hel", sysId:s.id, dif:AMBUSH_DIF, t:AMBUSH_DELAY, life:AMBUSH_DELAY });
+  queueNotice("vega:ambush");
+  dirty=true;
+  return true;
+}
 /* an attack aimed at a system you no longer hold cannot be fought or defended, so it is
    quietly withdrawn rather than sitting on the page as an impossible card */
 function thqPrune(){

@@ -1652,7 +1652,7 @@ function renderMap(){
       level()<s.lvl ? "LOCKED \u00b7 LEVEL "+s.lvl : "CLAIM \u00b7 "+fmt(s.cost)+" ORE"}</button>`;
     if(act.dataset.h!==ah){
       act.dataset.h=ah; act.innerHTML=ah;
-      $("#sysClaim").onclick=()=>{ if(claimSystem(s)){ render(); save() } };
+      $("#sysClaim").onclick=()=>{ if(claimSystem(s)){ queueFirstAmbush(s); render(); save() } };
     }
   } else {
     /* patch598: FORTIFY is retired - the defences row (renderSysDef(), below)

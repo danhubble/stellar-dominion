@@ -50,7 +50,10 @@ const VEGA={
  fleet3:    {t:"Third fleet is yours. Three fronts, if you can hold them.", go:"p-map"},            /* PLACEHOLDER */
  /* PLAN-governors: fired by govSetAppointed() (04-actions.js) the moment a system's
     GOVERNOR chip is first switched ON - PLACEHOLDER TEXT. */
- governor:  {t:"A governor is running that system now. It will spend what it earns and nothing more.", go:"p-map"} /* PLACEHOLDER */
+ governor:  {t:"A governor is running that system now. It will spend what it earns and nothing more.", go:"p-map"}, /* PLACEHOLDER */
+ /* PLAN-polish batch C #3: fired by queueFirstAmbush() (05-rivals.js) the moment
+    the FIRST non-home system is claimed - points at DEFENCES, PLACEHOLDER TEXT. */
+ ambush:    {t:"That system has no garrison yet. Something is already inbound — fit a defence before it arrives.", go:"p-map"} /* PLACEHOLDER */
 };
 /* ---------------- RIVAL_MSG · intercepted transmissions ----------------
    Same rule as VEGA: PLACEHOLDER TEXT, the owner edits it here and nowhere else.

@@ -534,6 +534,11 @@ function adopt(o){
      perfectly reconstruct history) - acceptable for flavour text that fires once, ever. */
   if(tot()>0)S.seen["vega:firstDrone"]=true;
   if(heldSystems().length>0)S.seen["vega:firstClaim"]=true;
+  /* PLAN-polish batch C #3: "old saves that already hold systems never get it" -
+     S.seen.ambush is the same guard queueFirstAmbush() checks (05-rivals.js), so a
+     save that already holds a non-home system on load is backfilled true here, same
+     rule vega:firstClaim just above already follows for the exact same condition. */
+  if(heldSystems().length>0)S.seen.ambush=true;
   if((S.wins||0)>=1)S.seen["vega:firstWin"]=true;
   if((S.defw||0)>=1)S.seen["vega:firstHold"]=true;
   if((S.thqSeq||1)>1)S.seen["vega:threat"]=true;
