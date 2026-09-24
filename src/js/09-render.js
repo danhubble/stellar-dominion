@@ -77,10 +77,34 @@ function empFurthestRing(){
     if(sysHeld(s.id)||sysContested(s)||sysOpen(s))r=Math.max(r,s.ring); }
   return Math.min(4,r+1);
 }
+/* PLAN-polish Parked item, decided 24 Sep (mock variant C, tools/mkmissiontagmock.py):
+   the active/queued mission (one of MISSIONS.slice(S.mi,S.mi+3)) that feeds THIS
+   tier, if any - matched on the mission's own `gi` field (never parsed off `d`'s
+   text, see MISSIONS' own header note). At most one can match a given gi since a
+   tier only ever appears once across the whole table. */
+function missionForTier(gi){
+  const win=MISSIONS.slice(S.mi||0,(S.mi||0)+3);
+  return win.find(m=>m.gi===gi)||null;
+}
+/* the thin gold strip itself - flush under the row, its own bottom corners rounded,
+   the row's squared off to meet it (row.classList "mstripped", 01-empire.css). Gold
+   (var(--gd)) always, never the row's own --a accent - a mission is the Colonial
+   Authority's claim on this tier, not the tier's own identity. */
+function missionStrip(m){
+  const have=Math.min(gCount(m.gi), m.need||1);
+  const el=document.createElement("div"); el.className="mstrip";
+  el.innerHTML=`<span><i>MISSION</i>${m.d}</span><b>${have}/${m.need||1}</b>`;
+  return el;
+}
 /* one ladder tier row - owned (buy more) or the next reveal (greyed, dimmed via the
    .next class, never via opacity - see the header note by .g.next in the stylesheet
    for why opacity is the wrong tool here). Reuses the .g markup/CSS every structure
-   row has always used. No separate picker: the row IS the buy action. */
+   row has always used. No separate picker: the row IS the buy action. Returns the
+   .g element alone, or (a tier fed by a live mission) a fragment of the row plus its
+   own mission strip right under it - renderSysBuild()'s rowsHost.appendChild() takes
+   either the same way, and the strip rebuilds in the exact same pass as the row
+   itself (its own churn key below folds in S.mi and the mission's own gCount, so a
+   claim or a mission rolling over rebuilds it with no extra flicker window). */
 function ladderTierRow(sysId,gi,isNext){
   const g=GENS[gi];
   const el=document.createElement("div"); el.className="g"+(isNext?" next":"");
@@ -121,7 +145,12 @@ function ladderTierRow(sysId,gi,isNext){
       syncMapZoomBack(); dirty=true; render();
     };
   }
-  return el;
+  const m=missionForTier(gi);
+  if(!m)return el;
+  el.classList.add("mstripped");
+  const frag=document.createDocumentFragment();
+  frag.appendChild(el); frag.appendChild(missionStrip(m));
+  return frag;
 }
 /* PATCH 1: empDevBlock() (the pinned Extraction pseudo-row - Development level,
    DEVELOP/EXTRACTION button) is deleted outright along with the mechanic it drove.
@@ -1087,7 +1116,12 @@ function renderSysBuild(s,held){
   if(countEl&&countEl.textContent!==countTxt)countEl.textContent=countTxt;
   let nextGi=null;
   for(const gi of ladder){ if(sysTierCount(s.id,gi)<=0){ nextGi=gi; break; } }
-  const key=s.id+"|"+ladder.map(gi=>sysTierCount(s.id,gi)).join(",")+"|"+S.buy+"|"+nextGi;
+  /* the mission strip (Parked item, decided 24 Sep) needs its own rebuild trigger
+     folded in here: which tiers are fed by the current mission window (S.mi can
+     advance with no ladder count on THIS system changing at all) and each fed
+     tier's own empire-wide gCount (a claim on a DIFFERENT system still moves it). */
+  const misKey=MISSIONS.slice(S.mi||0,(S.mi||0)+3).map(m=>m.gi!=null?m.gi+":"+gCount(m.gi):"").join(",");
+  const key=s.id+"|"+ladder.map(gi=>sysTierCount(s.id,gi)).join(",")+"|"+S.buy+"|"+nextGi+"|"+misKey;
   if(rowsHost.dataset.h!==key){
     /* patch611, retargeted patch626: #view is the scrolling ancestor now (the
        page itself is in-flow - see #sysSheet's own CSS comment) and a shorter

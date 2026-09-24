@@ -46,6 +46,17 @@
 .g.sellmode .gm{color:var(--rd)}
 .g.locked .gm{color:var(--mut);font-weight:600;font-size:10.5px}
 .gx{font-size:10px;color:var(--dim);font-family:ui-monospace,monospace}
+/* PLAN-polish Parked item (decided 24 Sep, mock variant C): a thin strip hanging
+   under any .g row whose tier feeds one of the current three missions - always
+   gold (var(--gd)), never the row's own --a accent. .mstripped squares the row's
+   own bottom corners off so the two read as one piece. */
+.g.mstripped{border-bottom-left-radius:0;border-bottom-right-radius:0;margin-bottom:0}
+.mstrip{display:flex;justify-content:space-between;align-items:center;gap:8px;
+  margin:0 0 7px;padding:4px 10px 4px 12px;border:1px solid var(--line);border-top:none;
+  border-radius:0 0 11px 11px;background:var(--panel);
+  box-shadow:inset 3px 0 0 var(--gd);font:600 10px/1.3 system-ui;color:var(--mut)}
+.mstrip b{color:var(--gd);font-family:ui-monospace,monospace}
+.mstrip i{font-style:normal;color:var(--gd);letter-spacing:.14em;font-size:8.5px;margin-right:6px}
 .gb{
   border:1px solid var(--line2);border-radius:9px;padding:7px 10px;min-width:104px;cursor:pointer;
   background:rgba(72,226,255,.07);color:var(--txt);text-align:right

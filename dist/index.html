@@ -356,6 +356,17 @@ button.ghost{background:transparent;border-color:var(--line);color:var(--mut)}
 .g.sellmode .gm{color:var(--rd)}
 .g.locked .gm{color:var(--mut);font-weight:600;font-size:10.5px}
 .gx{font-size:10px;color:var(--dim);font-family:ui-monospace,monospace}
+/* PLAN-polish Parked item (decided 24 Sep, mock variant C): a thin strip hanging
+   under any .g row whose tier feeds one of the current three missions - always
+   gold (var(--gd)), never the row's own --a accent. .mstripped squares the row's
+   own bottom corners off so the two read as one piece. */
+.g.mstripped{border-bottom-left-radius:0;border-bottom-right-radius:0;margin-bottom:0}
+.mstrip{display:flex;justify-content:space-between;align-items:center;gap:8px;
+  margin:0 0 7px;padding:4px 10px 4px 12px;border:1px solid var(--line);border-top:none;
+  border-radius:0 0 11px 11px;background:var(--panel);
+  box-shadow:inset 3px 0 0 var(--gd);font:600 10px/1.3 system-ui;color:var(--mut)}
+.mstrip b{color:var(--gd);font-family:ui-monospace,monospace}
+.mstrip i{font-style:normal;color:var(--gd);letter-spacing:.14em;font-size:8.5px;margin-right:6px}
 .gb{
   border:1px solid var(--line2);border-radius:9px;padding:7px 10px;min-width:104px;cursor:pointer;
   background:rgba(72,226,255,.07);color:var(--txt);text-align:right
@@ -2965,19 +2976,26 @@ const NEXUS=[
   d:lv=>lv?"The turn begins.":"Unknown",
   t:""}
 ];
+/* PLAN-polish batch C (Parked "mission tag", decided mock variant C): missions whose
+   `k` gates on a specific GENS tier via gCount(gi) now name that tier explicitly as
+   `gi` (and how many it takes as `need`) instead of the strip having to parse `d`'s
+   own English text back apart to find it - see ladderTierRow()'s own header note
+   (09-render.js) for the reader. Every other mission (scans, ore/rate thresholds,
+   level, wins, salvage, crew, warships, structure totals) has no single tier behind
+   it, so it carries neither field and the strip never matches a row for it. */
 const MISSIONS=[
- {d:"Own 15 Mining Drones",          k:s=>gCount(0)>=15,       p:s=>gCount(0)/15,             r:{c:4}},
+ {d:"Own 15 Mining Drones",          k:s=>gCount(0)>=15,       p:s=>gCount(0)/15,             r:{c:4},  gi:0, need:15},
  {d:"Perform 25 manual scans",       k:s=>s.clicks>=25,        p:s=>s.clicks/25,               r:{c:5}},
- {d:"Own 10 Smelter Pods",             k:s=>gCount(1)>=10,       p:s=>gCount(1)/10,             r:{c:8}},
+ {d:"Own 10 Smelter Pods",             k:s=>gCount(1)>=10,       p:s=>gCount(1)/10,             r:{c:8},  gi:1, need:10},
  {d:"Bank 50,000 ore at once",       k:s=>s.ore>=5e4,          p:s=>s.ore/5e4,                 r:{c:12}},
  {d:"Reach 250 ore per second",      k:s=>rate()>=250,         p:s=>rate()/250,                r:{c:14}},
- {d:"Sink your first Crust Borer",     k:s=>gCount(2)>=1,        p:s=>gCount(2)>=1?1:0,         r:{c:15}},
+ {d:"Sink your first Crust Borer",     k:s=>gCount(2)>=1,        p:s=>gCount(2)>=1?1:0,         r:{c:15}, gi:2, need:1},
  {d:"Perform 100 manual scans",       k:s=>s.clicks>=100,       p:s=>s.clicks/100,              r:{c:22}},
  {d:"Reach 5,000 ore per second",    k:s=>rate()>=5000,        p:s=>rate()/5000,               r:{c:35}},
- {d:"Own 25 Fabricators",            k:s=>gCount(3)>=25,       p:s=>gCount(3)/25,              r:{c:60,dm:2}},
+ {d:"Own 25 Fabricators",            k:s=>gCount(3)>=25,       p:s=>gCount(3)/25,              r:{c:60,dm:2},  gi:3, need:25},
  {d:"Reach level 12",                k:s=>level()>=12,         p:s=>level()/12,                r:{c:80,dm:5}},
- {d:"Own 100 Mining Drones",         k:s=>gCount(0)>=100,      p:s=>gCount(0)/100,             r:{c:120}},
- {d:"Build an Orbital Harvester",         k:s=>gCount(4)>=1,        p:s=>gCount(4)>=1?1:0,         r:{c:180,dm:3}},
+ {d:"Own 100 Mining Drones",         k:s=>gCount(0)>=100,      p:s=>gCount(0)/100,             r:{c:120}, gi:0, need:100},
+ {d:"Build an Orbital Harvester",         k:s=>gCount(4)>=1,        p:s=>gCount(4)>=1?1:0,         r:{c:180,dm:3}, gi:4, need:1},
  {d:"Hold 250 crystal at once",      k:s=>s.cry>=250,          p:s=>s.cry/250,                 r:{dm:6}},
  {d:"Win your first raid",           k:s=>(s.wins||0)>=1,      p:s=>(s.wins||0)>=1?1:0,        r:{c:220,dm:4}},
  {d:"Field 20 warships",             k:s=>allFleetShips(s)>=20, p:s=>allFleetShips(s)/20, r:{c:500,dm:7}},
@@ -2985,16 +3003,16 @@ const MISSIONS=[
  {d:"Sign your first crew",          k:s=>(s.crew||[]).length>=1, p:s=>(s.crew||[]).length>=1?1:0, r:{c:800,dm:8}},
  {d:"Reach 1M ore per second",       k:s=>rate()>=1e6,         p:s=>rate()/1e6,                r:{c:400,dm:8}},
  {d:"Reach level 20",                k:s=>level()>=20,         p:s=>level()/20,                r:{c:600,dm:14}},
- {d:"Own 50 Fusion Forges",          k:s=>gCount(5)>=50,       p:s=>gCount(5)/50,              r:{c:900,dm:18}},
+ {d:"Own 50 Fusion Forges",          k:s=>gCount(5)>=50,       p:s=>gCount(5)/50,              r:{c:900,dm:18}, gi:5, need:50},
  {d:"Own 400 structures in total",   k:s=>tot()>=400,          p:s=>tot()/400,                 r:{c:1500,dm:25}},
- {d:"Build a Dyson Swarm",           k:s=>gCount(6)>=1,        p:s=>gCount(6)>=1?1:0,          r:{c:2500,dm:35}},
+ {d:"Build a Dyson Swarm",           k:s=>gCount(6)>=1,        p:s=>gCount(6)>=1?1:0,          r:{c:2500,dm:35}, gi:6, need:1},
  {d:"Reach 1B ore per second",       k:s=>rate()>=1e9,         p:s=>rate()/1e9,                r:{c:5000,dm:50}},
  {d:"Reach level 30",                k:s=>level()>=30,         p:s=>level()/30,                r:{c:9000,dm:90}},
- {d:"Open a Wormhole Crucible",         k:s=>gCount(7)>=1,        p:s=>gCount(7)>=1?1:0,         r:{c:2e4,dm:150}},
+ {d:"Open a Wormhole Crucible",         k:s=>gCount(7)>=1,        p:s=>gCount(7)>=1?1:0,         r:{c:2e4,dm:150}, gi:7, need:1},
  {d:"Reach 1T ore per second",       k:s=>rate()>=1e12,        p:s=>rate()/1e12,               r:{c:6e4,dm:300}},
- {d:"Sink a Singularity Well",     k:s=>gCount(8)>=1,        p:s=>gCount(8)>=1?1:0,           r:{c:2e5,dm:600}},
+ {d:"Sink a Singularity Well",     k:s=>gCount(8)>=1,        p:s=>gCount(8)>=1?1:0,           r:{c:2e5,dm:600}, gi:8, need:1},
  {d:"Own 1,000 structures in total", k:s=>tot()>=1000,         p:s=>tot()/1000,                r:{c:8e5,dm:1200}},
- {d:"Claim the Galactic Nexus",      k:s=>gCount(9)>=1,        p:s=>gCount(9)>=1?1:0,          r:{c:5e6,dm:5000}}
+ {d:"Claim the Galactic Nexus",      k:s=>gCount(9)>=1,        p:s=>gCount(9)>=1?1:0,          r:{c:5e6,dm:5000}, gi:9, need:1}
 ];
 const ACHS=[
  {id:"a1", n:"First Contact",     d:"Perform a manual scan",        k:s=>s.clicks>=1,   b:.01},
@@ -6235,10 +6253,34 @@ function empFurthestRing(){
     if(sysHeld(s.id)||sysContested(s)||sysOpen(s))r=Math.max(r,s.ring); }
   return Math.min(4,r+1);
 }
+/* PLAN-polish Parked item, decided 24 Sep (mock variant C, tools/mkmissiontagmock.py):
+   the active/queued mission (one of MISSIONS.slice(S.mi,S.mi+3)) that feeds THIS
+   tier, if any - matched on the mission's own `gi` field (never parsed off `d`'s
+   text, see MISSIONS' own header note). At most one can match a given gi since a
+   tier only ever appears once across the whole table. */
+function missionForTier(gi){
+  const win=MISSIONS.slice(S.mi||0,(S.mi||0)+3);
+  return win.find(m=>m.gi===gi)||null;
+}
+/* the thin gold strip itself - flush under the row, its own bottom corners rounded,
+   the row's squared off to meet it (row.classList "mstripped", 01-empire.css). Gold
+   (var(--gd)) always, never the row's own --a accent - a mission is the Colonial
+   Authority's claim on this tier, not the tier's own identity. */
+function missionStrip(m){
+  const have=Math.min(gCount(m.gi), m.need||1);
+  const el=document.createElement("div"); el.className="mstrip";
+  el.innerHTML=`<span><i>MISSION</i>${m.d}</span><b>${have}/${m.need||1}</b>`;
+  return el;
+}
 /* one ladder tier row - owned (buy more) or the next reveal (greyed, dimmed via the
    .next class, never via opacity - see the header note by .g.next in the stylesheet
    for why opacity is the wrong tool here). Reuses the .g markup/CSS every structure
-   row has always used. No separate picker: the row IS the buy action. */
+   row has always used. No separate picker: the row IS the buy action. Returns the
+   .g element alone, or (a tier fed by a live mission) a fragment of the row plus its
+   own mission strip right under it - renderSysBuild()'s rowsHost.appendChild() takes
+   either the same way, and the strip rebuilds in the exact same pass as the row
+   itself (its own churn key below folds in S.mi and the mission's own gCount, so a
+   claim or a mission rolling over rebuilds it with no extra flicker window). */
 function ladderTierRow(sysId,gi,isNext){
   const g=GENS[gi];
   const el=document.createElement("div"); el.className="g"+(isNext?" next":"");
@@ -6279,7 +6321,12 @@ function ladderTierRow(sysId,gi,isNext){
       syncMapZoomBack(); dirty=true; render();
     };
   }
-  return el;
+  const m=missionForTier(gi);
+  if(!m)return el;
+  el.classList.add("mstripped");
+  const frag=document.createDocumentFragment();
+  frag.appendChild(el); frag.appendChild(missionStrip(m));
+  return frag;
 }
 /* PATCH 1: empDevBlock() (the pinned Extraction pseudo-row - Development level,
    DEVELOP/EXTRACTION button) is deleted outright along with the mechanic it drove.
@@ -7245,7 +7292,12 @@ function renderSysBuild(s,held){
   if(countEl&&countEl.textContent!==countTxt)countEl.textContent=countTxt;
   let nextGi=null;
   for(const gi of ladder){ if(sysTierCount(s.id,gi)<=0){ nextGi=gi; break; } }
-  const key=s.id+"|"+ladder.map(gi=>sysTierCount(s.id,gi)).join(",")+"|"+S.buy+"|"+nextGi;
+  /* the mission strip (Parked item, decided 24 Sep) needs its own rebuild trigger
+     folded in here: which tiers are fed by the current mission window (S.mi can
+     advance with no ladder count on THIS system changing at all) and each fed
+     tier's own empire-wide gCount (a claim on a DIFFERENT system still moves it). */
+  const misKey=MISSIONS.slice(S.mi||0,(S.mi||0)+3).map(m=>m.gi!=null?m.gi+":"+gCount(m.gi):"").join(",");
+  const key=s.id+"|"+ladder.map(gi=>sysTierCount(s.id,gi)).join(",")+"|"+S.buy+"|"+nextGi+"|"+misKey;
   if(rowsHost.dataset.h!==key){
     /* patch611, retargeted patch626: #view is the scrolling ancestor now (the
        page itself is in-flow - see #sysSheet's own CSS comment) and a shorter

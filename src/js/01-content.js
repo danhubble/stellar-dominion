@@ -717,19 +717,26 @@ const NEXUS=[
   d:lv=>lv?"The turn begins.":"Unknown",
   t:""}
 ];
+/* PLAN-polish batch C (Parked "mission tag", decided mock variant C): missions whose
+   `k` gates on a specific GENS tier via gCount(gi) now name that tier explicitly as
+   `gi` (and how many it takes as `need`) instead of the strip having to parse `d`'s
+   own English text back apart to find it - see ladderTierRow()'s own header note
+   (09-render.js) for the reader. Every other mission (scans, ore/rate thresholds,
+   level, wins, salvage, crew, warships, structure totals) has no single tier behind
+   it, so it carries neither field and the strip never matches a row for it. */
 const MISSIONS=[
- {d:"Own 15 Mining Drones",          k:s=>gCount(0)>=15,       p:s=>gCount(0)/15,             r:{c:4}},
+ {d:"Own 15 Mining Drones",          k:s=>gCount(0)>=15,       p:s=>gCount(0)/15,             r:{c:4},  gi:0, need:15},
  {d:"Perform 25 manual scans",       k:s=>s.clicks>=25,        p:s=>s.clicks/25,               r:{c:5}},
- {d:"Own 10 Smelter Pods",             k:s=>gCount(1)>=10,       p:s=>gCount(1)/10,             r:{c:8}},
+ {d:"Own 10 Smelter Pods",             k:s=>gCount(1)>=10,       p:s=>gCount(1)/10,             r:{c:8},  gi:1, need:10},
  {d:"Bank 50,000 ore at once",       k:s=>s.ore>=5e4,          p:s=>s.ore/5e4,                 r:{c:12}},
  {d:"Reach 250 ore per second",      k:s=>rate()>=250,         p:s=>rate()/250,                r:{c:14}},
- {d:"Sink your first Crust Borer",     k:s=>gCount(2)>=1,        p:s=>gCount(2)>=1?1:0,         r:{c:15}},
+ {d:"Sink your first Crust Borer",     k:s=>gCount(2)>=1,        p:s=>gCount(2)>=1?1:0,         r:{c:15}, gi:2, need:1},
  {d:"Perform 100 manual scans",       k:s=>s.clicks>=100,       p:s=>s.clicks/100,              r:{c:22}},
  {d:"Reach 5,000 ore per second",    k:s=>rate()>=5000,        p:s=>rate()/5000,               r:{c:35}},
- {d:"Own 25 Fabricators",            k:s=>gCount(3)>=25,       p:s=>gCount(3)/25,              r:{c:60,dm:2}},
+ {d:"Own 25 Fabricators",            k:s=>gCount(3)>=25,       p:s=>gCount(3)/25,              r:{c:60,dm:2},  gi:3, need:25},
  {d:"Reach level 12",                k:s=>level()>=12,         p:s=>level()/12,                r:{c:80,dm:5}},
- {d:"Own 100 Mining Drones",         k:s=>gCount(0)>=100,      p:s=>gCount(0)/100,             r:{c:120}},
- {d:"Build an Orbital Harvester",         k:s=>gCount(4)>=1,        p:s=>gCount(4)>=1?1:0,         r:{c:180,dm:3}},
+ {d:"Own 100 Mining Drones",         k:s=>gCount(0)>=100,      p:s=>gCount(0)/100,             r:{c:120}, gi:0, need:100},
+ {d:"Build an Orbital Harvester",         k:s=>gCount(4)>=1,        p:s=>gCount(4)>=1?1:0,         r:{c:180,dm:3}, gi:4, need:1},
  {d:"Hold 250 crystal at once",      k:s=>s.cry>=250,          p:s=>s.cry/250,                 r:{dm:6}},
  {d:"Win your first raid",           k:s=>(s.wins||0)>=1,      p:s=>(s.wins||0)>=1?1:0,        r:{c:220,dm:4}},
  {d:"Field 20 warships",             k:s=>allFleetShips(s)>=20, p:s=>allFleetShips(s)/20, r:{c:500,dm:7}},
@@ -737,16 +744,16 @@ const MISSIONS=[
  {d:"Sign your first crew",          k:s=>(s.crew||[]).length>=1, p:s=>(s.crew||[]).length>=1?1:0, r:{c:800,dm:8}},
  {d:"Reach 1M ore per second",       k:s=>rate()>=1e6,         p:s=>rate()/1e6,                r:{c:400,dm:8}},
  {d:"Reach level 20",                k:s=>level()>=20,         p:s=>level()/20,                r:{c:600,dm:14}},
- {d:"Own 50 Fusion Forges",          k:s=>gCount(5)>=50,       p:s=>gCount(5)/50,              r:{c:900,dm:18}},
+ {d:"Own 50 Fusion Forges",          k:s=>gCount(5)>=50,       p:s=>gCount(5)/50,              r:{c:900,dm:18}, gi:5, need:50},
  {d:"Own 400 structures in total",   k:s=>tot()>=400,          p:s=>tot()/400,                 r:{c:1500,dm:25}},
- {d:"Build a Dyson Swarm",           k:s=>gCount(6)>=1,        p:s=>gCount(6)>=1?1:0,          r:{c:2500,dm:35}},
+ {d:"Build a Dyson Swarm",           k:s=>gCount(6)>=1,        p:s=>gCount(6)>=1?1:0,          r:{c:2500,dm:35}, gi:6, need:1},
  {d:"Reach 1B ore per second",       k:s=>rate()>=1e9,         p:s=>rate()/1e9,                r:{c:5000,dm:50}},
  {d:"Reach level 30",                k:s=>level()>=30,         p:s=>level()/30,                r:{c:9000,dm:90}},
- {d:"Open a Wormhole Crucible",         k:s=>gCount(7)>=1,        p:s=>gCount(7)>=1?1:0,         r:{c:2e4,dm:150}},
+ {d:"Open a Wormhole Crucible",         k:s=>gCount(7)>=1,        p:s=>gCount(7)>=1?1:0,         r:{c:2e4,dm:150}, gi:7, need:1},
  {d:"Reach 1T ore per second",       k:s=>rate()>=1e12,        p:s=>rate()/1e12,               r:{c:6e4,dm:300}},
- {d:"Sink a Singularity Well",     k:s=>gCount(8)>=1,        p:s=>gCount(8)>=1?1:0,           r:{c:2e5,dm:600}},
+ {d:"Sink a Singularity Well",     k:s=>gCount(8)>=1,        p:s=>gCount(8)>=1?1:0,           r:{c:2e5,dm:600}, gi:8, need:1},
  {d:"Own 1,000 structures in total", k:s=>tot()>=1000,         p:s=>tot()/1000,                r:{c:8e5,dm:1200}},
- {d:"Claim the Galactic Nexus",      k:s=>gCount(9)>=1,        p:s=>gCount(9)>=1?1:0,          r:{c:5e6,dm:5000}}
+ {d:"Claim the Galactic Nexus",      k:s=>gCount(9)>=1,        p:s=>gCount(9)>=1?1:0,          r:{c:5e6,dm:5000}, gi:9, need:1}
 ];
 const ACHS=[
  {id:"a1", n:"First Contact",     d:"Perform a manual scan",        k:s=>s.clicks>=1,   b:.01},
