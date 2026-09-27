@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Planet mock — Sol Reach</title>
+<style>
+:root{--bg:#04050d;--txt:#dde5ff;--mut:#8390bd;--dim:#5a6693;--gr:#5ce6a5;--cy:#48e2ff;--line:rgba(96,142,255,.20)}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font:14px/1.45 system-ui,-apple-system,sans-serif;overflow:hidden}
+#wrap{position:relative;height:34vh;min-height:230px;border-bottom:1px solid var(--line);
+  background:radial-gradient(90vw 60vh at 78% -8%,rgba(120,80,255,.12),transparent 62%),#04050d}
+canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+#bar{position:absolute;top:10px;left:12px;right:12px;display:flex;align-items:center;justify-content:space-between;font:700 11px/1 system-ui;letter-spacing:.18em;color:var(--txt)}
+#bar span{border:1px solid var(--line);border-radius:8px;padding:6px 9px;color:var(--mut);font-size:10px}
+#body{padding:12px;color:var(--mut);font-size:12px}
+#body h2{margin:0 0 2px;color:var(--gr);font-size:18px}
+#body .sub{font:700 9px/1 system-ui;letter-spacing:.18em;color:var(--dim);margin-bottom:8px}
+#ctl{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
+#ctl button{border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--mut);border-radius:7px;padding:6px 10px;font:600 11px/1 system-ui}
+#ctl button.on{border-color:var(--cy);color:var(--cy);background:rgba(72,226,255,.10)}
+</style></head><body>
+<div id="wrap"><canvas id="c"></canvas>
+  <div id="bar"><span>‹ MAP</span>SOL REACH<span style="visibility:hidden">‹ MAP</span></div></div>
+<div id="body">
+  <h2>Sol Reach</h2><div class="sub">HOME SYSTEM · YOURS</div>
+  Procedural planet: noise terrain, day/night terminator, atmosphere rim, slow spin, clouds. Structures you build appear in orbit.
+  <div id="ctl">
+    <button data-t="0">0 structures</button><button data-t="8" class="on">8 structures</button><button data-t="40">40 structures</button>
+    <button id="spin" class="on">spin on</button>
+  </div>
+</div>
+<script>
+(function(){
+const cv=document.getElementById('c'), ctx=cv.getContext('2d');
+let W=0,H=0,DPR=Math.min(2,devicePixelRatio||1);
+/* ---- value noise + fbm, seeded ---- */
+function mkNoise(seed){
+  const P=new Uint8Array(512); let s=seed>>>0;
+  const rnd=()=>{s=(s*1664525+1013904223)>>>0;return s/4294967296};
+  const perm=[...Array(256).keys()]; for(let i=255;i>0;i--){const j=Math.floor(rnd()*(i+1));[perm[i],perm[j]]=[perm[j],perm[i]]}
+  for(let i=0;i<512;i++)P[i]=perm[i&255];
+  const fade=t=>t*t*t*(t*(t*6-15)+10);
+  const grad=(h,x,y,z)=>{const u=h<8?x:y,v=h<4?y:(h===12||h===14?x:z);return((h&1)?-u:u)+((h&2)?-v:v)};
+  function perlin(x,y,z){
+    const X=Math.floor(x)&255,Y=Math.floor(y)&255,Z=Math.floor(z)&255; x-=Math.floor(x);y-=Math.floor(y);z-=Math.floor(z);
+    const u=fade(x),v=fade(y),w=fade(z);
+    const A=P[X]+Y,AA=P[A]+Z,AB=P[A+1]+Z,B=P[X+1]+Y,BA=P[B]+Z,BB=P[B+1]+Z;
+    const l=(a,b,t)=>a+t*(b-a);
+    return l(l(l(grad(P[AA],x,y,z),grad(P[BA],x-1,y,z),u),l(grad(P[AB],x,y-1,z),grad(P[BB],x-1,y-1,z),u),v),
+             l(l(grad(P[AA+1],x,y,z-1),grad(P[BA+1],x-1,y,z-1),u),l(grad(P[AB+1],x,y-1,z-1),grad(P[BB+1],x-1,y-1,z-1),u),v),w);
+  }
+  return (x,y,z,oct=5,lac=2,gain=.5)=>{let a=0,f=1,amp=1,n=0;for(let i=0;i<oct;i++){a+=perlin(x*f,y*f,z*f)*amp;n+=amp;f*=lac;amp*=gain}return a/n};
+}
+const noise=mkNoise(7), cnoise=mkNoise(99);
+/* ---- texture: equirectangular, sampled on the sphere (seamless) ---- */
+const TW=512,TH=256;
+const tex=new Uint8ClampedArray(TW*TH*4), cloud=new Float32Array(TW*TH);
+const HOME={sea:[18,52,96],shelf:[36,110,140],land:[64,120,72],high:[120,116,88],peak:[200,200,205]};
+for(let j=0;j<TH;j++){const lat=(j/TH-.5)*Math.PI; for(let i=0;i<TW;i++){const lon=(i/TW)*2*Math.PI;
+  const x=Math.cos(lat)*Math.cos(lon),y=Math.sin(lat),z=Math.cos(lat)*Math.sin(lon);
+  let h=noise(x*1.6,y*1.6,z*1.6,6)*.5+.5; h+=noise(x*6,y*6,z*6,3)*.08; // continents + detail
+  const polar=Math.pow(Math.abs(y),6);
+  let c;
+  if(h<.47)c=HOME.sea; else if(h<.5)c=HOME.shelf; else if(h<.62)c=HOME.land; else if(h<.72)c=HOME.high; else c=HOME.peak;
+  if(h>.45){const pf=Math.max(0,Math.min(1,(polar-.25)/.25+noise(x*8,y*8,z*8,2)*.3)); c=[c[0]+(HOME.peak[0]-c[0])*pf,c[1]+(HOME.peak[1]-c[1])*pf,c[2]+(HOME.peak[2]-c[2])*pf];}
+  const k=(j*TW+i)*4; tex[k]=c[0];tex[k+1]=c[1];tex[k+2]=c[2];tex[k+3]=255;
+  cloud[j*TW+i]=Math.max(0,cnoise(x*3,y*3,z*3,4)*.5+.5-.48)*2.2;
+}}
+/* ---- sphere lookup: screen px -> (u,v,lambert, rim) ---- */
+let R=0,CX=0,CY=0,LUT=null,img=null,off=document.createElement('canvas'),octx=off.getContext('2d');
+function build(){
+  const r=cv.getBoundingClientRect(); W=Math.round(r.width*DPR);H=Math.round(r.height*DPR);cv.width=W;cv.height=H;
+  R=Math.min(H*.36,W*.3); CX=W*.5; CY=H*.52;
+  const D=Math.ceil(R*2)+2; LUT=new Float32Array(D*D*4); img=ctx.createImageData(D,D); off.width=D; off.height=D;
+  const L=[-.55,.35,.75]; const ln=Math.hypot(...L); L[0]/=ln;L[1]/=ln;L[2]/=ln;
+  for(let py=0;py<D;py++)for(let px=0;px<D;px++){
+    const x=(px-D/2)/R,y=(py-D/2)/R; const q=x*x+y*y; const o=(py*D+px)*4;
+    if(q>1){LUT[o]=-1;continue}
+    const z=Math.sqrt(1-q);
+    // tilt axis a little
+    const ty=y*Math.cos(.35)-z*Math.sin(.35), tz=y*Math.sin(.35)+z*Math.cos(.35);
+    const lat=Math.asin(Math.max(-1,Math.min(1,ty))), lon=Math.atan2(x,tz);
+    LUT[o]=(lon/(2*Math.PI)+.5); LUT[o+1]=(lat/Math.PI+.5);
+    const lam=Math.max(0,x*L[0]+(-y)*L[1]+z*L[2]);
+    LUT[o+2]=lam; LUT[o+3]=Math.pow(1-z,3);
+  }
+}
+let rot=0, spin=true, structs=8, last=performance.now();
+function frame(now){
+  const dt=Math.min(.05,(now-last)/1000); last=now; if(spin)rot+=dt*.02;
+  ctx.clearRect(0,0,W,H);
+  // stars
+  ctx.fillStyle='#04050d';ctx.fillRect(0,0,W,H);
+  // atmosphere halo
+  const g=ctx.createRadialGradient(CX,CY,R*.9,CX,CY,R*1.35); g.addColorStop(0,'rgba(90,170,255,.35)');g.addColorStop(.5,'rgba(90,170,255,.08)');g.addColorStop(1,'rgba(90,170,255,0)');
+  ctx.fillStyle=g; ctx.beginPath();ctx.arc(CX,CY,R*1.35,0,7);ctx.fill();
+  // sphere pixels
+  const D=img.width, d=img.data;
+  for(let py=0;py<D;py++)for(let px=0;px<D;px++){
+    const o=(py*D+px)*4, u0=LUT[o]; if(u0<0){d[o+3]=0;continue}
+    const v=LUT[o+1], lam=LUT[o+2], rim=LUT[o+3];
+    let u=u0+rot; u-=Math.floor(u); const ti=((Math.floor(v*TH)*TW)+Math.floor(u*TW));
+    const k=ti*4; let r=tex[k],gg=tex[k+1],b=tex[k+2];
+    let uc=u0+rot*1.25; uc-=Math.floor(uc); const cl=cloud[Math.floor(v*TH)*TW+Math.floor(uc*TW)];
+    if(cl>0){const a=Math.min(1,cl); r=r+(235-r)*a; gg=gg+(240-gg)*a; b=b+(250-b)*a;}
+    const light=.035+Math.pow(lam,.85)*1.15; // terminator
+    r*=light;gg*=light;b*=light;
+    // atmosphere rim (blue), stronger on the lit side
+    const ra=rim*(.35+lam*.5); r+=90*ra; gg+=160*ra; b+=255*ra;
+    // night-side city lights on land (structures) — subtle, grows with structs
+    if(lam<.08&&structs>0){const ln=noise(u*40,v*40,1,2); if(tex[k+1]>tex[k+2]&&ln>.25){const s=Math.min(1,structs/40)*.9; r+=255*s;gg+=200*s;b+=120*s;}}
+    d[o]=r;d[o+1]=gg;d[o+2]=b;d[o+3]=255;
+  }
+  octx.putImageData(img,0,0); ctx.drawImage(off,Math.round(CX-D/2),Math.round(CY-D/2));
+  // orbital structures: dots on an inclined ring, count grows with tiers
+  const n=Math.min(24,Math.round(Math.sqrt(structs)*4));
+  if(n>0){ctx.save();ctx.translate(CX,CY);
+    ctx.strokeStyle='rgba(120,190,255,.25)';ctx.lineWidth=1*DPR;ctx.beginPath();ctx.ellipse(0,0,R*1.28,R*.34,-.25,0,7);ctx.stroke();
+    for(let i=0;i<n;i++){const a=now/9000+i*(6.283/n); const x=Math.cos(a)*R*1.28,y=Math.sin(a)*R*.34; const rx=x*Math.cos(-.25)-y*Math.sin(-.25), ry=x*Math.sin(-.25)+y*Math.cos(-.25);
+      const behind=Math.sin(a)<0; if(behind&&Math.hypot(rx,ry)<R)continue;
+      ctx.fillStyle=behind?'rgba(140,200,255,.45)':'#bfe6ff';ctx.beginPath();ctx.arc(rx,ry,(behind?1.2:1.9)*DPR,0,7);ctx.fill();}
+    ctx.restore();}
+  requestAnimationFrame(frame);
+}
+addEventListener('resize',build); build(); requestAnimationFrame(frame);
+document.querySelectorAll('#ctl [data-t]').forEach(b=>b.onclick=()=>{structs=+b.dataset.t;document.querySelectorAll('#ctl [data-t]').forEach(x=>x.classList.toggle('on',x===b))});
+document.getElementById('spin').onclick=e=>{spin=!spin;e.target.classList.toggle('on',spin);e.target.textContent=spin?'spin on':'spin off'};
+})();
+</script></body></html>
