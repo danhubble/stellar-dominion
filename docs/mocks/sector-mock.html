@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Sector mock — Frontier</title>
+<style>
+:root{--bg:#04050d;--txt:#dde5ff;--mut:#8390bd;--dim:#5a6693;--gr:#5ce6a5;--cy:#48e2ff;--rd:#ff6b8a;--gd:#ffd166;--line:rgba(96,142,255,.20);--panel:rgba(14,19,42,.72)}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font:14px/1.45 system-ui,-apple-system,sans-serif;overflow:hidden}
+#chips{display:flex;gap:6px;padding:10px 12px 0}
+#chips span{flex:1;text-align:center;border:1px solid var(--line);border-radius:8px;padding:6px 0;font:700 9px/1 system-ui;letter-spacing:.14em;color:var(--dim)}
+#chips span.on{border-color:var(--cy);color:var(--cy);background:rgba(72,226,255,.10)}
+#wrap{position:relative;margin:10px 12px 0;aspect-ratio:1/1;max-height:52vh;border:1px solid rgba(120,150,255,.22);border-radius:14px;overflow:hidden;background:#04050d}
+canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+#bar{display:flex;gap:6px;margin:8px 12px 0}
+#bar b{flex:1;text-align:center;border:1px solid var(--line);border-radius:10px;padding:9px 0;font:700 11px/1.3 system-ui;color:var(--mut)}
+#bar b i{display:block;font-style:normal;font-size:8.5px;letter-spacing:.12em;color:var(--dim);margin-top:2px}
+#bar b:first-child{color:var(--cy)}
+#ctl{display:flex;gap:6px;flex-wrap:wrap;margin:12px}
+#ctl button{border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--mut);border-radius:7px;padding:6px 10px;font:600 11px/1 system-ui}
+#ctl button.on{border-color:var(--cy);color:var(--cy);background:rgba(72,226,255,.10)}
+</style></head><body>
+<div id="chips"><span>CORE</span><span>INNER REACH</span><span class="on">FRONTIER</span><span>THE DEEP</span><span>BEYOND</span></div>
+<div id="wrap"><canvas id="c"></canvas></div>
+<div id="bar"><b>1<i>AT ANVILREACH</i></b><b>2<i>AT SOL REACH</i></b><b>3<i>LOCKED LV 22</i></b></div>
+<div id="ctl"><button id="neb" class="on">nebula on</button><button id="lanes" class="on">lanes glow</button><button id="spin" class="on">spin on</button></div>
+<script>
+(function(){
+const cv=document.getElementById('c'),ctx=cv.getContext('2d'); let W=0,H=0,DPR=Math.min(2,devicePixelRatio||1);
+function mkNoise(seed){const P=new Uint8Array(512);let s=seed>>>0;const rnd=()=>{s=(s*1664525+1013904223)>>>0;return s/4294967296};
+  const perm=[...Array(256).keys()];for(let i=255;i>0;i--){const j=Math.floor(rnd()*(i+1));[perm[i],perm[j]]=[perm[j],perm[i]]}for(let i=0;i<512;i++)P[i]=perm[i&255];
+  const fade=t=>t*t*t*(t*(t*6-15)+10),grad=(h,x,y,z)=>{const u=h<8?x:y,v=h<4?y:(h===12||h===14?x:z);return((h&1)?-u:u)+((h&2)?-v:v)};
+  function perlin(x,y,z){const X=Math.floor(x)&255,Y=Math.floor(y)&255,Z=Math.floor(z)&255;x-=Math.floor(x);y-=Math.floor(y);z-=Math.floor(z);const u=fade(x),v=fade(y),w=fade(z);
+    const A=P[X]+Y,AA=P[A]+Z,AB=P[A+1]+Z,B=P[X+1]+Y,BA=P[B]+Z,BB=P[B+1]+Z,l=(a,b,t)=>a+t*(b-a);
+    return l(l(l(grad(P[AA],x,y,z),grad(P[BA],x-1,y,z),u),l(grad(P[AB],x,y-1,z),grad(P[BB],x-1,y-1,z),u),v),l(l(grad(P[AA+1],x,y,z-1),grad(P[BA+1],x-1,y,z-1),u),l(grad(P[AB+1],x,y-1,z-1),grad(P[BB+1],x-1,y-1,z-1),u),v),w)}
+  return (x,y,z,oct=4,lac=2,gain=.5)=>{let a=0,f=1,amp=1,n=0;for(let i=0;i<oct;i++){a+=perlin(x*f,y*f,z*f)*amp;n+=amp;f*=lac;amp*=gain}return a/n}}
+/* kind palettes: low → high */
+const PAL={
+  ore:  {c:[[70,34,22],[120,58,30],[190,110,60],[230,170,110]],atm:[255,160,80],rough:1.4},
+  ice:  {c:[[120,170,210],[190,220,240],[235,245,255],[160,200,235]],atm:[150,210,255],rough:.9},
+  rock: {c:[[60,55,52],[110,98,88],[150,135,120],[200,185,165]],atm:[200,180,150],rough:1.8},
+  gas:  {c:[[120,90,40],[210,170,90],[240,210,140],[170,130,70]],atm:[255,220,140],bands:1},
+  belt: {c:[[40,55,90],[90,120,180],[143,184,255],[200,220,255]],atm:[143,184,255],rough:1.2},
+  void: {c:[[18,10,40],[60,30,110],[168,120,255],[40,20,80]],atm:[168,120,255],rough:1.1},
+  mixed:{c:[[18,52,96],[36,110,140],[64,120,72],[200,200,205]],atm:[90,170,255],rough:1}
+};
+const SYSS=[
+ {id:"thu",n:"Thule",kind:"ice",sx:24,sy:22,seed:3,state:"free"},
+ {id:"anv",n:"Anvilreach",kind:"ore",sx:78,sy:34,seed:11,state:"held"},
+ {id:"wra",n:"Wraithe",kind:"ice",sx:14,sy:64,seed:5,state:"free"},
+ {id:"cal",n:"Caldera",kind:"rock",sx:46,sy:86,seed:8,state:"rival",rv:"HELION REACH"},
+];
+const LANES=[["thu","wra"],["wra","cal"],["cal","anv"],["thu","anv"]];
+/* mini planet sprite: texture + sphere lookup at sprite size */
+function mkSprite(s,px){
+  const pal=PAL[s.kind], nz=mkNoise(s.seed*7+1), D=px; const cvs=document.createElement('canvas'); cvs.width=cvs.height=D; const c2=cvs.getContext('2d');
+  const TW=128,TH=64,tex=new Uint8ClampedArray(TW*TH*3);
+  for(let j=0;j<TH;j++){const lat=(j/TH-.5)*Math.PI;for(let i=0;i<TW;i++){const lon=i/TW*6.283;const x=Math.cos(lat)*Math.cos(lon),y=Math.sin(lat),z=Math.cos(lat)*Math.sin(lon);
+    let h; if(pal.bands){h=.5+.5*Math.sin(y*11+nz(x*2,y*2,z*2,3)*2.2)*.9;} else {h=nz(x*1.8*pal.rough,y*1.8*pal.rough,z*1.8*pal.rough,5)*.5+.5;}
+    const t=Math.max(0,Math.min(2.999,h*3)),k=Math.floor(t),f=t-k,a=pal.c[k],b=pal.c[k+1];const o=(j*TW+i)*3;tex[o]=a[0]+(b[0]-a[0])*f;tex[o+1]=a[1]+(b[1]-a[1])*f;tex[o+2]=a[2]+(b[2]-a[2])*f;}}
+  const img=c2.createImageData(D,D),d=img.data,R=D/2-1,L=[-.5,.4,.75],ln=Math.hypot(...L);L[0]/=ln;L[1]/=ln;L[2]/=ln;
+  const lut=[];
+  for(let py=0;py<D;py++)for(let px2=0;px2<D;px2++){const x=(px2-D/2+.5)/R,y=(py-D/2+.5)/R,q=x*x+y*y;if(q>1){lut.push(null);continue}const z=Math.sqrt(1-q);
+    const lat=Math.asin(Math.max(-1,Math.min(1,y))),lon=Math.atan2(x,z);lut.push([lon/6.283+.5,lat/Math.PI+.5,Math.max(0,x*L[0]-y*L[1]+z*L[2]),Math.pow(1-z,3)])}
+  function draw(rot){for(let i=0;i<lut.length;i++){const o=i*4,e=lut[i];if(!e){d[o+3]=0;continue}let u=e[0]+rot;u-=Math.floor(u);const k=(Math.floor(e[1]*TH)*TW+Math.floor(u*TW))*3;
+    const light=.08+Math.pow(e[2],.8)*1.1,ra=e[3]*(.3+e[2]*.5);d[o]=tex[k]*light+pal.atm[0]*ra*.6;d[o+1]=tex[k+1]*light+pal.atm[1]*ra*.6;d[o+2]=tex[k+2]*light+pal.atm[2]*ra*.6;d[o+3]=255}
+    c2.putImageData(img,0,0);return cvs}
+  return {draw,pal};
+}
+let sprites={},stars=[],spin=true,neb=true,lanes=true,rot=0,last=performance.now();
+function build(){const r=cv.getBoundingClientRect();W=Math.round(r.width*DPR);H=Math.round(r.height*DPR);cv.width=W;cv.height=H;
+  for(const s of SYSS){const px=Math.round((s.state==="held"?22:18)*DPR*2);s.sp=mkSprite(s,px);s.px=px;s.x=s.sx/100*W;s.y=s.sy/100*H;}
+  stars=[];for(let i=0;i<140;i++)stars.push([Math.random()*W,Math.random()*H,Math.random()*1.3+.3,Math.random()*.6+.2]);
+  // nebula: a few soft blobs in sector colour (Frontier: teal/violet)
+  neb_img=document.createElement('canvas');neb_img.width=W;neb_img.height=H;const n=neb_img.getContext('2d');
+  const blobs=[[.3,.35,.55,'rgba(72,120,255,.30)'],[.75,.7,.5,'rgba(168,120,255,.26)'],[.55,.15,.35,'rgba(72,226,255,.16)']];
+  for(const [bx,by,br,col] of blobs){const g=n.createRadialGradient(bx*W,by*H,0,bx*W,by*H,br*W);g.addColorStop(0,col);g.addColorStop(1,'rgba(0,0,0,0)');n.fillStyle=g;n.fillRect(0,0,W,H)}
+}
+let neb_img;
+function frame(now){const dt=Math.min(.05,(now-last)/1000);last=now;if(spin)rot+=dt*.03;
+  ctx.fillStyle='#04050d';ctx.fillRect(0,0,W,H);
+  if(neb)ctx.drawImage(neb_img,0,0);
+  for(const [x,y,r,a] of stars){ctx.fillStyle=`rgba(210,225,255,${a})`;ctx.fillRect(x,y,r*DPR,r*DPR)}
+  const by=id=>SYSS.find(s=>s.id===id);
+  for(const [a,b] of LANES){const A=by(a),B=by(b);const held=A.state==="held"||B.state==="held";
+    if(lanes){ctx.strokeStyle=held?'rgba(92,230,165,.25)':'rgba(120,150,255,.18)';ctx.lineWidth=6*DPR;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(A.x,A.y);ctx.lineTo(B.x,B.y);ctx.stroke();}
+    ctx.strokeStyle=held?'rgba(92,230,165,.75)':'rgba(140,170,255,.45)';ctx.lineWidth=1.2*DPR;ctx.beginPath();ctx.moveTo(A.x,A.y);ctx.lineTo(B.x,B.y);ctx.stroke();}
+  for(const s of SYSS){const R=s.px/2;
+    // glow / status halo
+    const col=s.state==="held"?'92,230,165':s.state==="rival"?'255,107,138':'140,170,255';
+    const g=ctx.createRadialGradient(s.x,s.y,R*.6,s.x,s.y,R*2.2);g.addColorStop(0,`rgba(${col},${s.state==="free"?.10:.28})`);g.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=g;ctx.beginPath();ctx.arc(s.x,s.y,R*2.2,0,7);ctx.fill();
+    const c=s.sp.draw(rot*(1+s.seed*.07));ctx.drawImage(c,s.x-R,s.y-R,s.px,s.px);
+    if(s.state==="held"){ctx.strokeStyle='rgba(92,230,165,.7)';ctx.lineWidth=1*DPR;ctx.beginPath();ctx.ellipse(s.x,s.y,R*1.5,R*.45,-.3,0,7);ctx.stroke();
+      ctx.fillStyle='#bfe6ff';for(let i=0;i<3;i++){const a=now/6000+i*2.1;const x=Math.cos(a)*R*1.5,y=Math.sin(a)*R*.45;ctx.beginPath();ctx.arc(s.x+x*Math.cos(-.3)-y*Math.sin(-.3),s.y+x*Math.sin(-.3)+y*Math.cos(-.3),1.4*DPR,0,7);ctx.fill()}}
+    if(s.state==="rival"){ctx.strokeStyle='rgba(255,107,138,.8)';ctx.setLineDash([3*DPR,3*DPR]);ctx.lineWidth=1*DPR;ctx.beginPath();ctx.arc(s.x,s.y,R*1.35,0,7);ctx.stroke();ctx.setLineDash([])}
+    // label
+    ctx.font=`700 ${10*DPR}px system-ui`;ctx.textAlign='center';ctx.fillStyle='rgba(2,3,10,.6)';ctx.fillText(s.n,s.x+1,s.y+R+13*DPR+1);
+    ctx.fillStyle=s.state==="held"?'#5ce6a5':s.state==="rival"?'#ffb3c2':'#dde5ff';ctx.fillText(s.n,s.x,s.y+R+13*DPR);
+    if(s.rv){ctx.font=`700 ${8*DPR}px system-ui`;ctx.fillStyle='#ff6b8a';ctx.fillText(s.rv,s.x,s.y+R+24*DPR)}
+  }
+  // fleet marker at Anvilreach
+  const A=by("anv");ctx.fillStyle='#48e2ff';ctx.beginPath();ctx.arc(A.x+A.px/2+2*DPR,A.y-A.px/2-2*DPR,7*DPR,0,7);ctx.fill();ctx.fillStyle='#04050d';ctx.font=`800 ${9*DPR}px system-ui`;ctx.textAlign='center';ctx.fillText('1',A.x+A.px/2+2*DPR,A.y-A.px/2+1*DPR);
+  // sector exit
+  ctx.font=`700 ${8*DPR}px system-ui`;ctx.textAlign='right';ctx.fillStyle='#48e2ff';ctx.fillText('THE DEEP →',W-10*DPR,H*.34);
+  requestAnimationFrame(frame)}
+build();requestAnimationFrame(frame);addEventListener('resize',build);
+document.getElementById('neb').onclick=e=>{neb=!neb;e.target.classList.toggle('on',neb)};
+document.getElementById('lanes').onclick=e=>{lanes=!lanes;e.target.classList.toggle('on',lanes)};
+document.getElementById('spin').onclick=e=>{spin=!spin;e.target.classList.toggle('on',spin)};
+})();
+</script></body></html>
