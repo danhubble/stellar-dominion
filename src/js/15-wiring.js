@@ -262,5 +262,21 @@ mqNarrow.addEventListener("change",()=>{ resize(); });
    adopt() keeps sanitising S.core/S.site. */
 $("#mask").onclick=e=>{ if(e.target.id==="mask")hideModal() };
 addEventListener("beforeunload",save);
-document.addEventListener("visibilitychange",()=>{ if(document.hidden)save() });
+/* b646: coming BACK is the half that was missing. requestAnimationFrame stops
+   while the tab is hidden (phone locked, app switched) and frame() caps dt at
+   .25s, so every timer - fleet travel above all - simply froze for the whole
+   absence and read as "stuck". Under a minute: replay the gap through tick() in
+   1s steps (the same call csim4.js makes). A minute or more: the ordinary
+   offlineReport() catch-up, exactly as a reload would have done. Skipped while a
+   fight is open - bUpdate()/defUpdate() own that clock. */
+document.addEventListener("visibilitychange",()=>{
+  if(document.hidden){ save(); return }
+  lastT=performance.now();
+  if(BT||DT)return;
+  const away=(Date.now()-(S.last||Date.now()))/1000;
+  if(away<2)return;
+  if(away>=60){ offlineReport(); }
+  else { for(let i=0;i<Math.floor(away);i++)tick(1); }
+  dirty=true; render(); save();
+});
 

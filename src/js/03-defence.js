@@ -517,6 +517,9 @@ function tripArrived(t){ return !!t && Date.now()>=t.dueAt }
 function launchAssault(s){
   if(S.trip)return false;
   if(!canAssault(s))return false;
+  /* b646: a fleet already here fights from the system page directly (no trip),
+     and one already inbound is waited for - never a second countdown from home. */
+  if(fleetAtSys(s.id)||fleetTravelingTo(s.id))return false;
   const secs=tripSecsFor(s.ring);
   S.trip={ sysId:s.id, kind:"assault", t0:Date.now(), dueAt:Date.now()+secs*1000 };
   toast("Fleet launched toward "+s.n+" \u2014 "+secs+"s out","y");

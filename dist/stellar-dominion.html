@@ -1920,7 +1920,7 @@ body.syspage #toasts{bottom:calc(var(--sysbarh) + 8px + env(safe-area-inset-bott
 "use strict";
 /* bumped by hand, one per patch that ships - shown in the dev panel so the owner
    can tell which build a report/screenshot came from. */
-const BUILD=645;
+const BUILD=646;
 /* ============================ storage (safe) ============================ */
 const Store=(()=>{let mem={},ok=false;
   try{const k="__sd";window.localStorage.setItem(k,"1");window.localStorage.removeItem(k);ok=true}catch(e){ok=false}
@@ -3695,10 +3695,12 @@ function travelSecs(fromId,toId){
    the map/FLEETS block; fleetAtSys()'s own !f.to guard already excludes it from
    anything that cares "is a fleet actually here right now"). */
 function fleetSend(f,toId){
-  if(!f||f.to)return false;
+  if(!f)return false;
+  /* b646: say why, instead of a silent no-op the player reads as "stuck" */
+  if(f.to){ toast(f.n+" is already en route","y"); return false }
   if(toId===f.at)return false;
   if(!SYSMAP[toId])return false;
-  if(BT||DT)return false;
+  if(BT||DT){ toast("Not mid-fight","y"); return false }
   const eta=travelSecs(f.at,toId);
   f.to=toId; f.from=f.at; f.eta=eta; f.tot=eta;
   toast(f.n+" departing for "+SYSMAP[toId].n+" · "+Math.round(eta)+"s","y");
@@ -4663,6 +4665,9 @@ function tripArrived(t){ return !!t && Date.now()>=t.dueAt }
 function launchAssault(s){
   if(S.trip)return false;
   if(!canAssault(s))return false;
+  /* b646: a fleet already here fights from the system page directly (no trip),
+     and one already inbound is waited for - never a second countdown from home. */
+  if(fleetAtSys(s.id)||fleetTravelingTo(s.id))return false;
   const secs=tripSecsFor(s.ring);
   S.trip={ sysId:s.id, kind:"assault", t0:Date.now(), dueAt:Date.now()+secs*1000 };
   toast("Fleet launched toward "+s.n+" \u2014 "+secs+"s out","y");
@@ -6957,12 +6962,16 @@ function renderSendChip(byId){
     return;
   }
   const here = !f.to && f.at===sendChipSys;
-  const text = here ? "HERE" : "SEND · "+Math.round(travelSecs(f.at,sendChipSys))+"s";
+  const text = f.to ? "EN ROUTE" : here ? "HERE" : "SEND \u00b7 "+Math.round(travelSecs(f.at,sendChipSys))+"s";
   if(!chip){
     chip=document.createElement("div"); chip.className="sendchip";
+    /* b646: decide "already here" at tap time, not from the render that first
+       built the chip - the chip outlives node re-taps, so a stale `here` used to
+       make SEND a silent no-op (the "fleet won't move" bug). */
     chip.onclick=()=>{
       const ff=flSel!=null?fleet(flSel):null;
-      if(ff && sendChipSys && !here)fleetSend(ff, sendChipSys);
+      const hereNow=!!(ff&&!ff.to&&ff.at===sendChipSys);
+      if(ff && sendChipSys && !hereNow)fleetSend(ff, sendChipSys);
       fleetDeselect(); dirty=true; render();
     };
     host.appendChild(chip);
@@ -7899,10 +7908,30 @@ function renderMap(){
         $("#sysWar").onclick=()=>{ S.trip=null; if(auto)autoResolveTarget(gt,-1); else engageTarget(gt,-1); render(); save() };
         if(auto)$("#sysWarManual").onclick=()=>{ S.trip=null; engageTarget(assaultTarget(s),-1); render(); save() };
       }
+    } else if(fleetAtSys(s.id) && canAssault(s,fleetAtSys(s.id))){
+      /* b646: a fleet already sitting here (sent via the fleet bar) fights from
+         where it is - no S.trip, no second countdown from home. Same ENGAGE pair
+         as the arrived-trip branch above, but the fight is handed THIS fleet. */
+      const hf=fleetAtSys(s.id), gt=assaultTarget(s), auto=canAutoResolve(gt,hf);
+      const lbl=sysOccupied(s.id)?"RETAKE":"ENGAGE";
+      const ah = auto
+        ? `<button class="foe" id="sysWar">${lbl} \u00b7 AUTO-RESOLVE</button>
+           <button class="ghost" id="sysWarManual" style="margin-top:8px">${lbl} \u00b7 FIGHT IT ANYWAY</button>`
+        : `<button class="foe" id="sysWar">${lbl} \u00b7 ${hf.n.toUpperCase()}</button>`;
+      if(act.dataset.h!==ah){
+        act.dataset.h=ah; act.innerHTML=ah;
+        $("#sysWar").onclick=()=>{ const f=fleetAtSys(s.id); if(!f)return; if(auto)autoResolveTarget(gt,-1,f); else engageTarget(gt,-1,f); render(); save() };
+        if(auto)$("#sysWarManual").onclick=()=>{ const f=fleetAtSys(s.id); if(!f)return; engageTarget(assaultTarget(s),-1,f); render(); save() };
+      }
     } else {
-      const can=canAssault(s)&&!otherTrip;
+      /* b646: a fleet already flying here (fleet bar SEND) - wait for it rather
+         than launching a second trip from home on top. Countdown goes into a
+         nested span, same no-churn idiom as #sysTripCd. */
+      const inbound=fleetTravelingTo(s.id);
+      const can=canAssault(s)&&!otherTrip&&!inbound;
       let why=sysOccupied(s.id)?"RETAKE SYSTEM":"ASSAULT GARRISON";   /* STAGE 2 */
       if(level()<s.lvl)why="LOCKED \u00b7 LEVEL "+s.lvl;
+      else if(inbound)why=inbound.n.toUpperCase()+" INBOUND \u00b7 <span class=\"tripcd\"></span>";
       else if(fleetDPS()<=0)why="NO FLEET \u00b7 BUILD WARSHIPS";
       else if(curFleet().hp<0.15)why="FLEET TOO DAMAGED";
       else if(otherTrip)why="FLEET AWAY";
@@ -7911,6 +7940,7 @@ function renderMap(){
         act.dataset.h=ah; act.innerHTML=ah;
         $("#sysWar").onclick=()=>{ if(launchAssault(s)){ render(); save() } };
       }
+      if(inbound){ const cd=act.querySelector(".tripcd"); if(cd)cd.textContent=Math.max(0,Math.ceil(inbound.eta))+"s"; }
     }
   } else if(!held){
     const can=level()>=s.lvl&&S.ore>=s.cost;
@@ -13364,7 +13394,23 @@ mqNarrow.addEventListener("change",()=>{ resize(); });
    adopt() keeps sanitising S.core/S.site. */
 $("#mask").onclick=e=>{ if(e.target.id==="mask")hideModal() };
 addEventListener("beforeunload",save);
-document.addEventListener("visibilitychange",()=>{ if(document.hidden)save() });
+/* b646: coming BACK is the half that was missing. requestAnimationFrame stops
+   while the tab is hidden (phone locked, app switched) and frame() caps dt at
+   .25s, so every timer - fleet travel above all - simply froze for the whole
+   absence and read as "stuck". Under a minute: replay the gap through tick() in
+   1s steps (the same call csim4.js makes). A minute or more: the ordinary
+   offlineReport() catch-up, exactly as a reload would have done. Skipped while a
+   fight is open - bUpdate()/defUpdate() own that clock. */
+document.addEventListener("visibilitychange",()=>{
+  if(document.hidden){ save(); return }
+  lastT=performance.now();
+  if(BT||DT)return;
+  const away=(Date.now()-(S.last||Date.now()))/1000;
+  if(away<2)return;
+  if(away>=60){ offlineReport(); }
+  else { for(let i=0;i<Math.floor(away);i++)tick(1); }
+  dirty=true; render(); save();
+});
 
 /* ============================ dev tools ============================
    Session only - never written to the save, so it cannot leak into a save code. */

@@ -12029,3 +12029,28 @@ of the suite) → `shots/batchc-{01-mission-strip,02-shipyard-slot,
 Coordinator: four features verified in screenshots at 667; suite clean; sim identical to
 the baseline regenerated in the governors-v2 commit (csim's greedy research now buys
 auto to 6). Bundle sd-b645.bundle covers GitHub tip..main.
+
+## release b646 — fleet fixes (retake with a fleet present, stuck fleets)
+
+Dan reported: (1) sending a fleet to a system then pressing RETAKE launched a second
+trip from home (the yellow `#tripMk` triangle + countdown) instead of fighting with the
+fleet already there; (2) fleets sometimes "stuck", unmovable.
+
+- `renderSysPanel` (09-render.js): with `fleetAtSys(s.id)` idle at a contested system,
+  `#sysWar` is now an ENGAGE/RETAKE (auto-resolve pair when eligible) that hands the
+  fight THAT fleet (`engageTarget(gt,-1,f)`), never `S.trip`. A fleet
+  `fleetTravelingTo(s.id)` shows "<FLEET> INBOUND · Ns" (countdown in a nested
+  `.tripcd` span, no churn) and disables the button. `launchAssault()` refuses in both
+  cases. The legacy `S.trip` flight-from-home stays for the no-fleet-present case
+  (ttravel2.js unchanged).
+- SEND chip (`renderSendChip`): the click handler captured `here` from the render that
+  first created the chip; the chip outlives node re-taps, so tapping the fleet's own
+  node then another node made SEND a silent no-op. Now decided at tap time. Chip reads
+  EN ROUTE for a travelling fleet.
+- `fleetSend()` toasts its two silent refusals ("already en route", "Not mid-fight").
+- 15-wiring.js `visibilitychange`: on return, replay the hidden gap - `<60s` through
+  `tick(1)` steps, `>=60s` via `offlineReport()` - skipped while `BT`/`DT` is open.
+  rAF stops on a locked phone and `frame()` caps dt at .25s, so every timer (fleet
+  travel first of all) used to freeze for the absence = "stuck".
+- New `tests/tfleetfix2.js` (7 assertions). Suite clean, sim byte-identical.
+  Shot: `tools/shots/b646.js` → `shots/b646-engage.png`.

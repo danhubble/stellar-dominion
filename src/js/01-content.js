@@ -1436,10 +1436,12 @@ function travelSecs(fromId,toId){
    the map/FLEETS block; fleetAtSys()'s own !f.to guard already excludes it from
    anything that cares "is a fleet actually here right now"). */
 function fleetSend(f,toId){
-  if(!f||f.to)return false;
+  if(!f)return false;
+  /* b646: say why, instead of a silent no-op the player reads as "stuck" */
+  if(f.to){ toast(f.n+" is already en route","y"); return false }
   if(toId===f.at)return false;
   if(!SYSMAP[toId])return false;
-  if(BT||DT)return false;
+  if(BT||DT){ toast("Not mid-fight","y"); return false }
   const eta=travelSecs(f.at,toId);
   f.to=toId; f.from=f.at; f.eta=eta; f.tot=eta;
   toast(f.n+" departing for "+SYSMAP[toId].n+" · "+Math.round(eta)+"s","y");

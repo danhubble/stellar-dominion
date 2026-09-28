@@ -691,12 +691,16 @@ function renderSendChip(byId){
     return;
   }
   const here = !f.to && f.at===sendChipSys;
-  const text = here ? "HERE" : "SEND · "+Math.round(travelSecs(f.at,sendChipSys))+"s";
+  const text = f.to ? "EN ROUTE" : here ? "HERE" : "SEND \u00b7 "+Math.round(travelSecs(f.at,sendChipSys))+"s";
   if(!chip){
     chip=document.createElement("div"); chip.className="sendchip";
+    /* b646: decide "already here" at tap time, not from the render that first
+       built the chip - the chip outlives node re-taps, so a stale `here` used to
+       make SEND a silent no-op (the "fleet won't move" bug). */
     chip.onclick=()=>{
       const ff=flSel!=null?fleet(flSel):null;
-      if(ff && sendChipSys && !here)fleetSend(ff, sendChipSys);
+      const hereNow=!!(ff&&!ff.to&&ff.at===sendChipSys);
+      if(ff && sendChipSys && !hereNow)fleetSend(ff, sendChipSys);
       fleetDeselect(); dirty=true; render();
     };
     host.appendChild(chip);
@@ -1633,10 +1637,30 @@ function renderMap(){
         $("#sysWar").onclick=()=>{ S.trip=null; if(auto)autoResolveTarget(gt,-1); else engageTarget(gt,-1); render(); save() };
         if(auto)$("#sysWarManual").onclick=()=>{ S.trip=null; engageTarget(assaultTarget(s),-1); render(); save() };
       }
+    } else if(fleetAtSys(s.id) && canAssault(s,fleetAtSys(s.id))){
+      /* b646: a fleet already sitting here (sent via the fleet bar) fights from
+         where it is - no S.trip, no second countdown from home. Same ENGAGE pair
+         as the arrived-trip branch above, but the fight is handed THIS fleet. */
+      const hf=fleetAtSys(s.id), gt=assaultTarget(s), auto=canAutoResolve(gt,hf);
+      const lbl=sysOccupied(s.id)?"RETAKE":"ENGAGE";
+      const ah = auto
+        ? `<button class="foe" id="sysWar">${lbl} \u00b7 AUTO-RESOLVE</button>
+           <button class="ghost" id="sysWarManual" style="margin-top:8px">${lbl} \u00b7 FIGHT IT ANYWAY</button>`
+        : `<button class="foe" id="sysWar">${lbl} \u00b7 ${hf.n.toUpperCase()}</button>`;
+      if(act.dataset.h!==ah){
+        act.dataset.h=ah; act.innerHTML=ah;
+        $("#sysWar").onclick=()=>{ const f=fleetAtSys(s.id); if(!f)return; if(auto)autoResolveTarget(gt,-1,f); else engageTarget(gt,-1,f); render(); save() };
+        if(auto)$("#sysWarManual").onclick=()=>{ const f=fleetAtSys(s.id); if(!f)return; engageTarget(assaultTarget(s),-1,f); render(); save() };
+      }
     } else {
-      const can=canAssault(s)&&!otherTrip;
+      /* b646: a fleet already flying here (fleet bar SEND) - wait for it rather
+         than launching a second trip from home on top. Countdown goes into a
+         nested span, same no-churn idiom as #sysTripCd. */
+      const inbound=fleetTravelingTo(s.id);
+      const can=canAssault(s)&&!otherTrip&&!inbound;
       let why=sysOccupied(s.id)?"RETAKE SYSTEM":"ASSAULT GARRISON";   /* STAGE 2 */
       if(level()<s.lvl)why="LOCKED \u00b7 LEVEL "+s.lvl;
+      else if(inbound)why=inbound.n.toUpperCase()+" INBOUND \u00b7 <span class=\"tripcd\"></span>";
       else if(fleetDPS()<=0)why="NO FLEET \u00b7 BUILD WARSHIPS";
       else if(curFleet().hp<0.15)why="FLEET TOO DAMAGED";
       else if(otherTrip)why="FLEET AWAY";
@@ -1645,6 +1669,7 @@ function renderMap(){
         act.dataset.h=ah; act.innerHTML=ah;
         $("#sysWar").onclick=()=>{ if(launchAssault(s)){ render(); save() } };
       }
+      if(inbound){ const cd=act.querySelector(".tripcd"); if(cd)cd.textContent=Math.max(0,Math.ceil(inbound.eta))+"s"; }
     }
   } else if(!held){
     const can=level()>=s.lvl&&S.ore>=s.cost;
