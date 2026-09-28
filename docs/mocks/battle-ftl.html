@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Battle still</title>
+<style>
+html,body{margin:0;background:#03040c;color:#dde5ff;font:14px system-ui;overflow:hidden;height:100%}
+#s{position:fixed;inset:0}canvas{position:absolute;inset:0;width:100%;height:100%}
+.hud{position:absolute;left:0;right:0;font-family:"Segoe UI",system-ui,sans-serif;text-transform:uppercase;letter-spacing:.04em}
+/* FTL-ish: dark slate panels, thick pale borders, boxy, segmented bars */
+.pnl{background:#1b2028;border:2px solid #aeb7c2;border-radius:6px;box-shadow:0 0 0 2px #0a0d12}
+.top{top:0;padding:10px}
+.top .pnl{display:inline-flex;gap:14px;align-items:center;padding:6px 10px}
+.top h3{margin:0;font-size:14px;font-weight:800;color:#e9eef4}.top .m{font:700 10px/1.4 system-ui;color:#8fd6ff}.top .w{color:#ffb14a}
+.rt{float:right;background:#3a1418;border:2px solid #ff8a8a;color:#ffd0d0;border-radius:6px;padding:9px 12px;font:800 11px/1 system-ui}
+.bot{bottom:0;padding:0 8px 12px}
+/* hull: segmented blocks */
+.hull{display:flex;align-items:center;gap:6px;margin-bottom:6px}
+.hull b{font:800 11px/1 system-ui;color:#e9eef4;width:70px}
+.seg{display:flex;gap:2px;flex:1}.seg i{flex:1;height:14px;background:#5fdc4b;border:1px solid #1b2028;box-shadow:inset 0 -3px 0 rgba(0,0,0,.25)}.seg i.off{background:#3a4552}
+.row{display:flex;gap:6px;margin-bottom:6px}
+/* power systems: icon box + vertical stacked bars, like FTL's reactor bars */
+.sys{flex:1;display:flex;align-items:flex-end;gap:6px;padding:6px 8px}
+.sys .ic{width:34px;height:34px;border:2px solid #aeb7c2;border-radius:4px;display:grid;place-items:center;font:800 9px/1 system-ui;color:#e9eef4;background:#2a313b}
+.sys.hot .ic{border-color:#5fdc4b;color:#5fdc4b}
+.bars{display:flex;flex-direction:column-reverse;gap:2px;flex:1}.bars i{height:7px;background:#3a4552;border:1px solid #0a0d12}.bars i.on{background:#5fdc4b}
+.sys small{position:absolute;font:800 9px/1 system-ui;color:#8fd6ff}
+.free{flex:0 0 52px;display:grid;place-items:center;font:800 12px/1.2 system-ui;color:#ffd166;text-align:center;border-style:dashed}
+/* weapons: charge box fills upward; ready = green outline + glow */
+.wep{display:flex;gap:6px}
+.wp{flex:1;position:relative;overflow:hidden;padding:10px 10px 8px;min-height:58px}
+.wp .fill{position:absolute;left:0;right:0;bottom:0;background:rgba(95,220,75,.28);border-top:2px solid #5fdc4b}
+.wp b{position:relative;display:block;font:800 13px/1.2 system-ui;color:#e9eef4}.wp span{position:relative;display:block;font:700 9.5px/1.3 ui-monospace,monospace;color:#8fd6ff;margin-top:3px}
+.wp.rdy{border-color:#5fdc4b;box-shadow:0 0 0 2px #0a0d12,0 0 14px -2px #5fdc4b}.wp.rdy span{color:#5fdc4b}
+.pause{display:block;text-align:center;padding:6px;font:800 10px/1 system-ui;color:#aeb7c2;margin-bottom:6px}
+</style></head><body><div id="s"><canvas id="c"></canvas>
+<div class="hud top"><div class="rt">RETREAT</div><div class="pnl"><div><h3>Void Anomaly</h3><div class="m">4 hostiles · 126s</div><div class="m w">⚠ Reinforcements · 88s</div></div></div></div>
+<div class="hud bot">
+ <div class="hull pnl" style="padding:6px 8px"><b>HULL 98%</b><div class="seg"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="off"></i></div></div>
+ <div class="row">
+  <div class="sys pnl hot"><div class="ic">SHLD</div><div class="bars"><i class="on"></i><i></i><i></i><i></i><i></i></div></div>
+  <div class="sys pnl"><div class="ic">ENG</div><div class="bars"><i></i><i></i><i></i><i></i><i></i></div></div>
+  <div class="sys pnl"><div class="ic">REP</div><div class="bars"><i></i><i></i><i></i><i></i><i></i></div></div>
+  <div class="pnl free">2<br>FREE</div>
+ </div>
+ <div class="pnl pause">PAUSE</div>
+ <div class="wep">
+  <div class="wp pnl rdy"><div class="fill" style="height:100%"></div><b>Pulse</b><span>READY · FIRE</span></div>
+  <div class="wp pnl"><div class="fill" style="height:62%"></div><b>Rocket</b><span>CHARGING · 12 LEFT</span></div>
+ </div>
+</div>
+<script>
+(function(){
+const cv=document.getElementById('c'),ctx=cv.getContext('2d'),DPR=2;const W=390*DPR,H=667*DPR;cv.width=W;cv.height=H;
+function mkNoise(seed){const P=new Uint8Array(512);let s=seed>>>0;const rnd=()=>{s=(s*1664525+1013904223)>>>0;return s/4294967296};
+  const perm=[...Array(256).keys()];for(let i=255;i>0;i--){const j=Math.floor(rnd()*(i+1));[perm[i],perm[j]]=[perm[j],perm[i]]}for(let i=0;i<512;i++)P[i]=perm[i&255];
+  const fade=t=>t*t*t*(t*(t*6-15)+10),grad=(h,x,y,z)=>{const u=h<8?x:y,v=h<4?y:(h===12||h===14?x:z);return((h&1)?-u:u)+((h&2)?-v:v)};
+  function perlin(x,y,z){const X=Math.floor(x)&255,Y=Math.floor(y)&255,Z=Math.floor(z)&255;x-=Math.floor(x);y-=Math.floor(y);z-=Math.floor(z);const u=fade(x),v=fade(y),w=fade(z);
+    const A=P[X]+Y,AA=P[A]+Z,AB=P[A+1]+Z,B=P[X+1]+Y,BA=P[B]+Z,BB=P[B+1]+Z,l=(a,b,t)=>a+t*(b-a);
+    return l(l(l(grad(P[AA],x,y,z),grad(P[BA],x-1,y,z),u),l(grad(P[AB],x,y-1,z),grad(P[BB],x-1,y-1,z),u),v),l(l(grad(P[AA+1],x,y,z-1),grad(P[BA+1],x-1,y,z-1),u),l(grad(P[AB+1],x,y-1,z-1),grad(P[BB+1],x-1,y-1,z-1),u),v),w)}
+  return (x,y,z,oct=4)=>{let a=0,f=1,amp=1,n=0;for(let i=0;i<oct;i++){a+=perlin(x*f,y*f,z*f)*amp;n+=amp;f*=2;amp*=.5}return a/n}}
+const nz=mkNoise(5);
+// background
+ctx.fillStyle='#03040c';ctx.fillRect(0,0,W,H);
+let g=ctx.createRadialGradient(W*.8,H*.25,0,W*.8,H*.25,W*.9);g.addColorStop(0,'rgba(168,120,255,.22)');g.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+g=ctx.createRadialGradient(W*.1,H*.6,0,W*.1,H*.6,W*.7);g.addColorStop(0,'rgba(72,120,255,.18)');g.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+let seed=3;const rnd=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296};
+for(let i=0;i<260;i++){const x=rnd()*W,y=rnd()*H,r=rnd()*1.6+.3,a=rnd()*.7+.15;ctx.fillStyle=`rgba(215,228,255,${a})`;ctx.fillRect(x,y,r*DPR,r*DPR)}
+// the void planet, bottom-left, mostly dark side
+(function planet(){const R=150*DPR,cx=W*.05,cy=H*.86,D=Math.ceil(R*2);const off=document.createElement('canvas');off.width=off.height=D;const oc=off.getContext('2d');const img=oc.createImageData(D,D),d=img.data;
+  const pal=[[18,10,40],[60,30,110],[168,120,255],[40,20,80]];const L=[.7,-.5,.5],ln=Math.hypot(...L);L[0]/=ln;L[1]/=ln;L[2]/=ln;
+  for(let py=0;py<D;py++)for(let px=0;px<D;px++){const x=(px-D/2)/R,y=(py-D/2)/R,q=x*x+y*y,o=(py*D+px)*4;if(q>1){d[o+3]=0;continue}const z=Math.sqrt(1-q);
+    const lat=Math.asin(y),lon=Math.atan2(x,z);const X=Math.cos(lat)*Math.cos(lon),Y=Math.sin(lat),Z=Math.cos(lat)*Math.sin(lon);
+    let h=nz(X*2.2,Y*2.2,Z*2.2,5)*.5+.5;const seam=Math.max(0,1-Math.abs(nz(X*4,Y*4,Z*4,3))*9);
+    const t=Math.max(0,Math.min(2.999,h*3)),k=Math.floor(t),f=t-k,a=pal[k],b=pal[k+1];
+    let r=a[0]+(b[0]-a[0])*f,gg=a[1]+(b[1]-a[1])*f,bb=a[2]+(b[2]-a[2])*f;
+    const lam=Math.max(0,x*L[0]-y*L[1]+z*L[2]),light=.05+Math.pow(lam,.9)*1.1,rim=Math.pow(1-z,3)*(.3+lam*.5);
+    const sm=seam*.28*(.3+lam);r=r*light*.8+168*rim*.6+sm*120;gg=gg*light*.8+120*rim*.6+sm*60;bb=bb*light*.8+255*rim*.6+sm*200;
+    d[o]=r;d[o+1]=gg;d[o+2]=bb;d[o+3]=255}
+  oc.putImageData(img,0,0);const hg=ctx.createRadialGradient(cx,cy,R*.95,cx,cy,R*1.25);hg.addColorStop(0,'rgba(168,120,255,.28)');hg.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=hg;ctx.beginPath();ctx.arc(cx,cy,R*1.25,0,7);ctx.fill();
+  ctx.drawImage(off,cx-R,cy-R);})();
+// ship drawing helpers
+function hull(x,y,s,ang,col,dark,kind){ctx.save();ctx.translate(x,y);ctx.rotate(ang);ctx.scale(s,s);
+  const grad=ctx.createLinearGradient(-10,0,10,0);grad.addColorStop(0,dark);grad.addColorStop(.5,col);grad.addColorStop(1,dark);
+  ctx.fillStyle=grad;ctx.strokeStyle='rgba(0,0,0,.5)';ctx.lineWidth=.6;ctx.beginPath();
+  if(kind==='int'){ctx.moveTo(0,-12);ctx.lineTo(7,8);ctx.lineTo(0,4);ctx.lineTo(-7,8);}
+  else if(kind==='frig'){ctx.moveTo(0,-14);ctx.lineTo(5,-4);ctx.lineTo(6,10);ctx.lineTo(0,7);ctx.lineTo(-6,10);ctx.lineTo(-5,-4);}
+  else if(kind==='raider'){ctx.moveTo(0,-10);ctx.lineTo(9,4);ctx.lineTo(4,9);ctx.lineTo(0,5);ctx.lineTo(-4,9);ctx.lineTo(-9,4);}
+  else {ctx.moveTo(0,-16);ctx.lineTo(10,-2);ctx.lineTo(8,12);ctx.lineTo(0,9);ctx.lineTo(-8,12);ctx.lineTo(-10,-2);}
+  ctx.closePath();ctx.fill();ctx.stroke();
+  // panel lines + wing accents
+  ctx.strokeStyle='rgba(255,255,255,.30)';ctx.lineWidth=.7;ctx.beginPath();ctx.moveTo(0,-12);ctx.lineTo(0,6);ctx.stroke();
+  ctx.strokeStyle='rgba(0,0,0,.35)';ctx.beginPath();ctx.moveTo(-5,2);ctx.lineTo(5,2);ctx.moveTo(-4,-3);ctx.lineTo(4,-3);ctx.stroke();
+  ctx.fillStyle=kind==='raider'||kind==='cap'?'rgba(255,190,120,.9)':'rgba(120,230,255,.9)';ctx.fillRect(-6,4,2,3);ctx.fillRect(4,4,2,3);
+  // cockpit / core light
+  ctx.fillStyle='rgba(255,255,255,.75)';ctx.beginPath();ctx.arc(0,-3,1.4,0,7);ctx.fill();
+  ctx.restore();}
+function engine(x,y,ang,len,col,w){ctx.save();ctx.translate(x,y);ctx.rotate(ang);const g=ctx.createLinearGradient(0,0,0,len);g.addColorStop(0,col);g.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=g;ctx.beginPath();ctx.moveTo(-w,0);ctx.lineTo(w,0);ctx.lineTo(0,len);ctx.closePath();ctx.fill();ctx.restore();}
+function glow(x,y,r,col){const g=ctx.createRadialGradient(x,y,0,x,y,r);g.addColorStop(0,col);g.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,r,0,7);ctx.fill();}
+function shield(x,y,r,col,hit){ctx.save();const g=ctx.createRadialGradient(x,y,r*.6,x,y,r);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(.85,col.replace('A','.12'));g.addColorStop(1,col.replace('A','.55'));ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,r,0,7);ctx.fill();
+  ctx.strokeStyle=col.replace('A','.35');ctx.lineWidth=1.2*DPR;ctx.beginPath();ctx.arc(x,y,r,0,7);ctx.stroke();
+  if(hit){const a=hit;ctx.strokeStyle=col.replace('A','.9');ctx.lineWidth=3*DPR;ctx.beginPath();ctx.arc(x,y,r,a-.5,a+.5);ctx.stroke();glow(x+Math.cos(a)*r,y+Math.sin(a)*r,14*DPR,col.replace('A','.7'))}
+  ctx.restore();}
+// enemies
+const foes=[{x:.24,y:.25,k:'raider',sh:1,hit:2.4},{x:.46,y:.36,k:'raider',sh:1},{x:.8,y:.37,k:'cap',sh:0},{x:.58,y:.47,k:'int',sh:0}];
+for(const f of foes){const x=f.x*W,y=f.y*H,s=(f.k==='cap'?2.6:2.0)*DPR;engine(x,y,Math.PI,26*DPR,'rgba(255,120,80,.8)',3*DPR);
+  hull(x,y,s,Math.PI,'#b8583a','#3a1c12',f.k);glow(x,y-14*DPR*(f.k==='cap'?1.3:1),9*DPR,'rgba(255,140,80,.8)');
+  if(f.sh)shield(x,y,22*DPR,'rgba(255,170,90,A)',f.hit);
+  // hp pips
+  ctx.fillStyle='#ffd166';ctx.fillRect(x-14*DPR,y+26*DPR,12*DPR,2.5*DPR);ctx.fillStyle='#5ce6a5';ctx.fillRect(x+2*DPR,y+26*DPR,12*DPR,2.5*DPR);
+  if(f.k==='raider'&&f.x<.3){ctx.fillStyle='#ff8a5a';ctx.font=`700 ${11*DPR}px ui-monospace,monospace`;ctx.textAlign='center';ctx.fillText('7s',x,y-30*DPR)}}
+// player formation
+const px=[.21,.29,.37,.45,.53,.61,.69,.77],py=.7;
+for(let i=0;i<px.length;i++){const x=px[i]*W,y=py*H+(i%2?8*DPR:0),k=(i===3||i===4)?'frig':'int',s=(k==='frig'?1.9:1.5)*DPR;
+  engine(x,y+8*DPR,0,26*DPR,'rgba(72,226,255,.9)',3*DPR);
+  hull(x,y,s,0,'#9cc4ff','#162347',k);glow(x,y+11*DPR,7*DPR,'rgba(160,240,255,.9)')}
+// flagship shield (hex-ish faint) around formation centre
+ctx.save();ctx.strokeStyle='rgba(72,226,255,.22)';ctx.lineWidth=1.2*DPR;ctx.beginPath();for(let i=0;i<6;i++){const a=i*Math.PI/3+Math.PI/6,r=64*DPR,cx=W*.49,cy=py*H;const X=cx+Math.cos(a)*r,Y=cy+Math.sin(a)*r*.55;i?ctx.lineTo(X,Y):ctx.moveTo(X,Y)}ctx.closePath();ctx.stroke();ctx.restore();
+// shots: pulse beam from player to shielded raider (hit on shield), a rocket in flight, an incoming enemy shot
+function beam(x1,y1,x2,y2,col,w){ctx.save();ctx.lineCap='round';ctx.strokeStyle=col.replace('A','.25');ctx.lineWidth=w*3;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();ctx.strokeStyle=col.replace('A','.95');ctx.lineWidth=w;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();ctx.strokeStyle='rgba(255,255,255,.9)';ctx.lineWidth=w*.35;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();ctx.restore();}
+const T=foes[0];const tx=T.x*W+Math.cos(2.4)*22*DPR,ty=T.y*H+Math.sin(2.4)*22*DPR;beam(px[1]*W,py*H-8*DPR,tx,ty,'rgba(72,226,255,A)',2.2*DPR);
+// rocket
+(function(){const x=W*.62,y=H*.56;ctx.save();ctx.translate(x,y);ctx.rotate(-.35);engine(0,6*DPR,0,30*DPR,'rgba(255,209,102,.9)',2.5*DPR);ctx.fillStyle='#ffe7a8';ctx.beginPath();ctx.moveTo(0,-7*DPR);ctx.lineTo(2.5*DPR,4*DPR);ctx.lineTo(-2.5*DPR,4*DPR);ctx.closePath();ctx.fill();ctx.restore();glow(x,y,12*DPR,'rgba(255,209,102,.5)')})();
+// enemy shot heading down + a miss label
+beam(foes[3].x*W,foes[3].y*H+12*DPR,W*.56,H*.6,'rgba(255,120,80,A)',1.8*DPR);glow(W*.56,H*.6,8*DPR,'rgba(255,140,90,.8)');
+ctx.fillStyle='rgba(131,144,189,.7)';ctx.font=`800 ${13*DPR}px ui-monospace,monospace`;ctx.textAlign='center';ctx.fillText('MISS',W*.5,H*.66);
+// floating damage
+ctx.fillStyle='#48e2ff';ctx.font=`800 ${12*DPR}px ui-monospace,monospace`;ctx.fillText('−38',tx+10*DPR,ty-16*DPR);
+})();
+</script></body></html>
