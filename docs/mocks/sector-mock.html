@@ -10,6 +10,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font:14px/1
 #chips span.on{border-color:var(--cy);color:var(--cy);background:rgba(72,226,255,.10)}
 #wrap{position:relative;margin:10px 12px 0;aspect-ratio:1/1;max-height:52vh;border:1px solid rgba(120,150,255,.22);border-radius:14px;overflow:hidden;background:#04050d}
 canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+#o{pointer-events:none}
 #bar{display:flex;gap:6px;margin:8px 12px 0}
 #bar b{flex:1;text-align:center;border:1px solid var(--line);border-radius:10px;padding:9px 0;font:700 11px/1.3 system-ui;color:var(--mut)}
 #bar b i{display:block;font-style:normal;font-size:8.5px;letter-spacing:.12em;color:var(--dim);margin-top:2px}
@@ -19,9 +20,9 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 #ctl button.on{border-color:var(--cy);color:var(--cy);background:rgba(72,226,255,.10)}
 </style></head><body>
 <div id="chips"><span>CORE</span><span>INNER REACH</span><span class="on">FRONTIER</span><span>THE DEEP</span><span>BEYOND</span></div>
-<div id="wrap"><canvas id="c"></canvas></div>
+<div id="wrap"><canvas id="c"></canvas><canvas id="o"></canvas></div>
 <div id="bar"><b>1<i>AT ANVILREACH</i></b><b>2<i>AT SOL REACH</i></b><b>3<i>LOCKED LV 22</i></b></div>
-<div id="ctl"><button id="neb" class="on">nebula on</button><button id="lanes" class="on">lanes glow</button><button id="spin" class="on">spin on</button></div>
+<div id="ctl"><button id="neb" class="on">nebula on</button><button id="lanes" class="on">lanes glow</button><button id="spin" class="on">spin on</button><button id="term" class="on">terminal</button></div>
 <script>
 (function(){
 const cv=document.getElementById('c'),ctx=cv.getContext('2d'); let W=0,H=0,DPR=Math.min(2,devicePixelRatio||1);
@@ -65,7 +66,7 @@ function mkSprite(s,px){
     c2.putImageData(img,0,0);return cvs}
   return {draw,pal};
 }
-let sprites={},stars=[],spin=true,neb=true,lanes=true,rot=0,last=performance.now();
+let sprites={},stars=[],spin=true,neb=true,lanes=true,term=true,rot=0,last=performance.now();
 function build(){const r=cv.getBoundingClientRect();W=Math.round(r.width*DPR);H=Math.round(r.height*DPR);cv.width=W;cv.height=H;
   for(const s of SYSS){const px=Math.round((s.state==="held"?22:18)*DPR*2);s.sp=mkSprite(s,px);s.px=px;s.x=s.sx/100*W;s.y=s.sy/100*H;}
   stars=[];for(let i=0;i<140;i++)stars.push([Math.random()*W,Math.random()*H,Math.random()*1.3+.3,Math.random()*.6+.2]);
@@ -92,18 +93,46 @@ function frame(now){const dt=Math.min(.05,(now-last)/1000);last=now;if(spin)rot+
       ctx.fillStyle='#bfe6ff';for(let i=0;i<3;i++){const a=now/6000+i*2.1;const x=Math.cos(a)*R*1.5,y=Math.sin(a)*R*.45;ctx.beginPath();ctx.arc(s.x+x*Math.cos(-.3)-y*Math.sin(-.3),s.y+x*Math.sin(-.3)+y*Math.cos(-.3),1.4*DPR,0,7);ctx.fill()}}
     if(s.state==="rival"){ctx.strokeStyle='rgba(255,107,138,.8)';ctx.setLineDash([3*DPR,3*DPR]);ctx.lineWidth=1*DPR;ctx.beginPath();ctx.arc(s.x,s.y,R*1.35,0,7);ctx.stroke();ctx.setLineDash([])}
     // label
-    ctx.font=`700 ${10*DPR}px system-ui`;ctx.textAlign='center';ctx.fillStyle='rgba(2,3,10,.6)';ctx.fillText(s.n,s.x+1,s.y+R+13*DPR+1);
+    if(!term){ctx.font=`700 ${10*DPR}px system-ui`;ctx.textAlign='center';ctx.fillStyle='rgba(2,3,10,.6)';ctx.fillText(s.n,s.x+1,s.y+R+13*DPR+1);
     ctx.fillStyle=s.state==="held"?'#5ce6a5':s.state==="rival"?'#ffb3c2':'#dde5ff';ctx.fillText(s.n,s.x,s.y+R+13*DPR);
-    if(s.rv){ctx.font=`700 ${8*DPR}px system-ui`;ctx.fillStyle='#ff6b8a';ctx.fillText(s.rv,s.x,s.y+R+24*DPR)}
+    if(s.rv){ctx.font=`700 ${8*DPR}px system-ui`;ctx.fillStyle='#ff6b8a';ctx.fillText(s.rv,s.x,s.y+R+24*DPR)}}
+    else { // tactical readout: bracket + two-line tag
+      const col=s.state==="held"?'92,230,165':s.state==="rival"?'255,107,138':'72,226,255';const u=DPR;
+      ctx.strokeStyle=`rgba(${col},.8)`;ctx.lineWidth=1.2*u;const b=R*1.35,l=6*u;ctx.beginPath();
+      ctx.moveTo(s.x-b,s.y-b+l);ctx.lineTo(s.x-b,s.y-b);ctx.lineTo(s.x-b+l,s.y-b);ctx.moveTo(s.x+b-l,s.y-b);ctx.lineTo(s.x+b,s.y-b);ctx.lineTo(s.x+b,s.y-b+l);
+      ctx.moveTo(s.x-b,s.y+b-l);ctx.lineTo(s.x-b,s.y+b);ctx.lineTo(s.x-b+l,s.y+b);ctx.moveTo(s.x+b-l,s.y+b);ctx.lineTo(s.x+b,s.y+b);ctx.lineTo(s.x+b,s.y+b-l);ctx.stroke();
+      const right=s.x<W*.5;const tx=right?s.x+b+6*u:s.x-b-6*u;ctx.textAlign=right?'left':'right';
+      ctx.font=`700 ${9*u}px ui-monospace,monospace`;ctx.fillStyle='#dff6ff';ctx.fillText(s.n.toUpperCase(),tx,s.y-2*u);
+      ctx.font=`700 ${7.5*u}px ui-monospace,monospace`;ctx.fillStyle=`rgba(${col},.9)`;
+      const sub=s.state==="held"?'HELD · 3 SATS · ORE':s.state==="rival"?s.rv+' · OCCUPIED':(s.kind.toUpperCase()+' · LV '+(30+s.seed));
+      ctx.fillText(sub,tx,s.y+8*u);
+    }
   }
   // fleet marker at Anvilreach
   const A=by("anv");ctx.fillStyle='#48e2ff';ctx.beginPath();ctx.arc(A.x+A.px/2+2*DPR,A.y-A.px/2-2*DPR,7*DPR,0,7);ctx.fill();ctx.fillStyle='#04050d';ctx.font=`800 ${9*DPR}px system-ui`;ctx.textAlign='center';ctx.fillText('1',A.x+A.px/2+2*DPR,A.y-A.px/2+1*DPR);
   // sector exit
   ctx.font=`700 ${8*DPR}px system-ui`;ctx.textAlign='right';ctx.fillStyle='#48e2ff';ctx.fillText('THE DEEP →',W-10*DPR,H*.34);
+  if(term)overlay(now);
   requestAnimationFrame(frame)}
+function overlay(now){const c=ctx,u=DPR,t=now/1000,cy='rgba(72,226,255,';
+  c.fillStyle='rgba(0,0,0,.14)';for(let y=0;y<H;y+=3*u)c.fillRect(0,y,W,1*u);
+  c.strokeStyle=cy+'.07)';c.lineWidth=1;c.beginPath();for(let x=0;x<W;x+=26*u){c.moveTo(x,0);c.lineTo(x,H)}for(let y=0;y<H;y+=26*u){c.moveTo(0,y);c.lineTo(W,y)}c.stroke();
+  // radar sweep from the sector centre
+  const a=(t*.5)%(Math.PI*2),cx=W/2,cyy=H/2,Rr=Math.hypot(W,H)/2;c.save();c.translate(cx,cyy);const g=c.createConicGradient?c.createConicGradient(a,0,0):null;
+  if(g){g.addColorStop(0,cy+'.22)');g.addColorStop(.12,cy+'0)');g.addColorStop(1,cy+'0)');c.fillStyle=g;c.beginPath();c.arc(0,0,Rr,0,7);c.fill()}
+  c.strokeStyle=cy+'.5)';c.lineWidth=1*u;c.beginPath();c.moveTo(0,0);c.lineTo(Math.cos(a)*Rr,Math.sin(a)*Rr);c.stroke();
+  c.strokeStyle=cy+'.12)';c.setLineDash([4*u,6*u]);[.25,.5,.75].forEach(f=>{c.beginPath();c.arc(0,0,Rr*f,0,7);c.stroke()});c.setLineDash([]);c.restore();
+  // frame brackets + header
+  const m=10*u,L=18*u;c.strokeStyle=cy+'.7)';c.lineWidth=1.5*u;c.beginPath();
+  c.moveTo(m,m+L);c.lineTo(m,m);c.lineTo(m+L,m);c.moveTo(W-m-L,m);c.lineTo(W-m,m);c.lineTo(W-m,m+L);c.moveTo(m,H-m-L);c.lineTo(m,H-m);c.lineTo(m+L,H-m);c.moveTo(W-m-L,H-m);c.lineTo(W-m,H-m);c.lineTo(W-m,H-m-L);c.stroke();
+  c.font=`700 ${8*u}px ui-monospace,monospace`;c.textAlign='left';c.fillStyle=cy+'.6)';c.fillText('SECTOR 03 · FRONTIER',m+24*u,m+9*u);c.fillStyle='#dff6ff';c.fillText('4 SYSTEMS · 1 HELD · 1 HOSTILE',m+24*u,m+20*u);
+  c.textAlign='right';c.fillStyle=cy+'.6)';c.fillText('TACTICAL · LIVE',W-m-24*u,H-m-4*u);
+  if(Math.floor(t*2)%2===0){c.fillStyle='rgba(255,107,138,.9)';c.beginPath();c.arc(W-m-8*u,H-m-7*u,2.5*u,0,7);c.fill()}
+}
 build();requestAnimationFrame(frame);addEventListener('resize',build);
 document.getElementById('neb').onclick=e=>{neb=!neb;e.target.classList.toggle('on',neb)};
 document.getElementById('lanes').onclick=e=>{lanes=!lanes;e.target.classList.toggle('on',lanes)};
 document.getElementById('spin').onclick=e=>{spin=!spin;e.target.classList.toggle('on',spin)};
+document.getElementById('term').onclick=e=>{term=!term;e.target.classList.toggle('on',term)};
 })();
 </script></body></html>
