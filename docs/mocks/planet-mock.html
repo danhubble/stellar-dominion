@@ -8,6 +8,8 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font:14px/1
 #wrap{position:relative;height:34vh;min-height:230px;border-bottom:1px solid var(--line);
   background:radial-gradient(90vw 60vh at 78% -8%,rgba(120,80,255,.12),transparent 62%),#04050d}
 canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+#o{pointer-events:none}
+#wrap.mono #c{filter:saturate(0) brightness(.9) sepia(1) hue-rotate(150deg) saturate(2.2) contrast(1.05)}
 #bar{position:absolute;top:10px;left:12px;right:12px;display:flex;align-items:center;justify-content:space-between;font:700 11px/1 system-ui;letter-spacing:.18em;color:var(--txt)}
 #bar span{border:1px solid var(--line);border-radius:8px;padding:6px 9px;color:var(--mut);font-size:10px}
 #body{padding:12px;color:var(--mut);font-size:12px}
@@ -17,14 +19,14 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 #ctl button{border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--mut);border-radius:7px;padding:6px 10px;font:600 11px/1 system-ui}
 #ctl button.on{border-color:var(--cy);color:var(--cy);background:rgba(72,226,255,.10)}
 </style></head><body>
-<div id="wrap"><canvas id="c"></canvas>
+<div id="wrap"><canvas id="c"></canvas><canvas id="o"></canvas>
   <div id="bar"><span>‹ MAP</span>SOL REACH<span style="visibility:hidden">‹ MAP</span></div></div>
 <div id="body">
   <h2>Sol Reach</h2><div class="sub">HOME SYSTEM · YOURS</div>
   Procedural planet: noise terrain, day/night terminator, atmosphere rim, slow spin, clouds. Structures you build appear in orbit.
   <div id="ctl">
     <button data-t="0">0 structures</button><button data-t="8" class="on">8 structures</button><button data-t="40">40 structures</button>
-    <button id="spin" class="on">spin on</button>
+    <button id="spin" class="on">spin on</button><button id="term" class="on">terminal</button><button id="mono">mono feed</button>
   </div>
 </div>
 <script>
@@ -68,7 +70,7 @@ for(let j=0;j<TH;j++){const lat=(j/TH-.5)*Math.PI; for(let i=0;i<TW;i++){const l
 let R=0,CX=0,CY=0,LUT=null,img=null,off=document.createElement('canvas'),octx=off.getContext('2d');
 function build(){
   const r=cv.getBoundingClientRect(); W=Math.round(r.width*DPR);H=Math.round(r.height*DPR);cv.width=W;cv.height=H;
-  R=Math.min(H*.36,W*.3); CX=W*.5; CY=H*.52;
+  R=Math.min(H*.31,W*.26); CX=W*.5; CY=H*.54;
   const D=Math.ceil(R*2)+2; LUT=new Float32Array(D*D*4); img=ctx.createImageData(D,D); off.width=D; off.height=D;
   const L=[-.55,.35,.75]; const ln=Math.hypot(...L); L[0]/=ln;L[1]/=ln;L[2]/=ln;
   for(let py=0;py<D;py++)for(let px=0;px<D;px++){
@@ -121,6 +123,41 @@ function frame(now){
   requestAnimationFrame(frame);
 }
 addEventListener('resize',build); build(); requestAnimationFrame(frame);
+/* ---- terminal overlay ---- */
+const oc=document.getElementById('o'),octx2=oc.getContext('2d');let term=true;
+function overlay(now){oc.width=W;oc.height=H;const c=octx2;c.clearRect(0,0,W,H);if(!term)return;
+  const t=now/1000,cy='rgba(72,226,255,',u=DPR;
+  // scanlines + vignette
+  c.fillStyle='rgba(0,0,0,.18)';for(let y=0;y<H;y+=3*u)c.fillRect(0,y,W,1*u);
+  const vg=c.createRadialGradient(W/2,H/2,H*.35,W/2,H/2,H*.9);vg.addColorStop(0,'rgba(0,0,0,0)');vg.addColorStop(1,'rgba(0,0,0,.55)');c.fillStyle=vg;c.fillRect(0,0,W,H);
+  // faint grid
+  c.strokeStyle=cy+'.06)';c.lineWidth=1;c.beginPath();for(let x=0;x<W;x+=28*u){c.moveTo(x,0);c.lineTo(x,H)}for(let y=0;y<H;y+=28*u){c.moveTo(0,y);c.lineTo(W,y)}c.stroke();
+  // corner brackets
+  const m=14*u,L=22*u;c.strokeStyle=cy+'.7)';c.lineWidth=1.5*u;c.beginPath();
+  c.moveTo(m,m+L);c.lineTo(m,m);c.lineTo(m+L,m); c.moveTo(W-m-L,m);c.lineTo(W-m,m);c.lineTo(W-m,m+L);
+  c.moveTo(m,H-m-L);c.lineTo(m,H-m);c.lineTo(m+L,H-m); c.moveTo(W-m-L,H-m);c.lineTo(W-m,H-m);c.lineTo(W-m,H-m-L);c.stroke();
+  // targeting rings around the planet
+  c.save();c.translate(CX,CY);
+  c.strokeStyle=cy+'.35)';c.lineWidth=1*u;c.setLineDash([6*u,8*u]);c.rotate(t*.08);c.beginPath();c.arc(0,0,R*1.18,0,7);c.stroke();
+  c.setLineDash([]);c.rotate(-t*.2);c.strokeStyle=cy+'.7)';c.lineWidth=1.5*u;for(let i=0;i<4;i++){c.rotate(Math.PI/2);c.beginPath();c.arc(0,0,R*1.1,-.35,.35);c.stroke();}
+  c.restore();
+  // sweep line
+  const sy=CY-R*1.2+((t*40*u)%(R*2.4));c.fillStyle=cy+'.10)';c.fillRect(CX-R*1.2,sy-14*u,R*2.4,14*u);c.fillStyle=cy+'.55)';c.fillRect(CX-R*1.2,sy,R*2.4,1*u);
+  // readouts with leader lines
+  c.font=`700 ${8*u}px ui-monospace,monospace`;c.fillStyle=cy+'.9)';c.strokeStyle=cy+'.5)';c.lineWidth=1*u;
+  const rows=[['CLASS','TERRESTRIAL · HOME'],['OUTPUT','0.6 /s'],['STRUCTURES',String(structs)],['ORBIT',Math.min(24,Math.round(Math.sqrt(structs)*4))+' SATS'],['SCAN','100%']];
+  const bx=W-m-4*u,by=m+34*u;c.textAlign='right';rows.forEach((r,i)=>{c.fillStyle=cy+'.55)';c.fillText(r[0],bx,by+i*21*u);c.fillStyle='#dff6ff';c.fillText(r[1],bx,by+i*21*u+10*u)});
+  c.textAlign='left';c.fillStyle=cy+'.55)';c.fillText('SOL REACH',m+4*u,m+34*u);c.fillStyle='#dff6ff';c.fillText('LAT 0.00  LON '+((rot*360)%360).toFixed(1).padStart(5,'0'),m+4*u,m+46*u);
+  // leader line to a surface point
+  const px=CX-R*.45,py=CY+R*.45;c.beginPath();c.moveTo(px,py);c.lineTo(px-26*u,py+26*u);c.lineTo(px-96*u,py+26*u);c.stroke();c.fillStyle=cy+'.9)';c.beginPath();c.arc(px,py,2.2*u,0,7);c.fill();
+  c.fillStyle='#dff6ff';c.textAlign='left';c.fillText('MINING DRONE ×3',px-96*u,py+22*u);
+  // blinking rec dot
+  if(Math.floor(t*2)%2===0){c.fillStyle='rgba(255,107,138,.9)';c.beginPath();c.arc(W-m-6*u,H-m-6*u,3*u,0,7);c.fill()}
+  c.fillStyle=cy+'.55)';c.textAlign='right';c.fillText('ORBITAL FEED · LIVE',W-m-14*u,H-m-3*u);
+}
+(function loop(now){overlay(now||0);requestAnimationFrame(loop)})();
+document.getElementById('term').onclick=e=>{term=!term;e.target.classList.toggle('on',term)};
+document.getElementById('mono').onclick=e=>{const w=document.getElementById('wrap');w.classList.toggle('mono');e.target.classList.toggle('on',w.classList.contains('mono'))};
 document.querySelectorAll('#ctl [data-t]').forEach(b=>b.onclick=()=>{structs=+b.dataset.t;document.querySelectorAll('#ctl [data-t]').forEach(x=>x.classList.toggle('on',x===b))});
 document.getElementById('spin').onclick=e=>{spin=!spin;e.target.classList.toggle('on',spin);e.target.textContent=spin?'spin on':'spin off'};
 })();
