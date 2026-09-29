@@ -39,13 +39,13 @@
 .gn{font:600 13px/1.35 system-ui;display:flex;flex-wrap:wrap;align-items:center;gap:0 6px}
 .lane{margin-right:0}
 .loc{display:none;margin-left:0;padding:2px 6px 1px;border-radius:5px;
-  font:600 8.5px/1.35 system-ui;letter-spacing:.14em;text-transform:uppercase;
+  font:600 11px/1.35 system-ui;letter-spacing:.08em;text-transform:uppercase;
   color:var(--a,#8390bd);border:1px solid currentColor;opacity:.55;vertical-align:2px;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
 .g:hover .loc{opacity:.9}
 .gm{font-size:11.5px;color:var(--gr);font-weight:700;font-family:ui-monospace,monospace}
 .g.sellmode .gm{color:var(--rd)}
-.g.locked .gm{color:var(--mut);font-weight:600;font-size:10.5px}
-.gx{font-size:10px;color:var(--dim);font-family:ui-monospace,monospace}
+.g.locked .gm{color:var(--mut);font-weight:600;font-size:11px}
+.gx{font-size:11px;color:var(--dim);font-family:ui-monospace,monospace}
 /* PLAN-polish Parked item (decided 24 Sep, mock variant C): a thin strip hanging
    under any .g row whose tier feeds one of the current three missions - always
    gold (var(--gd)), never the row's own --a accent. .mstripped squares the row's
@@ -54,18 +54,18 @@
 .mstrip{display:flex;justify-content:space-between;align-items:center;gap:8px;
   margin:0 0 5px;padding:2px 10px 2px 12px;border:1px solid var(--line);border-top:none;
   border-radius:0 0 11px 11px;background:var(--panel);
-  box-shadow:inset 3px 0 0 var(--gd);font:600 10px/1.25 system-ui;color:var(--mut)}
+  box-shadow:inset 3px 0 0 var(--gd);font:600 11px/1.25 system-ui;color:var(--mut)}
 .mstrip b{color:var(--gd);font-family:ui-monospace,monospace}
-.mstrip i{font-style:normal;color:var(--gd);letter-spacing:.14em;font-size:8.5px;margin-right:6px}
+.mstrip i{font-style:normal;color:var(--gd);letter-spacing:.08em;font-size:11px;margin-right:6px}
 .gb{
   border:1px solid var(--line2);border-radius:9px;padding:7px 10px;min-width:104px;cursor:pointer;
   background:rgba(72,226,255,.07);color:var(--txt);text-align:right
 }
 .gb:disabled{opacity:.4;cursor:not-allowed}
 .gb b{display:block;font:700 11px/1.1 ui-monospace,monospace;color:var(--cy)}
-.gb i{display:block;font:400 9px/1.3 system-ui;font-style:normal;color:var(--dim);letter-spacing:.1em}
+.gb i{display:block;font:400 11px/1.3 system-ui;font-style:normal;color:var(--dim);letter-spacing:.06em}
 .gcount{font:700 15px/1 ui-monospace,monospace;text-align:right;color:var(--txt);min-width:44px}
-.auto{position:absolute;top:6px;right:8px;font-size:9px;color:var(--dim);cursor:pointer;letter-spacing:.1em}
+.auto{position:absolute;top:6px;right:8px;font-size:11px;color:var(--dim);cursor:pointer;letter-spacing:.1em}
 .auto.on{color:var(--gr)}
 
 /* ---------- EMPIRE2: grouped system list ---------- */
@@ -107,7 +107,7 @@
 .sysname{font:600 13px/1.2 system-ui;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .lockicon{opacity:.75;font-size:12px}
 .kindbadge{
-  font:700 8.5px/1 system-ui;letter-spacing:.1em;text-transform:uppercase;padding:3px 6px 2px;
+  font:700 11px/1 system-ui;letter-spacing:.06em;text-transform:uppercase;padding:3px 6px 2px;
   border-radius:5px;background:rgba(255,255,255,.08);color:var(--a,var(--mut));border:1px solid currentColor;opacity:.85
 }
 .sysrow2-stats{

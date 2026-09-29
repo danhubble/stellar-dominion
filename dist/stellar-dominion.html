@@ -14,7 +14,7 @@
   --bg:#04050d; --bg2:#080b1c;
   --panel:rgba(14,19,42,.72); --panel2:rgba(20,26,54,.85);
   --line:rgba(96,142,255,.20); --line2:rgba(96,142,255,.38);
-  --txt:#dde5ff; --mut:#8390bd; --dim:#5a6693; --dim2:#7683ad;
+  --txt:#dde5ff; --mut:#8390bd; --dim:#7280ae; --dim2:#7683ad;
   --cy:#48e2ff; --vi:#a878ff; --gd:#ffd166; --gr:#5ce6a5; --rd:#ff6b8a; --sv:#a9bcd4;
   /* Per-kind system colors (held-row tint pass, patch443). Single source of truth:
      KIND_INFO in the script block reads these seven via getComputedStyle at boot, so
@@ -100,11 +100,11 @@ body{
 .vegaav{flex:none;width:44px;height:44px;margin-right:10px}
 .vegaturn{filter:hue-rotate(170deg) saturate(1.9) brightness(.55) contrast(1.05)}   /* patch589: turned/dimmed VEGA, same SVG */
 .noticetxt{font:600 12px/1.4 system-ui;color:var(--txt)}
-.noticewho{font:700 9px/1 ui-monospace,monospace;letter-spacing:.18em;color:var(--dim);
+.noticewho{font:700 11px/1 ui-monospace,monospace;letter-spacing:.12em;color:var(--dim);
   text-transform:uppercase;margin-bottom:4px}
 .noticebtns{display:flex;gap:6px;flex:none}
 #noticeGo{border:1px solid var(--line2);border-radius:8px;padding:7px 12px;cursor:pointer;
-  background:rgba(72,226,255,.12);color:var(--cy);font:700 10.5px/1 system-ui;
+  background:rgba(72,226,255,.12);color:var(--cy);font:700 11px/1 system-ui;
   letter-spacing:.05em;white-space:nowrap}
 #noticeX{border:1px solid var(--line);border-radius:8px;width:26px;height:26px;cursor:pointer;
   background:rgba(255,255,255,.04);color:var(--mut);font:700 12px/1 system-ui}
@@ -124,7 +124,7 @@ header{
 #runlbl{border:1px solid var(--line);color:var(--dim);--p:0%;
   background:linear-gradient(90deg,rgba(255,209,102,.85) var(--p),rgba(255,255,255,.08) var(--p)) bottom/100% 2px no-repeat,
              rgba(255,255,255,.05);
-  border-radius:8px;padding:5px 9px;font:700 9px/1 system-ui;letter-spacing:.22em;
+  border-radius:8px;padding:6px 9px;font:700 11px/1 system-ui;letter-spacing:.12em;
   text-transform:uppercase;cursor:pointer;white-space:nowrap;
   transition:border-color .15s,color .15s}
 #runlbl:hover{color:var(--txt);border-color:var(--line2)}
@@ -157,7 +157,7 @@ header{
 .xpbar{height:5px;border-radius:3px;background:rgba(255,255,255,.08);margin-top:5px;overflow:hidden}
 .xpbar i{display:block;height:100%;background:linear-gradient(90deg,#c9a24a,#ffd166);border-radius:3px;transition:width .3s}
 .xpbar.xplvlbar{height:10px;margin:2px 0 6px}
-.xprow .s{font:10px/1 ui-monospace,monospace;color:var(--dim);margin-top:4px}
+.xprow .s{font:11px/1 ui-monospace,monospace;color:var(--dim);margin-top:4px}
 .xprow.ready .xpbar i{background:linear-gradient(90deg,#3fbf8a,#5ce6a5)} .xprow.ready .s{color:var(--gr)}
 .xplvl{margin:4px 0 10px}
 .rrow{display:flex;justify-content:space-between;gap:10px;padding:3px 0;font-size:11.5px;color:var(--mut);
@@ -178,8 +178,8 @@ header{
 .ci .sp3{animation:spinf 14s linear infinite}
 .rcard .val{font:600 17px/1.15 ui-monospace,SFMono-Regular,Menlo,monospace;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.rcard .sub{font-size:10px;color:var(--mut);font-family:ui-monospace,monospace;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rcard .sub{font-size:11px;line-height:1.2;color:var(--mut);font-family:ui-monospace,monospace;
+  overflow-wrap:anywhere;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .c-ore .val{color:var(--cy)} .c-cry .val{color:var(--vi)} .c-dm .val{color:var(--gd)}
 /* patch607: the context card reads S.msel, not a fixed currency, and (patch630:
    only until anything has ever been banked - exoEverBankedAny(), see
@@ -236,7 +236,7 @@ main{flex:1 1 auto;display:flex;min-height:0}
 .scanbtn small{display:block;margin-top:5px;font:400 10px/1 ui-monospace,monospace;letter-spacing:.05em;color:#a9e9ff}
 
 .mini{border:1px solid var(--line);border-radius:10px;padding:8px;background:var(--panel)}
-.mini h4{margin:0 0 6px;font:600 9px/1 system-ui;letter-spacing:.18em;color:var(--dim);text-transform:uppercase}
+.mini h4{margin:0 0 6px;font:600 11px/1 system-ui;letter-spacing:.14em;color:var(--dim);text-transform:uppercase}
 .krow{display:flex;justify-content:space-between;gap:8px;font-size:11px;padding:2px 0}
 .krow span:last-child{font-family:ui-monospace,monospace;color:var(--txt)}
 .krow span:first-child{color:var(--mut)}
@@ -285,9 +285,9 @@ body.syspage #view{padding-bottom:calc(var(--sysbarh) + env(safe-area-inset-bott
    (one class) by specificity alone, on-class or not. */
 .tab.legacyhide,.pane.legacyhide{display:none!important}
 .hint{color:var(--mut);font-size:12px;margin:0 0 10px}
-.sechead{font:600 10px/1 system-ui;letter-spacing:.2em;color:var(--dim);text-transform:uppercase;margin:16px 0 8px}
+.sechead{font:600 11px/1 system-ui;letter-spacing:.16em;color:var(--dim);text-transform:uppercase;margin:16px 0 8px}
 .pjexpl{color:var(--mut);font-size:11.5px;margin:0 0 8px}
-.card .pjeta{margin-top:4px;font-size:10.5px;color:var(--gd);font-family:ui-monospace,monospace;flex:none}
+.card .pjeta{margin-top:4px;font-size:11px;color:var(--gd);font-family:ui-monospace,monospace;flex:none}
 
 .chip.scrapc.on{border-color:var(--rd);color:var(--rd);background:rgba(255,107,138,.10)}
 .g.sellmode .gb{border-color:rgba(255,107,138,.5);background:rgba(255,107,138,.08)}
@@ -304,7 +304,7 @@ body.syspage #view{padding-bottom:calc(var(--sysbarh) + env(safe-area-inset-bott
 .lvpick b{display:block;font:700 13px/1.2 system-ui;color:var(--a)}
 .lvpi{display:block;font:700 11.5px/1.3 ui-monospace,monospace;color:var(--txt);margin-top:3px}
 .lvpt{display:block;font-size:11px;color:var(--mut);margin-top:3px;line-height:1.4}
-.lvph{display:block;font-size:10px;color:var(--dim);margin-top:4px;font-family:ui-monospace,monospace}
+.lvph{display:block;font-size:11px;color:var(--dim);margin-top:4px;font-family:ui-monospace,monospace}
 .lvmore{font-size:11.5px;color:var(--gd);margin:4px 0 0}
 .lvun{font-size:12px;color:var(--mut);margin:0 0 4px}
 button.ghost{background:transparent;border-color:var(--line);color:var(--mut)}
@@ -349,13 +349,13 @@ button.ghost{background:transparent;border-color:var(--line);color:var(--mut)}
 .gn{font:600 13px/1.35 system-ui;display:flex;flex-wrap:wrap;align-items:center;gap:0 6px}
 .lane{margin-right:0}
 .loc{display:none;margin-left:0;padding:2px 6px 1px;border-radius:5px;
-  font:600 8.5px/1.35 system-ui;letter-spacing:.14em;text-transform:uppercase;
+  font:600 11px/1.35 system-ui;letter-spacing:.08em;text-transform:uppercase;
   color:var(--a,#8390bd);border:1px solid currentColor;opacity:.55;vertical-align:2px;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
 .g:hover .loc{opacity:.9}
 .gm{font-size:11.5px;color:var(--gr);font-weight:700;font-family:ui-monospace,monospace}
 .g.sellmode .gm{color:var(--rd)}
-.g.locked .gm{color:var(--mut);font-weight:600;font-size:10.5px}
-.gx{font-size:10px;color:var(--dim);font-family:ui-monospace,monospace}
+.g.locked .gm{color:var(--mut);font-weight:600;font-size:11px}
+.gx{font-size:11px;color:var(--dim);font-family:ui-monospace,monospace}
 /* PLAN-polish Parked item (decided 24 Sep, mock variant C): a thin strip hanging
    under any .g row whose tier feeds one of the current three missions - always
    gold (var(--gd)), never the row's own --a accent. .mstripped squares the row's
@@ -364,18 +364,18 @@ button.ghost{background:transparent;border-color:var(--line);color:var(--mut)}
 .mstrip{display:flex;justify-content:space-between;align-items:center;gap:8px;
   margin:0 0 5px;padding:2px 10px 2px 12px;border:1px solid var(--line);border-top:none;
   border-radius:0 0 11px 11px;background:var(--panel);
-  box-shadow:inset 3px 0 0 var(--gd);font:600 10px/1.25 system-ui;color:var(--mut)}
+  box-shadow:inset 3px 0 0 var(--gd);font:600 11px/1.25 system-ui;color:var(--mut)}
 .mstrip b{color:var(--gd);font-family:ui-monospace,monospace}
-.mstrip i{font-style:normal;color:var(--gd);letter-spacing:.14em;font-size:8.5px;margin-right:6px}
+.mstrip i{font-style:normal;color:var(--gd);letter-spacing:.08em;font-size:11px;margin-right:6px}
 .gb{
   border:1px solid var(--line2);border-radius:9px;padding:7px 10px;min-width:104px;cursor:pointer;
   background:rgba(72,226,255,.07);color:var(--txt);text-align:right
 }
 .gb:disabled{opacity:.4;cursor:not-allowed}
 .gb b{display:block;font:700 11px/1.1 ui-monospace,monospace;color:var(--cy)}
-.gb i{display:block;font:400 9px/1.3 system-ui;font-style:normal;color:var(--dim);letter-spacing:.1em}
+.gb i{display:block;font:400 11px/1.3 system-ui;font-style:normal;color:var(--dim);letter-spacing:.06em}
 .gcount{font:700 15px/1 ui-monospace,monospace;text-align:right;color:var(--txt);min-width:44px}
-.auto{position:absolute;top:6px;right:8px;font-size:9px;color:var(--dim);cursor:pointer;letter-spacing:.1em}
+.auto{position:absolute;top:6px;right:8px;font-size:11px;color:var(--dim);cursor:pointer;letter-spacing:.1em}
 .auto.on{color:var(--gr)}
 
 /* ---------- EMPIRE2: grouped system list ---------- */
@@ -417,7 +417,7 @@ button.ghost{background:transparent;border-color:var(--line);color:var(--mut)}
 .sysname{font:600 13px/1.2 system-ui;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .lockicon{opacity:.75;font-size:12px}
 .kindbadge{
-  font:700 8.5px/1 system-ui;letter-spacing:.1em;text-transform:uppercase;padding:3px 6px 2px;
+  font:700 11px/1 system-ui;letter-spacing:.06em;text-transform:uppercase;padding:3px 6px 2px;
   border-radius:5px;background:rgba(255,255,255,.08);color:var(--a,var(--mut));border:1px solid currentColor;opacity:.85
 }
 .sysrow2-stats{
@@ -548,7 +548,7 @@ button.ghost{background:transparent;border-color:var(--line);color:var(--mut)}
   border-radius:8px;padding:7px;cursor:pointer;font:600 11px/1 ui-monospace,monospace
 }
 .card button:disabled{cursor:not-allowed;color:var(--dim2);border-color:var(--line);background:rgba(255,255,255,.03)}
-.lv{font-size:10px;color:var(--dim);font-family:ui-monospace,monospace}
+.lv{font-size:11px;color:var(--dim);font-family:ui-monospace,monospace}
 
 /* ---------- fleet & raids ---------- */
 .svchip{margin-left:auto;border:1px solid rgba(169,188,212,.4);background:rgba(169,188,212,.10);
@@ -1138,9 +1138,9 @@ body.syspage #mapZoomBar{opacity:1;pointer-events:auto}
    [hidden] on whichever one isn't current. */
 #mapList{display:flex;flex-direction:column;margin-bottom:10px}
 #mapList[hidden]{display:none}
-.chip{flex:1 1 0;min-width:0;text-align:center;padding:6px 1px;border-radius:9px;
+.chip{flex:1 1 0;min-width:0;min-height:44px;text-align:center;padding:6px 1px;border-radius:9px;
   border:1px solid var(--line);background:rgba(255,255,255,.02);cursor:pointer;
-  font:800 7.1px/1 system-ui;letter-spacing:.01em;color:var(--dim);white-space:nowrap;
+  font:800 11px/1 system-ui;letter-spacing:.01em;color:var(--dim);white-space:nowrap;
   overflow:hidden;text-overflow:clip}
 .chip.on{border-color:var(--cy);background:rgba(72,226,255,.12);color:var(--txt);
   box-shadow:0 0 10px -2px rgba(72,226,255,.6)}
@@ -1238,7 +1238,7 @@ body.syspage #sysSheet{display:block}
   border:1px solid var(--line);background:rgba(255,255,255,.03)}
 .hanrow .hi svg{width:20px;height:20px;display:block}
 .hanrow .hn{font:700 11px/1.2 system-ui;color:var(--txt)}
-.hanrow .hd2{font:600 9.5px/1.3 ui-monospace,monospace;color:var(--dim)}
+.hanrow .hd2{font:600 11px/1.3 ui-monospace,monospace;color:var(--dim)}
 .hanstep{display:flex;align-items:center;gap:8px;margin-left:auto;flex:none}
 .hanstep button{width:28px;height:28px;border-radius:8px;border:1px solid var(--line2);
   background:rgba(72,226,255,.09);color:var(--cy);font:700 15px/1 system-ui;cursor:pointer;padding:0}
@@ -1265,7 +1265,7 @@ body.syspage #sysSheet{display:block}
   box-shadow:0 -10px 18px -8px rgba(0,0,0,.6)}
 .sshscanbot[hidden]{display:none}
 #sysInfo h4{margin:0;font:700 15px/1.2 system-ui}
-.sysmeta{font:600 9.5px/1 system-ui;letter-spacing:.14em;color:var(--dim);margin-top:4px}
+.sysmeta{font:600 11px/1 system-ui;letter-spacing:.1em;color:var(--dim);margin-top:4px}
 .sysd{font-size:11.5px;color:var(--mut);line-height:1.5;margin:8px 0 10px}
 .sysrow{display:flex;justify-content:space-between;gap:10px;font-size:11.5px;padding:3px 0;
   border-top:1px solid rgba(255,255,255,.05)}
@@ -1281,10 +1281,10 @@ body.syspage #sysSheet{display:block}
 #sysOdds .odds b{font:700 13px/1 ui-monospace,monospace;color:var(--gr);letter-spacing:0}
 #sysOdds .obar{height:7px;border-radius:4px;background:rgba(255,255,255,.07);overflow:hidden;margin-top:3px}
 #sysOdds .obar i{display:block;height:100%;background:linear-gradient(90deg,#3fbf8a,#5ce6a5)}
-#sysOdds .onote{font-size:10.5px;color:var(--dim);margin-top:5px;line-height:1.45}
+#sysOdds .onote{font-size:11px;color:var(--dim);margin-top:5px;line-height:1.45}
 /* ---- the defences row: three equal cards (patch598) ---- */
 #sysDefWrap[hidden]{display:none}
-#sysDefHead{font:600 9.5px/1 system-ui;letter-spacing:.18em;color:var(--dim);text-transform:uppercase;
+#sysDefHead{font:600 11px/1 system-ui;letter-spacing:.14em;color:var(--dim);text-transform:uppercase;
   margin:14px 0 7px;display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px}
 /* patch621: the defence gate's one dim line - sentence case, not the header's own
    uppercase/tracked style, so it reads as a helper note not a section label.
@@ -1297,7 +1297,7 @@ body.syspage #sysSheet{display:block}
    font/case/colour/spacing, so the sheet reads as one set of sections, not two
    different styles bolted together. */
 #sysBuild[hidden]{display:none}
-#sysBuildHead{font:600 9.5px/1 system-ui;letter-spacing:.18em;color:var(--dim);text-transform:uppercase;
+#sysBuildHead{font:600 11px/1 system-ui;letter-spacing:.14em;color:var(--dim);text-transform:uppercase;
   margin:2px 0 7px;display:flex;justify-content:space-between;gap:8px}
 /* PLAN-governors: the GOVERNOR chip, own row under BUILDINGS' header, same .chip
    base every buy-amount button already uses (01-empire.css) - .gov just gives it
@@ -1306,7 +1306,7 @@ body.syspage #sysSheet{display:block}
 #sysGov{margin:0 0 9px}
 #sysGov .chip.gov{width:100%;border-color:var(--line2);color:var(--dim)}
 #sysGov .chip.gov.on{border-color:#ffd166;color:#ffd166;background:rgba(255,209,102,.10)}
-.sysGovLast{margin-top:5px;font:600 10px/1.3 system-ui;color:var(--dim2)}
+.sysGovLast{margin-top:5px;font:600 11px/1.3 system-ui;color:var(--dim2)}
 .sysGovLast[hidden]{display:none}
 .govmark{color:#ffd166;font-size:.85em}
 #sysDefRow{display:flex;gap:7px}
@@ -1532,11 +1532,11 @@ body.syspage #toasts{bottom:calc(var(--sysbarh) + 8px + env(safe-area-inset-bott
   #scan{padding:10px 8px;font-size:12px}
   .mini{padding:6px 8px}
   .mini h4{display:none}
-  .krow{padding:1px 0;font-size:10.5px}
+  .krow{padding:1px 0;font-size:11px}
   #left .note{display:none}
   .ricon{flex:0 0 24px;width:24px;height:24px}
   .rcard{gap:7px;padding:6px 7px}
-  .rcard .sub{font-size:9px}
+  .rcard .sub{font-size:11px}
   #left #tut{grid-column:1/-1}
   #left #tut h4{display:block}
   .krow.hidem{display:none}
@@ -1546,11 +1546,20 @@ body.syspage #toasts{bottom:calc(var(--sysbarh) + 8px + env(safe-area-inset-bott
   .grid{grid-template-columns:1fr}
   .g{grid-template-columns:34px 1fr auto;gap:8px}
   .gi{width:36px;height:36px;padding:4px}
-  .loc{margin-left:0;font-size:7.2px;letter-spacing:.1em;padding:2px 5px 1px;opacity:.7}
-  .gm,.gx{font-size:9.2px;letter-spacing:-.2px}
+  .loc{margin-left:0;font-size:11px;letter-spacing:.04em;padding:2px 5px 1px;opacity:.7}
+  .gm,.gx{font-size:11px;letter-spacing:0}
   .gb{min-width:92px;padding:6px 8px}
   .brand h1{font-size:12px;letter-spacing:.2em}
 }
+
+/* touch targets: the small header/nav controls keep their look but get an invisible
+   hit area out to 44px tall, so a thumb does not have to be precise. Buy buttons are
+   simply taller. Nothing here changes layout or spacing. */
+#runlbl,.icnbtn,#mapZoomBack,#noticeX,#noticeGo,.tab{position:relative}
+#runlbl::before,.icnbtn::before,#mapZoomBack::before,#noticeX::before,#noticeGo::before,.tab::before{
+  content:"";position:absolute;left:-4px;right:-4px;top:50%;height:max(100% + 8px,44px);
+  transform:translateY(-50%)}
+.gb{min-height:44px}
 </style>
 </head>
 <body>
@@ -1630,7 +1639,7 @@ body.syspage #toasts{bottom:calc(var(--sysbarh) + 8px + env(safe-area-inset-bott
       <div class="krow hidem"><span>All-time ore</span><span id="kAll">0</span></div>
       <div class="krow"><span>Dark Matter</span><span id="kDm">0</span></div>
     </div>
-    <div class="mini note" style="font-size:10px;color:var(--dim);line-height:1.5">
+    <div class="mini note" style="font-size:11px;color:var(--dim);line-height:1.5">
       No real money, ever. Every currency here — including Dark Matter — is earned by playing.
     </div>
   </aside>
@@ -1703,7 +1712,7 @@ body.syspage #toasts{bottom:calc(var(--sysbarh) + 8px + env(safe-area-inset-bott
         <div id="rpFleet" hidden>
           <div id="flWarn"></div>
           <div class="buybar" style="margin:9px 0 2px">
-            <span style="font-size:10px;letter-spacing:.16em;color:var(--dim)">BUY</span>
+            <span style="font-size:11px;letter-spacing:.12em;color:var(--dim)">BUY</span>
             <button class="chip" data-b="1">×1</button>
             <button class="chip" data-b="10">×10</button>
             <button class="chip" data-b="100">×100</button>
@@ -1820,7 +1829,7 @@ body.syspage #toasts{bottom:calc(var(--sysbarh) + 8px + env(safe-area-inset-bott
         <p class="hint">Sell surplus ore, crystal or exotics. Prices track your own
           economy so they stay relevant — and each sale nudges that price up for a while.</p>
         <div class="buybar">
-          <span style="font-size:10px;letter-spacing:.16em;color:var(--dim)">AMOUNT</span>
+          <span style="font-size:11px;letter-spacing:.12em;color:var(--dim)">AMOUNT</span>
           <button class="chip on" data-mb="1">×1</button>
           <button class="chip" data-mb="10">×10</button>
           <button class="chip" data-mb="100">×100</button>

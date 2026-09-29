@@ -2,7 +2,7 @@
   --bg:#04050d; --bg2:#080b1c;
   --panel:rgba(14,19,42,.72); --panel2:rgba(20,26,54,.85);
   --line:rgba(96,142,255,.20); --line2:rgba(96,142,255,.38);
-  --txt:#dde5ff; --mut:#8390bd; --dim:#5a6693; --dim2:#7683ad;
+  --txt:#dde5ff; --mut:#8390bd; --dim:#7280ae; --dim2:#7683ad;
   --cy:#48e2ff; --vi:#a878ff; --gd:#ffd166; --gr:#5ce6a5; --rd:#ff6b8a; --sv:#a9bcd4;
   /* Per-kind system colors (held-row tint pass, patch443). Single source of truth:
      KIND_INFO in the script block reads these seven via getComputedStyle at boot, so
@@ -88,11 +88,11 @@ body{
 .vegaav{flex:none;width:44px;height:44px;margin-right:10px}
 .vegaturn{filter:hue-rotate(170deg) saturate(1.9) brightness(.55) contrast(1.05)}   /* patch589: turned/dimmed VEGA, same SVG */
 .noticetxt{font:600 12px/1.4 system-ui;color:var(--txt)}
-.noticewho{font:700 9px/1 ui-monospace,monospace;letter-spacing:.18em;color:var(--dim);
+.noticewho{font:700 11px/1 ui-monospace,monospace;letter-spacing:.12em;color:var(--dim);
   text-transform:uppercase;margin-bottom:4px}
 .noticebtns{display:flex;gap:6px;flex:none}
 #noticeGo{border:1px solid var(--line2);border-radius:8px;padding:7px 12px;cursor:pointer;
-  background:rgba(72,226,255,.12);color:var(--cy);font:700 10.5px/1 system-ui;
+  background:rgba(72,226,255,.12);color:var(--cy);font:700 11px/1 system-ui;
   letter-spacing:.05em;white-space:nowrap}
 #noticeX{border:1px solid var(--line);border-radius:8px;width:26px;height:26px;cursor:pointer;
   background:rgba(255,255,255,.04);color:var(--mut);font:700 12px/1 system-ui}
@@ -112,7 +112,7 @@ header{
 #runlbl{border:1px solid var(--line);color:var(--dim);--p:0%;
   background:linear-gradient(90deg,rgba(255,209,102,.85) var(--p),rgba(255,255,255,.08) var(--p)) bottom/100% 2px no-repeat,
              rgba(255,255,255,.05);
-  border-radius:8px;padding:5px 9px;font:700 9px/1 system-ui;letter-spacing:.22em;
+  border-radius:8px;padding:6px 9px;font:700 11px/1 system-ui;letter-spacing:.12em;
   text-transform:uppercase;cursor:pointer;white-space:nowrap;
   transition:border-color .15s,color .15s}
 #runlbl:hover{color:var(--txt);border-color:var(--line2)}
@@ -145,7 +145,7 @@ header{
 .xpbar{height:5px;border-radius:3px;background:rgba(255,255,255,.08);margin-top:5px;overflow:hidden}
 .xpbar i{display:block;height:100%;background:linear-gradient(90deg,#c9a24a,#ffd166);border-radius:3px;transition:width .3s}
 .xpbar.xplvlbar{height:10px;margin:2px 0 6px}
-.xprow .s{font:10px/1 ui-monospace,monospace;color:var(--dim);margin-top:4px}
+.xprow .s{font:11px/1 ui-monospace,monospace;color:var(--dim);margin-top:4px}
 .xprow.ready .xpbar i{background:linear-gradient(90deg,#3fbf8a,#5ce6a5)} .xprow.ready .s{color:var(--gr)}
 .xplvl{margin:4px 0 10px}
 .rrow{display:flex;justify-content:space-between;gap:10px;padding:3px 0;font-size:11.5px;color:var(--mut);
@@ -166,8 +166,8 @@ header{
 .ci .sp3{animation:spinf 14s linear infinite}
 .rcard .val{font:600 17px/1.15 ui-monospace,SFMono-Regular,Menlo,monospace;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.rcard .sub{font-size:10px;color:var(--mut);font-family:ui-monospace,monospace;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rcard .sub{font-size:11px;line-height:1.2;color:var(--mut);font-family:ui-monospace,monospace;
+  overflow-wrap:anywhere;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .c-ore .val{color:var(--cy)} .c-cry .val{color:var(--vi)} .c-dm .val{color:var(--gd)}
 /* patch607: the context card reads S.msel, not a fixed currency, and (patch630:
    only until anything has ever been banked - exoEverBankedAny(), see
@@ -224,7 +224,7 @@ main{flex:1 1 auto;display:flex;min-height:0}
 .scanbtn small{display:block;margin-top:5px;font:400 10px/1 ui-monospace,monospace;letter-spacing:.05em;color:#a9e9ff}
 
 .mini{border:1px solid var(--line);border-radius:10px;padding:8px;background:var(--panel)}
-.mini h4{margin:0 0 6px;font:600 9px/1 system-ui;letter-spacing:.18em;color:var(--dim);text-transform:uppercase}
+.mini h4{margin:0 0 6px;font:600 11px/1 system-ui;letter-spacing:.14em;color:var(--dim);text-transform:uppercase}
 .krow{display:flex;justify-content:space-between;gap:8px;font-size:11px;padding:2px 0}
 .krow span:last-child{font-family:ui-monospace,monospace;color:var(--txt)}
 .krow span:first-child{color:var(--mut)}
@@ -273,9 +273,9 @@ body.syspage #view{padding-bottom:calc(var(--sysbarh) + env(safe-area-inset-bott
    (one class) by specificity alone, on-class or not. */
 .tab.legacyhide,.pane.legacyhide{display:none!important}
 .hint{color:var(--mut);font-size:12px;margin:0 0 10px}
-.sechead{font:600 10px/1 system-ui;letter-spacing:.2em;color:var(--dim);text-transform:uppercase;margin:16px 0 8px}
+.sechead{font:600 11px/1 system-ui;letter-spacing:.16em;color:var(--dim);text-transform:uppercase;margin:16px 0 8px}
 .pjexpl{color:var(--mut);font-size:11.5px;margin:0 0 8px}
-.card .pjeta{margin-top:4px;font-size:10.5px;color:var(--gd);font-family:ui-monospace,monospace;flex:none}
+.card .pjeta{margin-top:4px;font-size:11px;color:var(--gd);font-family:ui-monospace,monospace;flex:none}
 
 .chip.scrapc.on{border-color:var(--rd);color:var(--rd);background:rgba(255,107,138,.10)}
 .g.sellmode .gb{border-color:rgba(255,107,138,.5);background:rgba(255,107,138,.08)}
@@ -292,7 +292,7 @@ body.syspage #view{padding-bottom:calc(var(--sysbarh) + env(safe-area-inset-bott
 .lvpick b{display:block;font:700 13px/1.2 system-ui;color:var(--a)}
 .lvpi{display:block;font:700 11.5px/1.3 ui-monospace,monospace;color:var(--txt);margin-top:3px}
 .lvpt{display:block;font-size:11px;color:var(--mut);margin-top:3px;line-height:1.4}
-.lvph{display:block;font-size:10px;color:var(--dim);margin-top:4px;font-family:ui-monospace,monospace}
+.lvph{display:block;font-size:11px;color:var(--dim);margin-top:4px;font-family:ui-monospace,monospace}
 .lvmore{font-size:11.5px;color:var(--gd);margin:4px 0 0}
 .lvun{font-size:12px;color:var(--mut);margin:0 0 4px}
 button.ghost{background:transparent;border-color:var(--line);color:var(--mut)}
