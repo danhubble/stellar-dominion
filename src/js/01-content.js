@@ -379,7 +379,7 @@ const INERT_PROGS=new Set(["comm"]);
    sector's own 0-100% box - NOT the old wheel x/y, which stay for now). */
 const SECTORS=[
  {key:"core",    n:"Core",        tag:"CORE"},
- {key:"inner",   n:"Inner Reach", tag:"INNER REACH"},
+ {key:"inner",   n:"Inner Reach", tag:"INNER REACH", chip:"REACH"},  /* chip: short label, "INNER REACH" clips on the map chip */
  {key:"frontier",n:"Frontier",    tag:"FRONTIER"},
  {key:"deep",    n:"The Deep",    tag:"THE DEEP"},
  {key:"beyond",  n:"Beyond",      tag:"BEYOND"}

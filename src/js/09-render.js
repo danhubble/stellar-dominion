@@ -311,7 +311,7 @@ function setMapSec(n){
 }
 function buildMapChips(){
   const host=$("#mapChips"); if(!host||mapChipsBuilt)return;
-  host.innerHTML=SECTORS.map((s,i)=>`<button type="button" class="chip" data-i="${i}">${s.tag}</button>`).join("");
+  host.innerHTML=SECTORS.map((s,i)=>`<button type="button" class="chip" data-i="${i}">${s.chip||s.tag}</button>`).join("");
   host.querySelectorAll(".chip").forEach(c=>c.onclick=()=>setMapSec(+c.dataset.i));
   mapChipsBuilt=true;
 }
