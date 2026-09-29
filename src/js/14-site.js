@@ -431,13 +431,13 @@ function drawSysScene(g,W,H,vid,t,D,compose){
       const rr=R*(1.82+pos*0.20);
       g.strokeStyle=rgba(TCOL[i%TCOL.length],.10); g.lineWidth=D;
       g.beginPath(); g.ellipse(cx,cy,rr,rr*RY,0,0,6.2832); g.stroke();
-      const n=Math.min(9,vc(i));
+      const n=Math.min(6,vc(i));
       for(let k=0;k<n;k++){
         const a=ang*(1.5-pos*0.105)+k*(6.2832/n)+pos*1.13;
         /* R-based, not D-based - see ORB_R0 above. Exactly reproduces the old
            D*(2.1+pos*0.20) size at the Empire tab's own R, scales up cleanly for
            the much bigger map-zoom canvas. */
-        lanes.push({i,a,x:cx+Math.cos(a)*rr,y:cy+Math.sin(a)*rr*RY,s:R*(2.1+pos*0.20)/ORB_R0});
+        lanes.push({i,a,x:cx+Math.cos(a)*rr,y:cy+Math.sin(a)*rr*RY,s:.8*R*(2.1+pos*0.20)/ORB_R0});
       }
     }
     for(const o of lanes) if(Math.sin(o.a)<0) sprite(g,o,D);

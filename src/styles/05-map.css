@@ -61,7 +61,7 @@ body.syspage #mapWrap.homeonly{height:24vh;max-height:24vh}
 #mapZoom{position:absolute;inset:0;width:100%;height:100%;display:block;opacity:0;
   pointer-events:none;transition:opacity .28s ease}
 #mapWrap.zoomed #mapZoom{opacity:1;pointer-events:auto}
-#mapZoomBar{position:absolute;left:0;right:0;top:0;display:flex;align-items:center;gap:7px;
+#mapZoomBar{position:absolute;left:0;right:0;top:0;display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:7px;
   padding:8px 8px;z-index:6;
   /* patch606: bottom stop was fully transparent, fading to nothing exactly where the
      name text sits (align-items:center) - a bright orbit sprite on a full-ladder
@@ -73,10 +73,10 @@ body.syspage #mapWrap.homeonly{height:24vh;max-height:24vh}
    the body.syspage rule near #mapChips (see its own comment): the bar now shows
    on any page, not only a zoomed one. */
 #mapZoomBack{border:1px solid var(--line2);background:rgba(8,12,30,.8);color:var(--mut);
-  border-radius:6px;padding:5px 9px;cursor:pointer;font:700 11px/1 system-ui;letter-spacing:.12em;flex:none}
+  border-radius:6px;padding:5px 9px;cursor:pointer;font:700 11px/1 system-ui;letter-spacing:.12em;flex:none;justify-self:start;grid-column:1}
 #mapZoomBack:hover{color:var(--txt);border-color:var(--cy)}
-#mapZoomName{flex:1;text-align:center;font:700 11px/1 system-ui;letter-spacing:.14em;color:var(--txt);
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-right:34px}
+#mapZoomName{text-align:center;font:700 11px/1 system-ui;letter-spacing:.14em;color:var(--txt);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;grid-column:2;max-width:56vw}
 #mapChips{display:flex;gap:6px;margin-bottom:10px;flex-wrap:nowrap;overflow:hidden}
 /* patch627 (PLAN-page.md, "one fact"): replaces the patch613b/614 #p-map.zoomed
    hooks just above (chips/mode hid only while actually ZOOMED - exactly the
