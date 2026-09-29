@@ -3,7 +3,7 @@ const GAME_URL='file://'+require('path').resolve(__dirname,'../dist/stellar-domi
 // Checks: prices follow rate()/cryRate(), the ore/DM floors hold, heat adds +12% per
 // sale and halves after 10 simulated minutes (Date.now mocked), a sale deducts the
 // spent resource and credits the right counter (dmAll for Dark Matter, like every
-// other DM source), the MAX chip sells down to (near) zero, and no XP is granted by
+// other DM source), the SELL share chips never sell below mktReserve(), and no XP is granted by
 // a sale.
 const { chromium } = require('playwright-core');
 let out=[], errs=[];
@@ -116,81 +116,58 @@ function ok(label, cond, extra){ out.push((cond?'PASS ':'FAIL ')+label+(extra!==
  ok('...which multiplies straight into mktPrice()', r7.priceMatches, r7);
  ok('heat halves after 10 simulated minutes (Date.now mocked)', r7.halved, r7);
 
- // ---------- MAX chip sells (close to) everything affordable
- // patch636: mktAmount() reads its own mktBuy now, not S.buy (the Market has its own
- // AMOUNT state - see patch636's own HANDOVER entry) - `G.S.buy="max"` no longer
- // reaches it at all. mktBuy is exported read-only (same shape as mapMode), so this is
- // fixed by a real tap on the MAX chip itself, same as the rest of this batch's own new
- // tests below do - not a poke at the bare variable.
- const r8=await p.evaluate(()=>{
-   const G=window.__SD;
-   G.adopt({...G.fresh(), ore:123456, all:123456, lvl:1});
-   document.querySelector('#p-mkt [data-mb="max"]').click();
-   const price=G.mktPrice('ore','sv');
-   const k=G.mktAmount('ore','sv');
-   const oreBefore=G.S.ore;
-   const okSold=G.sellRes('ore','sv',k);
-   return { okSold, k, price, oreLeft:G.S.ore, oreBefore,
-     leavesLessThanOnePrice: G.S.ore < price };
- });
- ok('MAX (mktBuy="max", selected via a real chip tap) computes the largest whole amount the balance affords', r8.k>0, r8);
- ok('...and selling that amount leaves less than one more unit\'s worth of ore', r8.okSold && r8.leavesLessThanOnePrice, r8);
-
- // ---------- patch636: the Market's own AMOUNT state (mktBuy), independent of the
- // buildings/Nexus chips' S.buy - six chips, a ×1K/×10K sale, and no cross-talk either
- // direction ----------------
+ // ---------- Market refresh: SELL chips are shares of each card's SURPLUS (stock minus
+ // mktReserve()), not fixed amounts - so no chip can sell below what the player keeps
+ // for their next purchase. Selected via real chip taps (mktBuy is exported read-only).
  const chipInfo=await p.evaluate(()=>
    [...document.querySelectorAll('#p-mkt .buybar .chip')].map(c=>({mb:c.dataset.mb, label:c.textContent}))
  );
- ok('the Market AMOUNT row has exactly six chips', chipInfo.length===6, chipInfo);
- ok('...in order: ×1, ×10, ×100, ×1K, ×10K, MAX, each data-mb matching its label',
+ ok('the Market SELL row has exactly four chips: 10%, 25%, 50%, SURPLUS',
    JSON.stringify(chipInfo)===JSON.stringify([
-     {mb:"1",label:"×1"},{mb:"10",label:"×10"},{mb:"100",label:"×100"},
-     {mb:"1000",label:"×1K"},{mb:"10000",label:"×10K"},{mb:"max",label:"MAX"},
+     {mb:"10",label:"10%"},{mb:"25",label:"25%"},{mb:"50",label:"50%"},{mb:"100",label:"SURPLUS"},
    ]), chipInfo);
 
- const sel1k=await p.evaluate(()=>{
+ const shares=await p.evaluate(()=>{
    const G=window.__SD;
-   G.adopt({...G.fresh(), ore:1e12, all:1e12, lvl:1});
-   document.querySelector('#p-mkt [data-mb="1000"]').click();
-   return { mktBuy:G.mktBuy, k:G.mktAmount('ore','sv'),
-     chipOn: document.querySelector('#p-mkt [data-mb="1000"]').classList.contains('on') };
+   G.adopt({...G.fresh(), ore:123456, all:123456, lvl:1});
+   const res={};
+   for(const mb of ["10","25","50","100"]){
+     document.querySelector('#p-mkt [data-mb="'+mb+'"]').click();
+     const price=G.mktPrice('ore','sv'), spare=G.mktSurplus('ore');
+     res[mb]={ k:G.mktAmount('ore','sv'), want:Math.floor(spare*(+mb)/100/price),
+       pressed:document.querySelector('#p-mkt [data-mb="'+mb+'"]').getAttribute('aria-pressed') };
+   }
+   return { res, reserve:G.mktReserve('ore'), mktBuy:G.mktBuy };
  });
- ok('selecting ×1K sets mktBuy to 1000', sel1k.mktBuy===1000, sel1k);
- ok('...and mktAmount() returns 1000 with plenty of balance to cover it', sel1k.k===1000, sel1k);
- ok('...and the ×1K chip itself shows the highlight', sel1k.chipOn, sel1k);
+ ok('each chip sells its share of the ore SURPLUS, floored to whole output units',
+   Object.values(shares.res).every(r=>r.k===r.want && r.k>0), shares);
+ ok('...the selected chip is aria-pressed, mktBuy holds the percent', shares.res["100"].pressed==="true" && shares.mktBuy===100, shares);
+ ok('the ore reserve is a real, positive next-build cost', shares.reserve>0, shares);
 
- const sale10k=await p.evaluate(()=>{
+ const surplusSale=await p.evaluate(()=>{
    const G=window.__SD;
-   G.adopt({...G.fresh(), ore:1e12, all:1e12, lvl:1});
-   document.querySelector('#p-mkt [data-mb="10000"]').click();
-   const price=G.mktPrice('ore','sv');
-   const k=G.mktAmount('ore','sv');
-   const oreBefore=G.S.ore, svBefore=G.S.sv;
+   G.adopt({...G.fresh(), ore:123456, all:123456, lvl:1});
+   document.querySelector('#p-mkt [data-mb="100"]').click();
+   const reserve=G.mktReserve('ore'), k=G.mktAmount('ore','sv');
    const okSold=G.sellRes('ore','sv',k);
-   return { k, price, okSold, oreDelta:oreBefore-G.S.ore, svDelta:G.S.sv-svBefore, expectedCost:k*price };
+   return { okSold, k, reserve, oreLeft:G.S.ore, againK:G.mktAmount('ore','sv') };
  });
- ok('×10K selects exactly 10000 units', sale10k.k===10000, sale10k);
- ok('...and the sale moves exactly 10000 output units, for exactly k*price ore',
-   sale10k.okSold && sale10k.svDelta===10000 && Math.abs(sale10k.oreDelta-sale10k.expectedCost)<1e-6, sale10k);
+ ok('SURPLUS sells, and never takes ore below the reserve', surplusSale.okSold && surplusSale.oreLeft>=surplusSale.reserve-1e-6, surplusSale);
+ ok('...after which a second SURPLUS tap has (almost) nothing left to sell', surplusSale.againK<=1, surplusSale);
 
- // the ×10K SELL label reads sanely through fmt() (tens of millions) and disables when short
- const label10k=await p.evaluate(()=>{
+ const zero=await p.evaluate(()=>{
    const G=window.__SD;
-   G.adopt({...G.fresh(), ore:1e12, all:1e12, lvl:1});
+   G.adopt({...G.fresh(), ore:5, all:5, lvl:10});
    G.gotoTab('p-mkt');
-   document.querySelector('#p-mkt [data-mb="10000"]').click();
+   document.querySelector('#p-mkt [data-mb="100"]').click();
    dirty=true; render();
-   const btn=[...document.querySelectorAll('#mktSv .mktcard')].find(c=>c.dataset.kind==='ore').querySelector('.mktsell');
-   const affordableText=btn.textContent, affordableDisabled=btn.disabled, k=G.mktAmount('ore','sv'), price=G.mktPrice('ore','sv');
-   G.S.ore=1;   // now far too little to afford even one more sale at this amount
-   dirty=true; render();
-   return { affordableText, affordableDisabled, shortDisabled:btn.disabled, k, cost:k*price };
+   const card=[...document.querySelectorAll('#mktSv .mktcard')].find(c=>c.dataset.kind==='ore');
+   const btn=card.querySelector('.mktsell'), oreBefore=G.S.ore;
+   btn.click();
+   return { disabled:btn.disabled, text:btn.textContent, reserve:G.mktReserve('ore'), oreAfter:G.S.ore, oreBefore };
  });
- ok('the ×10K SELL label is fmt()-scaled (a K/M/B suffix, not a raw tens-of-millions integer string)',
-   /[KMB]/.test(label10k.affordableText) && label10k.cost>1e6, label10k);
- ok('...enabled while the balance can cover it', !label10k.affordableDisabled, label10k);
- ok('...disables once the balance falls short', label10k.shortDisabled, label10k);
+ ok('with nothing spare the SELL slab is disabled and says so', zero.disabled && /NOTHING SPARE/.test(zero.text), zero);
+ ok('...and a tap on it moves nothing', zero.oreAfter===zero.oreBefore, zero);
 
  // no cross-talk either direction (item 1's own "verify...and vice versa")
  const crosstalk=await p.evaluate(()=>{
@@ -198,18 +175,18 @@ function ok(label, cond, extra){ out.push((cond?'PASS ':'FAIL ')+label+(extra!==
    G.adopt({...G.fresh(), ore:1e12, all:1e12, lvl:1});
    const sBuyBefore=G.S.buy;
    const empChipOnBefore=document.querySelector('[data-b="1"]').classList.contains('on');
-   document.querySelector('#p-mkt [data-mb="10000"]').click();
+   document.querySelector('#p-mkt [data-mb="50"]').click();
    const sBuyAfterMktClick=G.S.buy;
    const empChipOnAfterMktClick=document.querySelector('[data-b="1"]').classList.contains('on');
    document.querySelector('[data-b="100"]').click();   // any Empire/buildings chip - shared S.buy handler
    const mktBuyAfterEmpClick=G.mktBuy;
-   const mktChipOnAfterEmpClick=document.querySelector('#p-mkt [data-mb="10000"]').classList.contains('on');
+   const mktChipOnAfterEmpClick=document.querySelector('#p-mkt [data-mb="50"]').classList.contains('on');
    return { sBuyBefore, sBuyAfterMktClick, empChipOnBefore, empChipOnAfterMktClick,
      mktBuyAfterEmpClick, mktChipOnAfterEmpClick };
  });
- ok('selecting a Market amount leaves S.buy completely unchanged', crosstalk.sBuyAfterMktClick===crosstalk.sBuyBefore, crosstalk);
+ ok('selecting a Market share leaves S.buy completely unchanged', crosstalk.sBuyAfterMktClick===crosstalk.sBuyBefore, crosstalk);
  ok('...and leaves the Empire/buildings chips\' own highlight untouched too', crosstalk.empChipOnAfterMktClick===crosstalk.empChipOnBefore, crosstalk);
- ok('clicking an Empire/buildings chip leaves mktBuy completely unchanged', crosstalk.mktBuyAfterEmpClick===10000, crosstalk);
+ ok('clicking an Empire/buildings chip leaves mktBuy completely unchanged', crosstalk.mktBuyAfterEmpClick===50, crosstalk);
  ok('...and the Market chip\'s own highlight survives an Empire/buildings chip click', crosstalk.mktChipOnAfterEmpClick, crosstalk);
 
  // ---------- no XP anywhere from a sale

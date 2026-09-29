@@ -141,3 +141,58 @@ button.rtr{cursor:pointer}
    (#kpis/.kpi/#mchips/.mchip/#chartBox and friends) is gone with the "Graphs" half
    of "Records & Graphs" - see renderAch()'s own header note in 09-render.js. */
 .sechead2{font:700 11px/1 system-ui;letter-spacing:.12em;color:var(--dim);margin:16px 0 8px}
+
+/* ---------- Market (refresh) ----------
+   Balances on top, SELL share chips, then compact rows: info on the left, a slab on
+   the right. Bronze .svslab where a card earns Salvage, gold .misslab where it earns
+   Dark Matter - both keep their own construction; only sizing and the extra "what
+   you get" line are set here. Every line in a row is single-line and always filled
+   (the heat state reads "steady" before any sale), so a sale never moves anything. */
+#p-mkt .hint{margin-bottom:8px}
+#p-mkt .sechead2{margin:12px 0 6px}
+.mktbal{display:flex;gap:14px;flex-wrap:wrap;margin:0 0 8px;font:600 12px/1.2 system-ui;color:var(--mut)}
+.mktb{display:inline-flex;align-items:center;gap:5px;border-radius:7px;padding:2px 4px;margin:-2px -4px}
+.mktb b{font:700 14px/1 ui-monospace,monospace}
+.mktb.sv b{color:var(--sv)} .mktb.dm b{color:var(--gd)}
+.mktbi{display:inline-flex}
+.mktb.land{animation:rcland .44s ease-out}
+.mktshare{flex-wrap:nowrap;gap:6px}
+.mktlbl{font:700 11px/1 system-ui;letter-spacing:.12em;color:var(--dim);flex:none}
+#p-mkt .chip:focus-visible{outline:2px solid #eafcff;outline-offset:2px}
+.mktgrid{gap:6px}
+.mktcard{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:4px 10px;padding:8px 8px 8px 10px}
+.mktcard.sold{animation:mktsold .44s ease-out}
+@keyframes mktsold{0%{border-color:rgba(92,230,165,.8)}100%{border-color:var(--line)}}
+.mkti{min-width:0;display:flex;flex-direction:column;gap:3px}
+.mktcard h5{display:flex;align-items:center;gap:6px;font:600 13px/1.2 system-ui;white-space:nowrap}
+.mktcard h5 .ci{width:16px;height:16px}
+.mktdot{width:10px;height:10px;margin:0 3px;border-radius:50%;flex:none;background:var(--a);box-shadow:0 0 0 2px rgba(255,255,255,.08)}
+.mktcard p{flex:none;font:500 11px/1.3 ui-monospace,monospace;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mktcard p b{color:var(--txt);font-weight:700}
+.mktprice .ci{width:13px;height:13px;vertical-align:-2px}
+.mktprice em{font-style:normal;color:var(--rd)}
+/* the slabs: override .card button's generic look, keep each slab's own colours */
+.mktcard button.mktsell{flex:none;width:176px;min-height:48px;padding:5px 8px 7px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  font:800 11px/1 system-ui;letter-spacing:.08em;white-space:nowrap;border-radius:9px}
+/* .card button (02-cards) outranks a bare .svslab/.misslab - restate their fills */
+.mktcard button.svslab:not(:disabled){border-color:#f0c49a;background:linear-gradient(180deg,#e0a672,#b97a45);color:#1e0f04;
+  box-shadow:0 1px 0 rgba(255,255,255,.35) inset}
+.mktcard button.misslab:not(:disabled){border-color:#ffe29a;background:linear-gradient(180deg,#ffd873,#e9b444);color:#2b1c00;
+  box-shadow:0 1px 0 rgba(255,255,255,.45) inset}
+.mktcard button.mktsell b{font:800 12px/1 ui-monospace,monospace;letter-spacing:0;margin-left:5px}
+.mktcard button.mktsell small{display:block;font:700 11px/1 ui-monospace,monospace;letter-spacing:0;opacity:.85}
+.mktcard button.mktsell:disabled small{font-family:system-ui;font-weight:600;color:var(--mut);opacity:1}
+/* .misslab has no disabled state of its own (a mission is either claimable or not
+   shown) - give it the exact disabled look .svslab/.resslab share */
+.mktcard button.mktsell:disabled{cursor:not-allowed;border-color:var(--line);background:rgba(255,255,255,.035);color:var(--mut);box-shadow:none}
+.mktcard button.mktsell:disabled::after{background:rgba(255,255,255,.06)}
+.mktcard button.mktsell:disabled b{color:var(--txt)}
+/* the Achievements link is secondary: a quiet ghost, not a filled .row button */
+.mktfoot{margin-top:14px}
+.mktlink{min-height:44px;padding:0 14px;border:1px solid var(--line);border-radius:9px;background:transparent;
+  color:var(--mut);cursor:pointer;font:600 12px/1 system-ui;letter-spacing:.06em}
+.mktlink:hover{color:var(--txt);border-color:var(--line2)}
+.mktlink:focus-visible{outline:2px solid #eafcff;outline-offset:2px}
+.mktlink.back{margin:0 0 4px}
+@media(prefers-reduced-motion:reduce){.mktb.land,.mktcard.sold{animation:none}}

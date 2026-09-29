@@ -847,10 +847,48 @@ function mktBasePrice(kind,counter){
 function mktPrice(kind,counter){ return mktBasePrice(kind,counter)*mktHeatMul(counter); }
 function mktBal(kind){ return kind==="ore"?S.ore : kind==="cry"?S.cry : exo(kind); }
 function mktResLabel(kind){ return kind==="ore"?"Ore" : kind==="cry"?"Crystal" : (exoDef(kind)?exoDef(kind).n:kind); }
+/* Market refresh (P0): how much of each sellable resource the Market keeps back, so no
+   chip can sell a player out of their very next purchase (MAX used to sell every last
+   ore in one tap, no confirm). Recomputed on every read - it moves with each purchase.
+   - ore: the dearest single (x1) next building among every tier buildable right now on
+     a held system (tierBuildable: tiers already owned there plus each system's next
+     reveal), priced by ladderCost(id,gi,1) - the same number Empire's buy button shows
+     for x1. Dearest, not cheapest: the next reveal is usually the priciest and is the
+     purchase the player is saving toward.
+   - crystal: the dearest next level across the crystal-priced research branches that
+     are unlocked and not maxed (resCost at the current lv, as renderRes() prices it).
+     Salvage-priced branches don't count - selling crystal can't starve them.
+   - each exotic: the CHEAPEST next level of a live programme priced in it (xpCost at
+     xlv, INERT_PROGS skipped like the Research tab does); 0 when nothing left uses it. */
+function mktReserve(kind){
+  let m=0;
+  if(kind==="ore"){
+    for(const s of builtSystems()) for(const gi of sysLadder(s.id))
+      if(tierBuildable(s.id,gi)) m=Math.max(m,ladderCost(s.id,gi,1));
+    return m;
+  }
+  if(kind==="cry"){
+    for(const r of RESH){ const l=lv(S.rs,r.id);
+      if(resCur(r)==="cry" && l<r.max && !resLocked(r)) m=Math.max(m,resCost(r,l)); }
+    return m;
+  }
+  m=Infinity;
+  for(const r of XPROG) if(r.x===kind && !INERT_PROGS.has(r.id) && xlv(r.id)<r.max) m=Math.min(m,xpCost(r));
+  if(m===Infinity)m=0;
+  /* deep ore tiers also cost a flat amount of a named exotic per building (GENS exo/
+     exoC, the same xc ladderTierRow() charges) - keep enough for the dearest one that
+     is buildable right now, so selling an exotic can't strand the next deep tier */
+  for(const s of builtSystems()) for(const gi of sysLadder(s.id))
+    if(tierBuildable(s.id,gi) && ladderExoId(gi)===kind) m=Math.max(m,GENS[gi].exoC||0);
+  return m;
+}
+function mktSurplus(kind){ return Math.max(0, mktBal(kind)-mktReserve(kind)); }
+/* output units this tap sells: the selected share (mktBuy, a percent) of the card's
+   SURPLUS, divided by the live heat-inclusive price and floored - so heat shrinks the
+   payout exactly the way it always did (sellRes() re-prices at the same live rate). */
 function mktAmount(kind,counter){
   const price=mktPrice(kind,counter); if(!(price>0))return 0;
-  const bal=mktBal(kind);
-  return mktBuy==="max" ? Math.max(0,Math.floor(bal/price)) : mktBuy;   /* patch636: own state, not S.buy - see mktBuy's own comment */
+  return Math.max(0,Math.floor(mktSurplus(kind)*mktBuy/100/price));   /* patch636: own state, not S.buy */
 }
 /* the one function that actually moves resources - shared by every SELL button and
    exported for tests. amount is a count of OUTPUT units (Salvage or Dark Matter);
@@ -869,8 +907,36 @@ function sellRes(kind,counter,amount){
   if(!S.mkt||typeof S.mkt!=="object")S.mkt={heat:{sv:{v:0,t:0},dm:{v:0,t:0}},sold:false};
   S.mkt.sold=true;
   blip(600,.12,"sine",.04);
-  toast("Sold "+fmt(cost)+" "+mktResLabel(kind)+" for "+fmt(amount)+" "+(counter==="sv"?"salvage":"Dark Matter"),"g");
+  toast("Sold "+fmt(cost)+" "+mktResLabel(kind)+" for "+fmt(amount)+" "+mktOutName(counter),"g");
   dirty=true; renderMarket(); return true;
+}
+function mktOutName(counter){ return counter==="sv"?"Salvage":"Dark Matter"; }
+/* the card's icon: the real resource glyph for ore/crystal, the exotic's own colour
+   dot (the same --a swatch the context card uses) for an exotic - RES_ICON has none. */
+function mktIcon(kind){
+  if(kind==="ore"||kind==="cry")return RI(kind);
+  const e=exoDef(kind); return `<i class="mktdot" style="--a:${e?e.col:"var(--sv)"}" aria-hidden="true"></i>`;
+}
+/* The SELL tap. Refusals say why in a toast (they used to be a bare blip). A sale
+   flies its payout to the pane's own balance for that currency (DM falls back to the
+   header's DM card if the balance has scrolled away; Salvage flashes the card) -
+   under 0.6s, and skipped entirely under reduced motion. */
+function mktSellTap(d,kind,counter){
+  const k=mktAmount(kind,counter), name=mktResLabel(kind);
+  if(k<1){
+    blip(140,.08,"sine",.03);
+    if(mktSurplus(kind)<=0) toast("Nothing spare — keeping "+fmt(mktReserve(kind))+" "+name+" for your next build","y");
+    else toast(mktBuy+"% of spare "+name+" is under 1 "+mktOutName(counter)+" — pick a bigger share","y");
+    return;
+  }
+  if(!sellRes(kind,counter,k)){ blip(140,.08,"sine",.03); toast("Not enough "+name+" for that sale","y"); return; }
+  if(lowMotion())return;
+  const btn=d.querySelector(".mktsell"), view=$("#view");
+  let to=$(counter==="sv"?"#mktBalSv":"#mktBalDm");
+  const vr=view&&view.getBoundingClientRect(), tr=to&&to.getBoundingClientRect();
+  if(vr&&tr&&(tr.bottom<vr.top||tr.top>vr.bottom)) to = counter==="dm" ? misChip("dm") : null;
+  if(to) flyReward(btn, to, "+"+fmt(k)+" "+RI(counter), 0, 480);
+  else { d.classList.remove("sold"); void d.offsetWidth; d.classList.add("sold"); setTimeout(()=>d.classList.remove("sold"),460); }
 }
 /* which resources currently have a live SALVAGE card - ore always, crystal once any
    Smelter output exists, each exotic once it is held or being produced (patch630:
@@ -882,17 +948,20 @@ function mktSvKinds(){
   for(const e of EXO) if(exo(e.id)>0||exoRate(e.id)>0) ks.push(e.id);
   return ks;
 }
+/* Market refresh: one compact row per card - icon + name, "have X · keep Y", the price
+   with its heat state on the SAME always-filled line ("steady" until a sale), and the
+   slab. Bronze .svslab where the card earns Salvage, gold .misslab where it earns Dark
+   Matter. Every per-frame string lands in a node that already exists (renderMarket). */
 function mktCardSkeleton(kind,counter){
   const d=document.createElement("div"); d.className="card mktcard";
   d.dataset.kind=kind; d.dataset.counter=counter;
-  d.innerHTML=`<h5>${mktResLabel(kind)}</h5>
-    <p class="mktprice"></p>
-    <p class="mktheat"></p>
-    <p class="mktget">you get <b class="mktgetv"></b></p>
-    <button class="mktsell"></button>`;
-  d.querySelector(".mktsell").onclick=()=>{
-    if(!sellRes(kind,counter,mktAmount(kind,counter)))blip(140,.08,"sine",.03);
-  };
+  d.innerHTML=`<div class="mkti">
+      <h5>${mktIcon(kind)}${mktResLabel(kind)}</h5>
+      <p class="mkthave"></p>
+      <p class="mktprice"></p>
+    </div>
+    <button type="button" class="mktsell ${counter==="sv"?"svslab":"misslab"}"></button>`;
+  d.querySelector(".mktsell").onclick=()=>mktSellTap(d,kind,counter);
   return d;
 }
 /* rebuilds card DOM (and rewires each SELL button) ONLY when the set of sellable
@@ -911,21 +980,38 @@ function buildMarket(){
     dmHost.dataset.h="dm"; dmHost.innerHTML="";
     dmHost.appendChild(mktCardSkeleton("ore","dm"));
   }
+  for(const [id,k] of [["#mktBalSv","sv"],["#mktBalDm","dm"]]){
+    const i=$(id+" .mktbi"); if(i&&!i.firstChild)i.innerHTML=RI(k);
+  }
 }
+/* write only on a real change - these run every render() tick while the pane is open */
+function mktSet(el,prop,v){ if(el&&el.dataset.h!==v){ el.dataset.h=v; el[prop]=v; } }
 function renderMarket(){
   buildMarket();
+  mktSet($("#mktBalSv b"),"textContent",fmt(S.sv||0));
+  mktSet($("#mktBalDm b"),"textContent",fmt(S.dm||0));
+  const heat={}; for(const c of ["sv","dm"]) heat[c]=Math.round(mktHeat(c)*100);
   $$(".mktcard").forEach(d=>{
-    const kind=d.dataset.kind, counter=d.dataset.counter;
+    const kind=d.dataset.kind, counter=d.dataset.counter, name=mktResLabel(kind);
     const price=mktPrice(kind,counter), k=mktAmount(kind,counter), cost=k*price;
-    const bal=mktBal(kind), can=k>=1 && bal+1e-6>=cost;
-    const outName=counter==="sv"?"Salvage":"Dark Matter";
-    d.querySelector(".mktprice").textContent=fmt(price)+" "+mktResLabel(kind)+" = 1 "+outName;
-    const heatPct=Math.round(mktHeat(counter)*100);
-    d.querySelector(".mktheat").textContent = heatPct>0 ? "price up "+heatPct+"% \u2014 cooling" : "";
-    d.querySelector(".mktgetv").textContent = "+"+fmt(k)+" "+outName;
-    const btn=d.querySelector(".mktsell");
-    btn.textContent="SELL "+fmt(Math.ceil(cost))+" "+mktResLabel(kind);
-    btn.disabled=!can;
+    const bal=mktBal(kind), keep=mktReserve(kind), spare=Math.max(0,bal-keep);
+    const can=k>=1 && bal+1e-6>=cost;
+    mktSet(d.querySelector(".mkthave"),"innerHTML",`have <b>${fmt(bal)}</b> \u00b7 keep <b>${fmt(keep)}</b>`);
+    const hp=heat[counter];
+    mktSet(d.querySelector(".mktprice"),"innerHTML",
+      `<b>${fmt(price)}</b>/${RI(counter)} \u00b7 `+(hp>0?`<em>+${hp}% cooling</em>`:"steady"));
+    const btn=d.querySelector(".mktsell"), outName=mktOutName(counter);
+    /* three states, all in place: SELL (what this tap sells and earns), NOTHING SPARE
+       (surplus is 0 - says what is being kept), or NEED (a surplus exists, but the
+       chosen share of it is under one output unit - says how much more is needed). */
+    const html = can ? `<span>SELL<b>${fmt(Math.ceil(cost))} ${name}</b></span><small>+${fmt(k)} ${outName}</small>`
+      : spare<=0 ? `<span>NOTHING SPARE</span><small>keeping ${fmt(keep)} for next build</small>`
+      /* the whole surplus covers one unit, only the chosen share does not - say so
+         rather than asking for more ore the player already has */
+      : spare>=price ? `<span>SHARE TOO SMALL</span><small>1 ${outName} = ${fmt(Math.ceil(price))} ${name}</small>`
+      : `<span>NEED<b>${fmt(Math.max(0,price-spare))} ${name}</b></span><small>more spare for 1 ${outName}</small>`;
+    mktSet(btn,"innerHTML",html);
+    if(btn.disabled===can)btn.disabled=!can;
   });
 }
 /* ---------------------------------------------------------------------
@@ -1896,11 +1982,13 @@ let raidMode="targets";       /* which sub-tab of the Raids tab is showing. Sess
 let mapMode="map";            /* patch614: "map" or "list" - which half of the Map tab is
                                   showing. Session-only, same reasoning as resMode/raidMode -
                                   never saved, always opens on the map itself. */
-let mktBuy=1;                 /* patch636: which AMOUNT chip is selected on the Market page -
-                                  its own state so the Market's ×1K/×10K/MAX choice never
-                                  fights the buildings/Nexus chips' S.buy, or vice versa.
-                                  Session-only, same reasoning as resMode/raidMode/mapMode
-                                  above - never saved, always opens on ×1. */
+let mktBuy=25;                /* patch636: which SELL chip is selected on the Market page -
+                                  its own state so the Market's choice never fights the
+                                  buildings/Nexus chips' S.buy, or vice versa. Market
+                                  refresh: a PERCENT of each card's surplus now (10, 25,
+                                  50 or 100 = SURPLUS - see mktAmount()), no longer a fixed
+                                  amount or MAX. Session-only, same reasoning as resMode/
+                                  raidMode/mapMode above - never saved, always opens on 25%. */
 const RAID_PANES={targets:"#rpTargets",fleet:"#rpFleet",loadout:"#rpLoadout",crew:"#rpCrew"};
 function syncRaidMode(){
   $$(".rmbtn[data-rd]").forEach(x=>x.classList.toggle("on",x.dataset.rd===raidMode));
@@ -2266,8 +2354,11 @@ function misChip(k){ return $(k==="dm" ? ".rcard.c-dm" : ".rcard.c-cry") }
 /* One reward, arcing from the card to the resource it becomes. Driven by a CSS animation
    rather than a transition started on the next frame, so it does not depend on a frame
    ever arriving - the element animates from the moment it is inserted. */
-function flyReward(from, to, html, delay){
+/* ms (optional, default the CSS's 620): the Market passes a shorter flight - a sale is
+   a routine tap, not a mission's once-only payoff. */
+function flyReward(from, to, html, delay, ms){
   if(!from||!to)return;
+  ms=ms||620;
   const a=from.getBoundingClientRect(), b=to.getBoundingClientRect();
   const f=document.createElement("div");
   f.className="rwfly"; f.innerHTML=html;
@@ -2276,13 +2367,14 @@ function flyReward(from, to, html, delay){
   f.style.setProperty("--dx",((b.left+b.width/2)-(a.left+a.width/2))+"px");
   f.style.setProperty("--dy",((b.top +b.height/2)-(a.top +a.height/2))+"px");
   f.style.animationDelay=delay+"ms";
+  if(ms!==620)f.style.animationDuration=ms+"ms";
   document.body.appendChild(f);
   setTimeout(()=>{
     f.remove();
     /* restart the pulse even if this chip was hit moments ago */
     to.classList.remove("land"); void to.offsetWidth; to.classList.add("land");
     setTimeout(()=>to.classList.remove("land"),460);
-  }, delay+620);
+  }, delay+ms);
 }
 /* The sequence on one card. The payout has already happened; this is only the telling. */
 function misClaimFx(card, m, delay){

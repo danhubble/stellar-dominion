@@ -277,23 +277,30 @@
         <div class="grid" id="nex"></div>
       </div>
       <div class="pane" id="p-mkt">
-        <p class="hint">Sell surplus ore, crystal or exotics. Prices track your own
-          economy so they stay relevant — and each sale nudges that price up for a while.</p>
-        <div class="buybar">
-          <span style="font-size:11px;letter-spacing:.12em;color:var(--dim)">AMOUNT</span>
-          <button class="chip on" data-mb="1">×1</button>
-          <button class="chip" data-mb="10">×10</button>
-          <button class="chip" data-mb="100">×100</button>
-          <button class="chip" data-mb="1000">×1K</button>
-          <button class="chip" data-mb="10000">×10K</button>
-          <button class="chip" data-mb="max">MAX</button>
+        <p class="hint">Sell surplus ore, crystal or exotics. Each sale nudges that price up for a while.</p>
+        <!-- Market refresh: the two currencies this pane pays out, so a sale's result is
+             visible where it happened. Icons are filled once by buildMarket(); the
+             numbers update in place from renderMarket() (dataset.h guarded). -->
+        <div class="mktbal">
+          <span class="mktb sv" id="mktBalSv"><i class="mktbi"></i><b>0</b> Salvage</span>
+          <span class="mktb dm" id="mktBalDm"><i class="mktbi"></i><b>0</b> Dark Matter</span>
         </div>
-        <div class="sechead2">SALVAGE</div>
-        <div class="grid" id="mktSv"></div>
+        <!-- Market refresh: shares of each card's SURPLUS (stock minus mktReserve()), not
+             fixed amounts - so no chip can sell the ore a player needs for their next
+             build. data-mb is still the chip hook (mktBuy holds the percent). -->
+        <div class="buybar mktshare" role="group" aria-label="Share of surplus to sell">
+          <span class="mktlbl">SELL</span>
+          <button type="button" class="chip" data-mb="10" aria-pressed="false">10%</button>
+          <button type="button" class="chip on" data-mb="25" aria-pressed="true">25%</button>
+          <button type="button" class="chip" data-mb="50" aria-pressed="false">50%</button>
+          <button type="button" class="chip" data-mb="100" aria-pressed="false">SURPLUS</button>
+        </div>
         <div class="sechead2">DARK MATTER</div>
-        <div class="grid" id="mktDm"></div>
-        <div class="row" style="margin-top:14px">
-          <button class="ghost" id="mktStatsLink">Achievements</button>
+        <div class="grid mktgrid" id="mktDm"></div>
+        <div class="sechead2">SALVAGE</div>
+        <div class="grid mktgrid" id="mktSv"></div>
+        <div class="mktfoot">
+          <button type="button" class="mktlink" id="mktStatsLink">Achievements ›</button>
         </div>
       </div>
       <!-- polish batch A #8: "Records & Graphs" (the #kpis stat tiles + #chartBox
@@ -302,6 +309,9 @@
            just that list, retitled. Reached the same way, Market's ghost link
            above (#mktStatsLink), no notification dot any more - see checkAchs(). -->
       <div class="pane" id="p-ach">
+        <!-- Market refresh: this pane has no tab of its own (the Market tab stays lit
+             while it shows), so it gets an explicit way back - same move as the tab. -->
+        <button type="button" class="mktlink back" id="achBack">‹ Market</button>
         <div class="sechead2">ACHIEVEMENTS</div>
         <p class="hint">Each one grants a permanent global production bonus.</p>
         <div class="grid" id="ach"></div>

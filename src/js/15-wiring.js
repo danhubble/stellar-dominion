@@ -101,6 +101,19 @@ function openStatsPane(){
   }
 }
 $("#mktStatsLink").onclick=openStatsPane;
+/* the Achievements pane's way back: the Market tab's own click, so scroll memory and
+   everything else it does apply unchanged */
+$("#achBack").onclick=()=>gotoTab("p-mkt");
+/* Market refresh: #nav scrolls sideways at 390px and its right edge fades out
+   (hs-more), which left the last tab reading "MARKE" when selected. Bring the chosen
+   tab fully clear of that 28px fade. */
+function navReveal(t){
+  const nav=t&&t.parentElement; if(!nav||nav.scrollWidth<=nav.clientWidth)return;
+  const nr=nav.getBoundingClientRect(), tr=t.getBoundingClientRect();
+  if(tr.right>nr.right-28) nav.scrollLeft+=tr.right-(nr.right-28);
+  else if(tr.left<nr.left+10) nav.scrollLeft-=(nr.left+10)-tr.left;
+  if(navHsUpd)navHsUpd();   /* drop the fade now if that reached the end, not a scroll event later */
+}
 $$(".tab").forEach(t=>t.onclick=()=>{
   const view=$("#view");
   const from=$$(".pane").find(x=>x.classList.contains("on"));
@@ -113,7 +126,7 @@ $$(".tab").forEach(t=>t.onclick=()=>{
   if(view&&from)paneScroll[from.id]=view.scrollTop;
   $$(".tab").forEach(x=>x.classList.remove("on"));
   $$(".pane").forEach(x=>x.classList.remove("on"));
-  t.classList.add("on"); t.classList.remove("alert");
+  t.classList.add("on"); t.classList.remove("alert"); navReveal(t);
   const id=t.dataset.p;
   if(id!=="p-map")fleetDeselect();   /* PLAN-fleets run 2: leaving the map deselects */
   $("#"+id).classList.add("on");
@@ -166,13 +179,15 @@ $$(".scrapc").forEach(b=>b.onclick=()=>{ S.sell=S.sell?0:1; syncChips(); dirty=t
    (mktBuy), own sync (syncMktChips(), same shape as syncChips() but scoped to
    [data-mb]/mktBuy only), own direct render (renderMarket(), not the generic render()
    the buildings chips use - see mktBuy's own comment above for why). */
+/* Market refresh: data-mb is a percent of the card's surplus now (10/25/50/100). */
 $$(".chip[data-mb]").forEach(c=>c.onclick=()=>{
-  mktBuy = c.dataset.mb==="max"?"max":parseInt(c.dataset.mb,10);
+  mktBuy = parseInt(c.dataset.mb,10)||25;
   syncMktChips(); renderMarket();
 });
 function syncMktChips(){
-  const key=mktBuy==="max"?"max":String(mktBuy);
-  $$(".chip[data-mb]").forEach(x=>x.classList.toggle("on",x.dataset.mb===key));
+  const key=String(mktBuy);
+  $$(".chip[data-mb]").forEach(x=>{ const on=x.dataset.mb===key;
+    x.classList.toggle("on",on); x.setAttribute("aria-pressed",on?"true":"false"); });
 }
 $("#runlbl").onclick=()=>{ if(pendingLevels()>0)lvModal(); else lvSummary(); };
 $("#scan").addEventListener("click",e=>doScan(e));

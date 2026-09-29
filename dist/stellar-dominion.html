@@ -1186,6 +1186,61 @@ button.rtr{cursor:pointer}
    (#kpis/.kpi/#mchips/.mchip/#chartBox and friends) is gone with the "Graphs" half
    of "Records & Graphs" - see renderAch()'s own header note in 09-render.js. */
 .sechead2{font:700 11px/1 system-ui;letter-spacing:.12em;color:var(--dim);margin:16px 0 8px}
+
+/* ---------- Market (refresh) ----------
+   Balances on top, SELL share chips, then compact rows: info on the left, a slab on
+   the right. Bronze .svslab where a card earns Salvage, gold .misslab where it earns
+   Dark Matter - both keep their own construction; only sizing and the extra "what
+   you get" line are set here. Every line in a row is single-line and always filled
+   (the heat state reads "steady" before any sale), so a sale never moves anything. */
+#p-mkt .hint{margin-bottom:8px}
+#p-mkt .sechead2{margin:12px 0 6px}
+.mktbal{display:flex;gap:14px;flex-wrap:wrap;margin:0 0 8px;font:600 12px/1.2 system-ui;color:var(--mut)}
+.mktb{display:inline-flex;align-items:center;gap:5px;border-radius:7px;padding:2px 4px;margin:-2px -4px}
+.mktb b{font:700 14px/1 ui-monospace,monospace}
+.mktb.sv b{color:var(--sv)} .mktb.dm b{color:var(--gd)}
+.mktbi{display:inline-flex}
+.mktb.land{animation:rcland .44s ease-out}
+.mktshare{flex-wrap:nowrap;gap:6px}
+.mktlbl{font:700 11px/1 system-ui;letter-spacing:.12em;color:var(--dim);flex:none}
+#p-mkt .chip:focus-visible{outline:2px solid #eafcff;outline-offset:2px}
+.mktgrid{gap:6px}
+.mktcard{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:4px 10px;padding:8px 8px 8px 10px}
+.mktcard.sold{animation:mktsold .44s ease-out}
+@keyframes mktsold{0%{border-color:rgba(92,230,165,.8)}100%{border-color:var(--line)}}
+.mkti{min-width:0;display:flex;flex-direction:column;gap:3px}
+.mktcard h5{display:flex;align-items:center;gap:6px;font:600 13px/1.2 system-ui;white-space:nowrap}
+.mktcard h5 .ci{width:16px;height:16px}
+.mktdot{width:10px;height:10px;margin:0 3px;border-radius:50%;flex:none;background:var(--a);box-shadow:0 0 0 2px rgba(255,255,255,.08)}
+.mktcard p{flex:none;font:500 11px/1.3 ui-monospace,monospace;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mktcard p b{color:var(--txt);font-weight:700}
+.mktprice .ci{width:13px;height:13px;vertical-align:-2px}
+.mktprice em{font-style:normal;color:var(--rd)}
+/* the slabs: override .card button's generic look, keep each slab's own colours */
+.mktcard button.mktsell{flex:none;width:176px;min-height:48px;padding:5px 8px 7px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  font:800 11px/1 system-ui;letter-spacing:.08em;white-space:nowrap;border-radius:9px}
+/* .card button (02-cards) outranks a bare .svslab/.misslab - restate their fills */
+.mktcard button.svslab:not(:disabled){border-color:#f0c49a;background:linear-gradient(180deg,#e0a672,#b97a45);color:#1e0f04;
+  box-shadow:0 1px 0 rgba(255,255,255,.35) inset}
+.mktcard button.misslab:not(:disabled){border-color:#ffe29a;background:linear-gradient(180deg,#ffd873,#e9b444);color:#2b1c00;
+  box-shadow:0 1px 0 rgba(255,255,255,.45) inset}
+.mktcard button.mktsell b{font:800 12px/1 ui-monospace,monospace;letter-spacing:0;margin-left:5px}
+.mktcard button.mktsell small{display:block;font:700 11px/1 ui-monospace,monospace;letter-spacing:0;opacity:.85}
+.mktcard button.mktsell:disabled small{font-family:system-ui;font-weight:600;color:var(--mut);opacity:1}
+/* .misslab has no disabled state of its own (a mission is either claimable or not
+   shown) - give it the exact disabled look .svslab/.resslab share */
+.mktcard button.mktsell:disabled{cursor:not-allowed;border-color:var(--line);background:rgba(255,255,255,.035);color:var(--mut);box-shadow:none}
+.mktcard button.mktsell:disabled::after{background:rgba(255,255,255,.06)}
+.mktcard button.mktsell:disabled b{color:var(--txt)}
+/* the Achievements link is secondary: a quiet ghost, not a filled .row button */
+.mktfoot{margin-top:14px}
+.mktlink{min-height:44px;padding:0 14px;border:1px solid var(--line);border-radius:9px;background:transparent;
+  color:var(--mut);cursor:pointer;font:600 12px/1 system-ui;letter-spacing:.06em}
+.mktlink:hover{color:var(--txt);border-color:var(--line2)}
+.mktlink:focus-visible{outline:2px solid #eafcff;outline-offset:2px}
+.mktlink.back{margin:0 0 4px}
+@media(prefers-reduced-motion:reduce){.mktb.land,.mktcard.sold{animation:none}}
 /* ---------- map ---------- */
 #mapWrap{position:relative;width:100%;aspect-ratio:1/1;max-height:52vh;margin:0 auto 10px;
   border:1px solid rgba(120,150,255,.22);border-radius:14px;overflow:hidden;
@@ -1986,23 +2041,30 @@ body.syspage #toasts{bottom:calc(var(--sysbarh) + 8px + env(safe-area-inset-bott
         <div class="grid" id="nex"></div>
       </div>
       <div class="pane" id="p-mkt">
-        <p class="hint">Sell surplus ore, crystal or exotics. Prices track your own
-          economy so they stay relevant — and each sale nudges that price up for a while.</p>
-        <div class="buybar">
-          <span style="font-size:11px;letter-spacing:.12em;color:var(--dim)">AMOUNT</span>
-          <button class="chip on" data-mb="1">×1</button>
-          <button class="chip" data-mb="10">×10</button>
-          <button class="chip" data-mb="100">×100</button>
-          <button class="chip" data-mb="1000">×1K</button>
-          <button class="chip" data-mb="10000">×10K</button>
-          <button class="chip" data-mb="max">MAX</button>
+        <p class="hint">Sell surplus ore, crystal or exotics. Each sale nudges that price up for a while.</p>
+        <!-- Market refresh: the two currencies this pane pays out, so a sale's result is
+             visible where it happened. Icons are filled once by buildMarket(); the
+             numbers update in place from renderMarket() (dataset.h guarded). -->
+        <div class="mktbal">
+          <span class="mktb sv" id="mktBalSv"><i class="mktbi"></i><b>0</b> Salvage</span>
+          <span class="mktb dm" id="mktBalDm"><i class="mktbi"></i><b>0</b> Dark Matter</span>
         </div>
-        <div class="sechead2">SALVAGE</div>
-        <div class="grid" id="mktSv"></div>
+        <!-- Market refresh: shares of each card's SURPLUS (stock minus mktReserve()), not
+             fixed amounts - so no chip can sell the ore a player needs for their next
+             build. data-mb is still the chip hook (mktBuy holds the percent). -->
+        <div class="buybar mktshare" role="group" aria-label="Share of surplus to sell">
+          <span class="mktlbl">SELL</span>
+          <button type="button" class="chip" data-mb="10" aria-pressed="false">10%</button>
+          <button type="button" class="chip on" data-mb="25" aria-pressed="true">25%</button>
+          <button type="button" class="chip" data-mb="50" aria-pressed="false">50%</button>
+          <button type="button" class="chip" data-mb="100" aria-pressed="false">SURPLUS</button>
+        </div>
         <div class="sechead2">DARK MATTER</div>
-        <div class="grid" id="mktDm"></div>
-        <div class="row" style="margin-top:14px">
-          <button class="ghost" id="mktStatsLink">Achievements</button>
+        <div class="grid mktgrid" id="mktDm"></div>
+        <div class="sechead2">SALVAGE</div>
+        <div class="grid mktgrid" id="mktSv"></div>
+        <div class="mktfoot">
+          <button type="button" class="mktlink" id="mktStatsLink">Achievements ›</button>
         </div>
       </div>
       <!-- polish batch A #8: "Records & Graphs" (the #kpis stat tiles + #chartBox
@@ -2011,6 +2073,9 @@ body.syspage #toasts{bottom:calc(var(--sysbarh) + 8px + env(safe-area-inset-bott
            just that list, retitled. Reached the same way, Market's ghost link
            above (#mktStatsLink), no notification dot any more - see checkAchs(). -->
       <div class="pane" id="p-ach">
+        <!-- Market refresh: this pane has no tab of its own (the Market tab stays lit
+             while it shows), so it gets an explicit way back - same move as the tab. -->
+        <button type="button" class="mktlink back" id="achBack">‹ Market</button>
         <div class="sechead2">ACHIEVEMENTS</div>
         <p class="hint">Each one grants a permanent global production bonus.</p>
         <div class="grid" id="ach"></div>
@@ -7306,10 +7371,48 @@ function mktBasePrice(kind,counter){
 function mktPrice(kind,counter){ return mktBasePrice(kind,counter)*mktHeatMul(counter); }
 function mktBal(kind){ return kind==="ore"?S.ore : kind==="cry"?S.cry : exo(kind); }
 function mktResLabel(kind){ return kind==="ore"?"Ore" : kind==="cry"?"Crystal" : (exoDef(kind)?exoDef(kind).n:kind); }
+/* Market refresh (P0): how much of each sellable resource the Market keeps back, so no
+   chip can sell a player out of their very next purchase (MAX used to sell every last
+   ore in one tap, no confirm). Recomputed on every read - it moves with each purchase.
+   - ore: the dearest single (x1) next building among every tier buildable right now on
+     a held system (tierBuildable: tiers already owned there plus each system's next
+     reveal), priced by ladderCost(id,gi,1) - the same number Empire's buy button shows
+     for x1. Dearest, not cheapest: the next reveal is usually the priciest and is the
+     purchase the player is saving toward.
+   - crystal: the dearest next level across the crystal-priced research branches that
+     are unlocked and not maxed (resCost at the current lv, as renderRes() prices it).
+     Salvage-priced branches don't count - selling crystal can't starve them.
+   - each exotic: the CHEAPEST next level of a live programme priced in it (xpCost at
+     xlv, INERT_PROGS skipped like the Research tab does); 0 when nothing left uses it. */
+function mktReserve(kind){
+  let m=0;
+  if(kind==="ore"){
+    for(const s of builtSystems()) for(const gi of sysLadder(s.id))
+      if(tierBuildable(s.id,gi)) m=Math.max(m,ladderCost(s.id,gi,1));
+    return m;
+  }
+  if(kind==="cry"){
+    for(const r of RESH){ const l=lv(S.rs,r.id);
+      if(resCur(r)==="cry" && l<r.max && !resLocked(r)) m=Math.max(m,resCost(r,l)); }
+    return m;
+  }
+  m=Infinity;
+  for(const r of XPROG) if(r.x===kind && !INERT_PROGS.has(r.id) && xlv(r.id)<r.max) m=Math.min(m,xpCost(r));
+  if(m===Infinity)m=0;
+  /* deep ore tiers also cost a flat amount of a named exotic per building (GENS exo/
+     exoC, the same xc ladderTierRow() charges) - keep enough for the dearest one that
+     is buildable right now, so selling an exotic can't strand the next deep tier */
+  for(const s of builtSystems()) for(const gi of sysLadder(s.id))
+    if(tierBuildable(s.id,gi) && ladderExoId(gi)===kind) m=Math.max(m,GENS[gi].exoC||0);
+  return m;
+}
+function mktSurplus(kind){ return Math.max(0, mktBal(kind)-mktReserve(kind)); }
+/* output units this tap sells: the selected share (mktBuy, a percent) of the card's
+   SURPLUS, divided by the live heat-inclusive price and floored - so heat shrinks the
+   payout exactly the way it always did (sellRes() re-prices at the same live rate). */
 function mktAmount(kind,counter){
   const price=mktPrice(kind,counter); if(!(price>0))return 0;
-  const bal=mktBal(kind);
-  return mktBuy==="max" ? Math.max(0,Math.floor(bal/price)) : mktBuy;   /* patch636: own state, not S.buy - see mktBuy's own comment */
+  return Math.max(0,Math.floor(mktSurplus(kind)*mktBuy/100/price));   /* patch636: own state, not S.buy */
 }
 /* the one function that actually moves resources - shared by every SELL button and
    exported for tests. amount is a count of OUTPUT units (Salvage or Dark Matter);
@@ -7328,8 +7431,36 @@ function sellRes(kind,counter,amount){
   if(!S.mkt||typeof S.mkt!=="object")S.mkt={heat:{sv:{v:0,t:0},dm:{v:0,t:0}},sold:false};
   S.mkt.sold=true;
   blip(600,.12,"sine",.04);
-  toast("Sold "+fmt(cost)+" "+mktResLabel(kind)+" for "+fmt(amount)+" "+(counter==="sv"?"salvage":"Dark Matter"),"g");
+  toast("Sold "+fmt(cost)+" "+mktResLabel(kind)+" for "+fmt(amount)+" "+mktOutName(counter),"g");
   dirty=true; renderMarket(); return true;
+}
+function mktOutName(counter){ return counter==="sv"?"Salvage":"Dark Matter"; }
+/* the card's icon: the real resource glyph for ore/crystal, the exotic's own colour
+   dot (the same --a swatch the context card uses) for an exotic - RES_ICON has none. */
+function mktIcon(kind){
+  if(kind==="ore"||kind==="cry")return RI(kind);
+  const e=exoDef(kind); return `<i class="mktdot" style="--a:${e?e.col:"var(--sv)"}" aria-hidden="true"></i>`;
+}
+/* The SELL tap. Refusals say why in a toast (they used to be a bare blip). A sale
+   flies its payout to the pane's own balance for that currency (DM falls back to the
+   header's DM card if the balance has scrolled away; Salvage flashes the card) -
+   under 0.6s, and skipped entirely under reduced motion. */
+function mktSellTap(d,kind,counter){
+  const k=mktAmount(kind,counter), name=mktResLabel(kind);
+  if(k<1){
+    blip(140,.08,"sine",.03);
+    if(mktSurplus(kind)<=0) toast("Nothing spare — keeping "+fmt(mktReserve(kind))+" "+name+" for your next build","y");
+    else toast(mktBuy+"% of spare "+name+" is under 1 "+mktOutName(counter)+" — pick a bigger share","y");
+    return;
+  }
+  if(!sellRes(kind,counter,k)){ blip(140,.08,"sine",.03); toast("Not enough "+name+" for that sale","y"); return; }
+  if(lowMotion())return;
+  const btn=d.querySelector(".mktsell"), view=$("#view");
+  let to=$(counter==="sv"?"#mktBalSv":"#mktBalDm");
+  const vr=view&&view.getBoundingClientRect(), tr=to&&to.getBoundingClientRect();
+  if(vr&&tr&&(tr.bottom<vr.top||tr.top>vr.bottom)) to = counter==="dm" ? misChip("dm") : null;
+  if(to) flyReward(btn, to, "+"+fmt(k)+" "+RI(counter), 0, 480);
+  else { d.classList.remove("sold"); void d.offsetWidth; d.classList.add("sold"); setTimeout(()=>d.classList.remove("sold"),460); }
 }
 /* which resources currently have a live SALVAGE card - ore always, crystal once any
    Smelter output exists, each exotic once it is held or being produced (patch630:
@@ -7341,17 +7472,20 @@ function mktSvKinds(){
   for(const e of EXO) if(exo(e.id)>0||exoRate(e.id)>0) ks.push(e.id);
   return ks;
 }
+/* Market refresh: one compact row per card - icon + name, "have X · keep Y", the price
+   with its heat state on the SAME always-filled line ("steady" until a sale), and the
+   slab. Bronze .svslab where the card earns Salvage, gold .misslab where it earns Dark
+   Matter. Every per-frame string lands in a node that already exists (renderMarket). */
 function mktCardSkeleton(kind,counter){
   const d=document.createElement("div"); d.className="card mktcard";
   d.dataset.kind=kind; d.dataset.counter=counter;
-  d.innerHTML=`<h5>${mktResLabel(kind)}</h5>
-    <p class="mktprice"></p>
-    <p class="mktheat"></p>
-    <p class="mktget">you get <b class="mktgetv"></b></p>
-    <button class="mktsell"></button>`;
-  d.querySelector(".mktsell").onclick=()=>{
-    if(!sellRes(kind,counter,mktAmount(kind,counter)))blip(140,.08,"sine",.03);
-  };
+  d.innerHTML=`<div class="mkti">
+      <h5>${mktIcon(kind)}${mktResLabel(kind)}</h5>
+      <p class="mkthave"></p>
+      <p class="mktprice"></p>
+    </div>
+    <button type="button" class="mktsell ${counter==="sv"?"svslab":"misslab"}"></button>`;
+  d.querySelector(".mktsell").onclick=()=>mktSellTap(d,kind,counter);
   return d;
 }
 /* rebuilds card DOM (and rewires each SELL button) ONLY when the set of sellable
@@ -7370,21 +7504,38 @@ function buildMarket(){
     dmHost.dataset.h="dm"; dmHost.innerHTML="";
     dmHost.appendChild(mktCardSkeleton("ore","dm"));
   }
+  for(const [id,k] of [["#mktBalSv","sv"],["#mktBalDm","dm"]]){
+    const i=$(id+" .mktbi"); if(i&&!i.firstChild)i.innerHTML=RI(k);
+  }
 }
+/* write only on a real change - these run every render() tick while the pane is open */
+function mktSet(el,prop,v){ if(el&&el.dataset.h!==v){ el.dataset.h=v; el[prop]=v; } }
 function renderMarket(){
   buildMarket();
+  mktSet($("#mktBalSv b"),"textContent",fmt(S.sv||0));
+  mktSet($("#mktBalDm b"),"textContent",fmt(S.dm||0));
+  const heat={}; for(const c of ["sv","dm"]) heat[c]=Math.round(mktHeat(c)*100);
   $$(".mktcard").forEach(d=>{
-    const kind=d.dataset.kind, counter=d.dataset.counter;
+    const kind=d.dataset.kind, counter=d.dataset.counter, name=mktResLabel(kind);
     const price=mktPrice(kind,counter), k=mktAmount(kind,counter), cost=k*price;
-    const bal=mktBal(kind), can=k>=1 && bal+1e-6>=cost;
-    const outName=counter==="sv"?"Salvage":"Dark Matter";
-    d.querySelector(".mktprice").textContent=fmt(price)+" "+mktResLabel(kind)+" = 1 "+outName;
-    const heatPct=Math.round(mktHeat(counter)*100);
-    d.querySelector(".mktheat").textContent = heatPct>0 ? "price up "+heatPct+"% \u2014 cooling" : "";
-    d.querySelector(".mktgetv").textContent = "+"+fmt(k)+" "+outName;
-    const btn=d.querySelector(".mktsell");
-    btn.textContent="SELL "+fmt(Math.ceil(cost))+" "+mktResLabel(kind);
-    btn.disabled=!can;
+    const bal=mktBal(kind), keep=mktReserve(kind), spare=Math.max(0,bal-keep);
+    const can=k>=1 && bal+1e-6>=cost;
+    mktSet(d.querySelector(".mkthave"),"innerHTML",`have <b>${fmt(bal)}</b> \u00b7 keep <b>${fmt(keep)}</b>`);
+    const hp=heat[counter];
+    mktSet(d.querySelector(".mktprice"),"innerHTML",
+      `<b>${fmt(price)}</b>/${RI(counter)} \u00b7 `+(hp>0?`<em>+${hp}% cooling</em>`:"steady"));
+    const btn=d.querySelector(".mktsell"), outName=mktOutName(counter);
+    /* three states, all in place: SELL (what this tap sells and earns), NOTHING SPARE
+       (surplus is 0 - says what is being kept), or NEED (a surplus exists, but the
+       chosen share of it is under one output unit - says how much more is needed). */
+    const html = can ? `<span>SELL<b>${fmt(Math.ceil(cost))} ${name}</b></span><small>+${fmt(k)} ${outName}</small>`
+      : spare<=0 ? `<span>NOTHING SPARE</span><small>keeping ${fmt(keep)} for next build</small>`
+      /* the whole surplus covers one unit, only the chosen share does not - say so
+         rather than asking for more ore the player already has */
+      : spare>=price ? `<span>SHARE TOO SMALL</span><small>1 ${outName} = ${fmt(Math.ceil(price))} ${name}</small>`
+      : `<span>NEED<b>${fmt(Math.max(0,price-spare))} ${name}</b></span><small>more spare for 1 ${outName}</small>`;
+    mktSet(btn,"innerHTML",html);
+    if(btn.disabled===can)btn.disabled=!can;
   });
 }
 /* ---------------------------------------------------------------------
@@ -8355,11 +8506,13 @@ let raidMode="targets";       /* which sub-tab of the Raids tab is showing. Sess
 let mapMode="map";            /* patch614: "map" or "list" - which half of the Map tab is
                                   showing. Session-only, same reasoning as resMode/raidMode -
                                   never saved, always opens on the map itself. */
-let mktBuy=1;                 /* patch636: which AMOUNT chip is selected on the Market page -
-                                  its own state so the Market's ×1K/×10K/MAX choice never
-                                  fights the buildings/Nexus chips' S.buy, or vice versa.
-                                  Session-only, same reasoning as resMode/raidMode/mapMode
-                                  above - never saved, always opens on ×1. */
+let mktBuy=25;                /* patch636: which SELL chip is selected on the Market page -
+                                  its own state so the Market's choice never fights the
+                                  buildings/Nexus chips' S.buy, or vice versa. Market
+                                  refresh: a PERCENT of each card's surplus now (10, 25,
+                                  50 or 100 = SURPLUS - see mktAmount()), no longer a fixed
+                                  amount or MAX. Session-only, same reasoning as resMode/
+                                  raidMode/mapMode above - never saved, always opens on 25%. */
 const RAID_PANES={targets:"#rpTargets",fleet:"#rpFleet",loadout:"#rpLoadout",crew:"#rpCrew"};
 function syncRaidMode(){
   $$(".rmbtn[data-rd]").forEach(x=>x.classList.toggle("on",x.dataset.rd===raidMode));
@@ -8725,8 +8878,11 @@ function misChip(k){ return $(k==="dm" ? ".rcard.c-dm" : ".rcard.c-cry") }
 /* One reward, arcing from the card to the resource it becomes. Driven by a CSS animation
    rather than a transition started on the next frame, so it does not depend on a frame
    ever arriving - the element animates from the moment it is inserted. */
-function flyReward(from, to, html, delay){
+/* ms (optional, default the CSS's 620): the Market passes a shorter flight - a sale is
+   a routine tap, not a mission's once-only payoff. */
+function flyReward(from, to, html, delay, ms){
   if(!from||!to)return;
+  ms=ms||620;
   const a=from.getBoundingClientRect(), b=to.getBoundingClientRect();
   const f=document.createElement("div");
   f.className="rwfly"; f.innerHTML=html;
@@ -8735,13 +8891,14 @@ function flyReward(from, to, html, delay){
   f.style.setProperty("--dx",((b.left+b.width/2)-(a.left+a.width/2))+"px");
   f.style.setProperty("--dy",((b.top +b.height/2)-(a.top +a.height/2))+"px");
   f.style.animationDelay=delay+"ms";
+  if(ms!==620)f.style.animationDuration=ms+"ms";
   document.body.appendChild(f);
   setTimeout(()=>{
     f.remove();
     /* restart the pulse even if this chip was hit moments ago */
     to.classList.remove("land"); void to.offsetWidth; to.classList.add("land");
     setTimeout(()=>to.classList.remove("land"),460);
-  }, delay+620);
+  }, delay+ms);
 }
 /* The sequence on one card. The payout has already happened; this is only the telling. */
 function misClaimFx(card, m, delay){
@@ -13705,6 +13862,19 @@ function openStatsPane(){
   }
 }
 $("#mktStatsLink").onclick=openStatsPane;
+/* the Achievements pane's way back: the Market tab's own click, so scroll memory and
+   everything else it does apply unchanged */
+$("#achBack").onclick=()=>gotoTab("p-mkt");
+/* Market refresh: #nav scrolls sideways at 390px and its right edge fades out
+   (hs-more), which left the last tab reading "MARKE" when selected. Bring the chosen
+   tab fully clear of that 28px fade. */
+function navReveal(t){
+  const nav=t&&t.parentElement; if(!nav||nav.scrollWidth<=nav.clientWidth)return;
+  const nr=nav.getBoundingClientRect(), tr=t.getBoundingClientRect();
+  if(tr.right>nr.right-28) nav.scrollLeft+=tr.right-(nr.right-28);
+  else if(tr.left<nr.left+10) nav.scrollLeft-=(nr.left+10)-tr.left;
+  if(navHsUpd)navHsUpd();   /* drop the fade now if that reached the end, not a scroll event later */
+}
 $$(".tab").forEach(t=>t.onclick=()=>{
   const view=$("#view");
   const from=$$(".pane").find(x=>x.classList.contains("on"));
@@ -13717,7 +13887,7 @@ $$(".tab").forEach(t=>t.onclick=()=>{
   if(view&&from)paneScroll[from.id]=view.scrollTop;
   $$(".tab").forEach(x=>x.classList.remove("on"));
   $$(".pane").forEach(x=>x.classList.remove("on"));
-  t.classList.add("on"); t.classList.remove("alert");
+  t.classList.add("on"); t.classList.remove("alert"); navReveal(t);
   const id=t.dataset.p;
   if(id!=="p-map")fleetDeselect();   /* PLAN-fleets run 2: leaving the map deselects */
   $("#"+id).classList.add("on");
@@ -13770,13 +13940,15 @@ $$(".scrapc").forEach(b=>b.onclick=()=>{ S.sell=S.sell?0:1; syncChips(); dirty=t
    (mktBuy), own sync (syncMktChips(), same shape as syncChips() but scoped to
    [data-mb]/mktBuy only), own direct render (renderMarket(), not the generic render()
    the buildings chips use - see mktBuy's own comment above for why). */
+/* Market refresh: data-mb is a percent of the card's surplus now (10/25/50/100). */
 $$(".chip[data-mb]").forEach(c=>c.onclick=()=>{
-  mktBuy = c.dataset.mb==="max"?"max":parseInt(c.dataset.mb,10);
+  mktBuy = parseInt(c.dataset.mb,10)||25;
   syncMktChips(); renderMarket();
 });
 function syncMktChips(){
-  const key=mktBuy==="max"?"max":String(mktBuy);
-  $$(".chip[data-mb]").forEach(x=>x.classList.toggle("on",x.dataset.mb===key));
+  const key=String(mktBuy);
+  $$(".chip[data-mb]").forEach(x=>{ const on=x.dataset.mb===key;
+    x.classList.toggle("on",on); x.setAttribute("aria-pressed",on?"true":"false"); });
 }
 $("#runlbl").onclick=()=>{ if(pendingLevels()>0)lvModal(); else lvSummary(); };
 $("#scan").addEventListener("click",e=>doScan(e));
@@ -14180,6 +14352,7 @@ window.__SD={get S(){return S},NEXUS,buyNex,openSite,SITE,siteSlots,
   get endOn(){return endOn}, get endStage(){return endStage}, END_STAGES,
   ensureCrewPool,refreshCrewPool,hireCandidate,crewRefreshCost,makeDeckhands,
   sellRes,mktPrice,mktHeat,mktHeatMul,mktBasePrice,mktAmount,get mktBuy(){return mktBuy},mktBal,mktResLabel,
+  mktReserve,mktSurplus,
   svOrePrice,svCryPrice,svExoPrice,dmOrePrice,renderMarket,openStatsPane,
   mktSvKinds,exoModal,exoEverBanked,exoEverBankedAny,
   renderSysBuild,
