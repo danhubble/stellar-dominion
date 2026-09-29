@@ -117,6 +117,10 @@ $$(".tab").forEach(t=>t.onclick=()=>{
   const id=t.dataset.p;
   if(id!=="p-map")fleetDeselect();   /* PLAN-fleets run 2: leaving the map deselects */
   $("#"+id).classList.add("on");
+  /* a routine VEGA banner that points at this very tab has done its job once the
+     player opens it - clear it rather than leave it covering the tab's own list */
+  const fk=S.notifyQueue&&S.notifyQueue[0], fv=fk&&fk.indexOf("vega:")===0&&VEGA[fk.slice(5)];
+  if(fv&&fv.go===id&&!noticeIsStory(fk))dismissNotice();
   if(id==="p-raid" && thq().length>0){ raidMode="targets"; syncRaidMode(); }
   dirty=true; render(); requestAnimationFrame(drawTreeLines);
   if(view){
