@@ -2299,10 +2299,14 @@ function misClaimFx(card, m, delay){
   const slow=lowMotion();
   setTimeout(()=>{
     if(!card.isConnected)return;
-    const eff=card.querySelector(".eff")||card;
+    const eff=card.querySelector(".cpay")||card;
     const btn=card.querySelector("button.misclaim");
-    card.classList.add("claimed");
-    if(btn){ btn.disabled=true; btn.classList.add("done"); btn.textContent="CLAIMED \u2713" }
+    card.classList.remove("rdy"); card.classList.add("claimed");
+    if(btn){ btn.disabled=true; btn.classList.add("done"); btn.textContent="CLAIMED" }
+    /* the status label types FULFILLED, console-style (instant under reduced motion) */
+    const st=card.querySelector(".cst"), word="FULFILLED";
+    if(st){ if(slow)st.textContent=word; else { st.textContent=""; let n=0;
+      const tk=setInterval(()=>{ st.textContent=word.slice(0,++n); if(n>=word.length||!st.isConnected)clearInterval(tk) },45) } }
     /* two notes rising, rather than the single blip a purchase gets */
     blip(760,.10,"square",.045);
     setTimeout(()=>blip(1180,.16,"square",.045),95);
@@ -2321,25 +2325,59 @@ function misClaimFx(card, m, delay){
     }, slow?200:740);
   }, delay);
 }
+/* ledger helpers: contract number, the goal as "cur / goal", and the reward line.
+   The goal is the first number in the mission text ("Reach 5,000 ore per second",
+   "Reach 1M ore per second"); a mission with no number is a one-off, shown 0 / 1. */
+function misId(i){ return "CA-"+String(i+1).padStart(3,"0") }
+function misNums(m){
+  const mt=/(\d[\d,]*)\s*([MBT])?\b/.exec(m.d);
+  const goal=mt?parseFloat(mt[1].replace(/,/g,""))*({M:1e6,B:1e9,T:1e12}[mt[2]]||1):1;
+  const p=Math.max(0,Math.min(1,m.p?m.p(S):(m.k(S)?1:0)));
+  return {p, cur:Math.min(goal,Math.floor(p*goal+1e-9)), goal};
+}
+function misPay(i,m){
+  const parts=[];
+  if(m.r.c)parts.push(`+<b>${fmt(m.r.c)} crystal</b>`);
+  if(m.r.dm)parts.push(`+${fmt(m.r.dm)} dark matter`);
+  parts.push(`<em>+${XPV.mission(i)} XP</em>`);
+  return parts.join(" · ");
+}
+/* p forces the bar (1 for a ready contract, whose own m.p may have dipped since) */
+function misCard(i,m,cls,label,p){
+  const d=document.createElement("div"); d.className="ct "+cls;
+  const n=misNums(m), pp=p==null?n.p:p;
+  d.innerHTML=`<div class="ctop"><span class="cid">${misId(i)}</span><span class="cst">${label}</span></div>
+    <h3>${m.d}</h3>
+    <div class="cprog"><div class="cbar"><i style="width:${(pp*100).toFixed(1)}%"></i></div>
+      <div class="cnum">${fmt(p==null?n.cur:n.goal)} <span>/ ${fmt(n.goal)}</span></div></div>
+    <div class="cpay">${misPay(i,m)}</div>`;
+  return d;
+}
 function renderMis(){
   const host=$("#mis");
   /* a claim is playing out on cards that are already on screen - leave them alone */
   if(Date.now()<misFxUntil)return;
   host.innerHTML="";
+  const done=misDone(), total=MISSIONS.length;
+  const head=document.createElement("div");
+  head.innerHTML=`<div class="ledger"><h2>DISPATCH LEDGER</h2><div class="tally">${done} <span>/ ${total} fulfilled</span></div></div>
+    <div class="lmeter"><i style="width:${(done/total*100).toFixed(1)}%"></i></div>
+    <div class="issuer">Issued by the Colonial Authority. Paid in crystal.</div>`;
+  host.appendChild(head);
   /* anything finished and unpaid comes first, with the reward on a button */
   const q=(S.miq||[]).slice().sort((a,b)=>a-b);
   if(q.length>1){
-    const all=document.createElement("button"); all.className="misall";
+    const all=document.createElement("button"); all.className="misslab misall";
     all.textContent="CLAIM ALL ("+q.length+")";
     all.onclick=()=>{
       if(all.disabled)return;
-      const cards=[...host.querySelectorAll(".card.rdy")];
+      const cards=[...host.querySelectorAll(".ct.rdy")];
       const ms=q.map(i=>MISSIONS[i]);
       if(!claimAllMissions())return;
       /* a cascade rather than one blink, tightened when there are a lot so claiming
          eight contracts does not become a cutscene */
       const step=q.length>5?60:110, span=step*Math.max(0,q.length-1);
-      all.disabled=true; all.textContent="CLAIMED \u2713";
+      all.disabled=true; all.classList.add("done"); all.textContent="CLAIMED";
       misFxHold(MISFX+span);
       ms.forEach((m,k)=>misClaimFx(cards[k],m,k*step));
       setTimeout(misFxEnd, MISFX+span);
@@ -2348,10 +2386,8 @@ function renderMis(){
   }
   q.forEach(i=>{
     const m=MISSIONS[i]; if(!m)return;
-    const rw=[m.r.c?fmt(m.r.c)+" "+RI("cry"):null,m.r.dm?fmt(m.r.dm)+" "+RI("dm"):null].filter(Boolean).join(" + ");
-    const d=document.createElement("div"); d.className="card rdy";
-    d.innerHTML=`<h5>Ready to claim</h5><p>${m.d}</p><div class="eff">Reward: ${rw}</div>`;
-    const btn=document.createElement("button"); btn.className="misclaim"; btn.textContent="CLAIM";
+    const d=misCard(i,m,"rdy","READY",1);
+    const btn=document.createElement("button"); btn.className="misslab misclaim"; btn.textContent="CLAIM";
     btn.onclick=()=>{
       if(btn.disabled)return;
       if(!claimMission(i))return;
@@ -2370,19 +2406,14 @@ function renderMis(){
     };
     d.appendChild(btn); host.appendChild(d);
   });
-  if(S.mi>=MISSIONS.length){
-    if(!q.length)host.innerHTML='<div class="card done"><h5>All missions fulfilled</h5><p>The Colonial Authority has nothing left to ask of you.</p></div>';
+  if(S.mi>=total){
+    if(!q.length){ const e=document.createElement("div"); e.className="ct";
+      e.innerHTML='<h3>All contracts fulfilled</h3><div class="cpay">The Colonial Authority has nothing left to ask of you.</div>';
+      host.appendChild(e); }
     return;
   }
-  MISSIONS.slice(S.mi,S.mi+3).forEach((m,k)=>{
-    const d=document.createElement("div"); d.className="card"+(k===0?" ok":"");
-    const rw=[m.r.c?fmt(m.r.c)+" "+RI("cry"):null,m.r.dm?fmt(m.r.dm)+" "+RI("dm"):null].filter(Boolean).join(" + ");
-    d.innerHTML=`<h5>${k===0?"▶ Active":"Queued"}</h5><p>${m.d}</p><div class="eff">Reward: ${rw}</div>`;
-    host.appendChild(d);
-  });
-  const done=document.createElement("div"); done.className="card done";
-  done.innerHTML=`<h5>Completed</h5><p>${misDone()} of ${MISSIONS.length} missions fulfilled.</p>`;
-  host.appendChild(done);
+  const cap=document.createElement("div"); cap.className="lcap"; cap.textContent="ON FILE"; host.appendChild(cap);
+  MISSIONS.slice(S.mi,S.mi+3).forEach((m,k)=>host.appendChild(misCard(S.mi+k,m,k===0?"act":"que",k===0?"ACTIVE":"QUEUED")));
 }
 /* ---------------- stats ---------------- */
 function fmtT2(s){ return s<60 ? Math.round(s)+"s"

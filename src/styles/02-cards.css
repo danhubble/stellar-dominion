@@ -8,37 +8,64 @@
 .card.done{border-color:rgba(168,120,255,.45);background:rgba(60,40,110,.28)}
 .card.locked{opacity:.5;filter:grayscale(.4)}
 .card.seized{opacity:.5;filter:grayscale(.6);border-color:rgba(255,107,138,.35)}   /* patch589 */
-.card.rdy{border-color:rgba(255,209,102,.55);background:rgba(255,209,102,.07)}
-.card.rdy h5{color:var(--gd)}
-.card.rdy button.misclaim,.misall{
-  border:1px solid rgba(255,209,102,.6);background:rgba(255,209,102,.14);color:var(--gd);
-  border-radius:9px;padding:10px;cursor:pointer;font:800 12px/1 system-ui;letter-spacing:.16em}
-.misall{width:100%;margin-bottom:8px}
-.card.rdy button.misclaim:hover,.misall:hover{background:rgba(255,209,102,.24)}
-
-/* ---------- claiming a contract ---------- */
-/* A ready contract is gold; a claimed one resolves to green, the colour this game already
-   uses for good news. The card is positioned so the sweep has something to sit inside. */
-.card.rdy{position:relative;overflow:hidden;
-  transition:border-color .22s ease-out,background .22s ease-out,box-shadow .22s ease-out}
-.card.rdy.claimed{border-color:rgba(92,230,165,.75);background:rgba(92,230,165,.10);
-  box-shadow:0 0 0 1px rgba(92,230,165,.22),0 0 30px -8px rgba(92,230,165,.6)}
-.card.rdy.claimed h5{color:var(--gr)}
-.card.rdy.claimed .eff{color:var(--gr)}
-/* one pass of light across the card - the acknowledgement of the tap */
-.card.rdy.claimed:before{content:"";position:absolute;inset:0;pointer-events:none;
-  background:linear-gradient(105deg,transparent 34%,rgba(92,230,165,.22) 50%,transparent 66%);
-  background-size:300% 100%;animation:missweep .6s ease-out forwards}
-@keyframes missweep{from{background-position:130% 0}to{background-position:-70% 0}}
-/* the button confirms rather than vanishing */
-.card.rdy button.misclaim.done{border-color:rgba(92,230,165,.75);
-  background:rgba(92,230,165,.20);color:#c9ffe8;cursor:default;
-  animation:misstamp .4s cubic-bezier(.2,1.5,.4,1)}
-@keyframes misstamp{0%{transform:scale(1)}34%{transform:scale(1.055)}100%{transform:scale(1)}}
+/* ---------- Missions: the Colonial Authority's dispatch ledger ----------
+   Each mission is a numbered contract: goal as the headline, a small status label,
+   gold progress, a reward line naming its currencies. CLAIM is a solid gold slab
+   built like the Buy button. Claiming reads as a console confirmation, not paper:
+   a green scan line passes down the card, the bar turns green and the status label
+   types FULFILLED behind a blinking cursor (misClaimFx). */
+#p-mis .ledger{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:2px 0 6px}
+#p-mis .ledger h2{margin:0;font:700 13px/1 system-ui;letter-spacing:.16em;color:var(--txt)}
+#p-mis .ledger .tally{font:700 13px/1 ui-monospace,monospace;color:var(--gd)}
+#p-mis .ledger .tally span{color:var(--mut);font-weight:600}
+#p-mis .lmeter{height:4px;border-radius:2px;background:rgba(255,255,255,.07);overflow:hidden;margin-bottom:6px}
+#p-mis .lmeter i{display:block;height:100%;background:var(--gd)}
+#p-mis .issuer{font:600 11px/1.4 ui-monospace,monospace;color:var(--dim2);margin:0 0 14px;letter-spacing:.04em}
+#p-mis .lcap{font:600 11px/1 system-ui;letter-spacing:.14em;color:var(--dim2);margin:18px 0 8px}
+.misslab{position:relative;overflow:hidden;width:100%;min-height:44px;border-radius:9px;cursor:pointer;
+  border:1px solid #ffe29a;background:linear-gradient(180deg,#ffd873,#e9b444);color:#2b1c00;
+  font:800 12px/1 system-ui;letter-spacing:.16em;padding:0 12px 3px;
+  box-shadow:0 1px 0 rgba(255,255,255,.45) inset;transition:transform .06s}
+.misslab::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;background:#a47716;pointer-events:none}
+.misslab:active:not(:disabled){transform:translateY(2px)}
+.misslab:active:not(:disabled)::after{height:1px}
+.misslab:focus-visible{outline:2px solid #fff4d6;outline-offset:2px}
+.misslab.done{border-color:#9ff0c9;background:linear-gradient(180deg,#7ff0bd,#44cf92);color:#04261a;cursor:default}
+.misslab.done::after{background:#23865b}
+.misall{margin-bottom:10px}
+.ct{position:relative;overflow:hidden;border:1px solid var(--line);border-radius:11px;background:var(--panel);
+  padding:10px 12px 12px;margin-bottom:8px;transition:border-color .25s}
+.ct .ctop{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px}
+.ct .cid{font:700 11px/1 ui-monospace,monospace;color:var(--dim2);letter-spacing:.08em}
+.ct .cst{font:700 11px/1 system-ui;letter-spacing:.14em;color:var(--dim2)}
+.ct h3{margin:0 0 8px;font:600 14px/1.3 system-ui;color:var(--txt)}
+.ct .cprog{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.ct .cbar{flex:1;height:4px;border-radius:2px;background:rgba(255,255,255,.08);overflow:hidden}
+.ct .cbar i{display:block;height:100%;background:var(--gd)}
+.ct .cnum{font:700 12px/1 ui-monospace,monospace;color:var(--txt);white-space:nowrap}
+.ct .cnum span{color:var(--mut)}
+.ct .cpay{font:600 12px/1.2 ui-monospace,monospace;color:var(--mut)}
+.ct .cpay b{color:var(--vi);font-weight:700}
+.ct .cpay em{color:var(--gd);font-style:normal;font-weight:700}
+.ct .misslab{margin-top:12px}
+.ct.rdy{border-color:rgba(255,209,102,.55);background:linear-gradient(rgba(255,209,102,.06),rgba(255,209,102,.06)),var(--panel)}
+.ct.rdy .cst,.ct.act .cst{color:var(--gd)}
+.ct.act{border-color:rgba(255,209,102,.35)}
+.ct.que{opacity:.72}
+.ct.que .cbar i{background:var(--dim2)}
+.ct.claimed{border-color:rgba(92,230,165,.6)}
+.ct.claimed .cbar i{background:var(--gr);transition:background .3s .2s}
+.ct.claimed .cst{color:var(--gr);font-family:ui-monospace,monospace}
+.ct.claimed .cst::after{content:"";display:inline-block;width:.55em;height:1em;margin-left:3px;vertical-align:-2px;
+  background:var(--gr);animation:misblink 1s steps(1) infinite}
+@keyframes misblink{50%{opacity:0}}
+.ct.claimed::before{content:"";position:absolute;left:0;right:0;top:0;height:40%;pointer-events:none;
+  background:linear-gradient(180deg,transparent,rgba(92,230,165,.16) 70%,rgba(160,255,210,.7) 98%,transparent);
+  transform:translateY(-100%);animation:missweep .55s ease-out forwards}
+@keyframes missweep{to{transform:translateY(260%)}}
 /* and then gets out of the way */
-.card.rdy.gone{max-height:0;opacity:0;padding-top:0;padding-bottom:0;border-width:0;
-  transition:max-height .3s ease-in,opacity .24s ease-in,padding .3s ease-in,
-             border-width .3s ease-in}
+.ct.gone{max-height:0;opacity:0;padding-top:0;padding-bottom:0;margin-bottom:0;border-width:0;
+  transition:max-height .3s ease-in,opacity .24s ease-in,padding .3s ease-in,margin .3s ease-in,border-width .3s ease-in}
 
 /* the reward itself, in flight from the card to the resource it lands in */
 /* Sized to be READ, not noticed. At 13px on a starfield this was a detail; the beat
@@ -72,11 +99,11 @@
   100%{box-shadow:0 0 0 0 rgba(92,230,165,0);transform:translateY(0)}}
 
 @media(prefers-reduced-motion:reduce){
-  .card.rdy.claimed:before{animation:none;background:none}
-  .card.rdy button.misclaim.done{animation:none}
+  .ct.claimed::before{display:none}
+  .ct.claimed .cst::after{animation:none}
   .rcard.land,.svchip.land{animation:none}
   .rwfly{display:none}
-  .card.rdy.gone{transition:opacity .12s linear}
+  .ct.gone{transition:opacity .12s linear}
   .noticebar,.noticepanel{transition:none}   /* patch629: no slide, just show */
 }
 .card h5{margin:0;font:600 12px/1.25 system-ui}
