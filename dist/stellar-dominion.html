@@ -8408,8 +8408,12 @@ function renderLevel(){
 }
 function softButtons(){
   $$("[data-cost]").forEach(b=>{
-    const need=parseFloat(b.dataset.cost), cur=b.dataset.cur==="cry"?S.cry:b.dataset.cur==="dm"?S.dm:S.ore;
-    b.disabled=cur<need;
+    /* every currency a data-cost button can be priced in - the Project's Exotic Node
+       buttons (data-cur="en") used to fall through to ore, so a node the player could
+       not afford looked buyable and then did nothing on tap */
+    const c=b.dataset.cur, need=parseFloat(b.dataset.cost);
+    const cur=c==="cry"?S.cry:c==="dm"?S.dm:c==="en"?(S.en||0):c==="sv"?(S.sv||0):S.ore;
+    if(b.disabled!==(cur<need))b.disabled=cur<need;
     b.closest(".card")&&b.closest(".card").classList.toggle("ok",cur>=need);
   });
 }
