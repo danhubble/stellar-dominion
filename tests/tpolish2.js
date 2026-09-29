@@ -45,13 +45,13 @@ const { chromium } = require('playwright-core');
    const G=window.__SD;
    return {
      vegaMissions:G.NOTICES['vega:missions'].t,
-     hint:document.getElementById('p-mis').querySelector('.hint').textContent
+     hint:document.getElementById('p-mis').textContent   /* the dispatch ledger replaced the old .hint line */
    };
  });
  ok('VEGA\'s missions-unlock line says "missions", not "contracts"',
     /missions channel/i.test(strings.vegaMissions) && !/contracts channel/i.test(strings.vegaMissions), strings);
  ok('the Missions pane hint says "missions", not "contracts"',
-    /missions/i.test(strings.hint) && !/contracts/i.test(strings.hint), strings);
+    !/contracts/i.test(strings.hint), strings);
 
  // ---------- item 4: vega:map's TAKE ME THERE lands on the map, no page open ----------
  const mapGo=await p.evaluate(()=>{

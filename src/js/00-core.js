@@ -31,24 +31,17 @@ function fmtT(s){ s=Math.max(0,Math.floor(s));
    ladderBuy()/grantXp() call rather than teaching either function about governors.
    Never set anywhere else; always false again before the next player-facing call. */
 let hush=false;
-/* One toast on screen at a time: a burst (a MAX buy can fire four) plays as a short
-   queue instead of a stack covering the building rows. Only the newest three are
-   kept; while more are waiting each one is shown for less time. */
-const toastQ=[]; let toastBusy=false;
+/* One toast on screen at a time: the newest shows the moment it fires and the older
+   ones in the host stay hidden (CSS: #toasts .toast:not(:last-child)), so a burst (a
+   MAX buy can fire four) never stacks over the building rows. At most three are kept;
+   each still removes itself on its own timer. */
 function toast(msg,cls){
   if(hush)return;
-  toastQ.push([msg,cls]);
-  if(toastQ.length>3) toastQ.splice(0,toastQ.length-3);
-  if(!toastBusy) nextToast();
-}
-function nextToast(){
-  const it=toastQ.shift(); if(!it){ toastBusy=false; return }
-  toastBusy=true;
-  const host=$("#toasts"); host.textContent="";
-  const d=document.createElement("div"); d.className="toast "+(it[1]||""); d.textContent=it[0];
+  const host=$("#toasts");
+  const d=document.createElement("div"); d.className="toast "+(cls||""); d.textContent=msg;
   host.appendChild(d);
-  setTimeout(()=>{ d.style.transition="opacity .3s"; d.style.opacity="0";
-    setTimeout(()=>{ d.remove(); nextToast() },300) }, toastQ.length?1400:2600);
+  while(host.children.length>3) host.firstChild.remove();
+  setTimeout(()=>{d.style.transition="opacity .4s";d.style.opacity="0";setTimeout(()=>d.remove(),420)},2600);
 }
 /* ============================ audio: synthesis engine ============================
    No samples, pure Web Audio. One AudioContext, built lazily on first sound and torn

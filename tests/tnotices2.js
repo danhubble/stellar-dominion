@@ -165,6 +165,14 @@ const { chromium } = require('playwright-core');
  ok('a real tap on the notice panel itself does not dismiss it (e.target is a descendant, not #notice)',
    JSON.stringify(afterPanelTap)===JSON.stringify(qBefore), {before:qBefore, after:afterPanelTap});
 
+ // routine notices (vega:missions etc.) are a docked banner with no backdrop now; only
+ // story beats keep the dimmed full-screen card, so put one (vega:boot) at the front
+ const qStory=await p.evaluate(()=>{
+   const G=window.__SD, q=G.S.notifyQueue, i=q.indexOf('vega:boot');
+   if(i>0){ q.splice(i,1); q.unshift('vega:boot'); } else if(i<0) q.unshift('vega:boot');
+   G.dirty=true; G.render(); return q.slice();
+ });
+ await p.waitForTimeout(250);
  const backdropPoint=await p.evaluate(()=>{
    const el=document.elementFromPoint(20,20);
    return {isNotice: el&&el.id==='notice'};
@@ -174,7 +182,7 @@ const { chromium } = require('playwright-core');
  const afterBackdropTap=await p.evaluate(()=>window.__SD.S.notifyQueue.slice());
  ok('elementFromPoint away from the panel (the dimmed area) resolves to #notice itself', backdropPoint.isNotice, backdropPoint);
  ok('a real tap on that backdrop area dismisses the front notice, same action as noticeX',
-   afterBackdropTap.length===qBefore.length-1 && afterBackdropTap[0]!==qBefore[0], {before:qBefore, after:afterBackdropTap});
+   afterBackdropTap.length===qStory.length-1 && afterBackdropTap[0]!==qStory[0], {before:qStory, after:afterBackdropTap});
 
  const behindBattle=await p.evaluate(async()=>{
    document.getElementById('battle').classList.add('on');

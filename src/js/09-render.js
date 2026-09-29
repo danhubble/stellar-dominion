@@ -2558,7 +2558,7 @@ function renderMis(){
   });
   if(S.mi>=total){
     if(!q.length){ const e=document.createElement("div"); e.className="ct";
-      e.innerHTML='<h3>All contracts fulfilled</h3><div class="cpay">The Colonial Authority has nothing left to ask of you.</div>';
+      e.innerHTML='<h3>All missions fulfilled</h3><div class="cpay">The Colonial Authority has nothing left to ask of you.</div>';
       host.appendChild(e); }
     return;
   }

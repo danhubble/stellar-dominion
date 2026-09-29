@@ -307,6 +307,10 @@ const URL=GAME_URL;
  await p.waitForTimeout(300);
  const onResearch=await p.evaluate(()=>{
    const G=window.__SD;
+   /* a routine VEGA banner legitimately adds its own height to #view's bottom padding
+      (so a list's last row can scroll clear of it) - clear the queue so this measures
+      the syspage padding alone */
+   G.S.notifyQueue.length=0; G.dirty=true; G.render();
    return { msel:G.S.msel, bodySyspage:document.body.classList.contains('syspage'),
      leftDisplay:getComputedStyle(document.getElementById('left')).display,
      viewPB:getComputedStyle(document.getElementById('view')).paddingBottom };
@@ -393,8 +397,8 @@ const URL=GAME_URL;
  });
  ok('patch632: at 390x667, a fresh save\'s first BUY row (home, Mining Drone) clears the pinned SCAN SECTOR bar with no scroll',
     shortPhone.rowBottom!==null && shortPhone.rowBottom<shortPhone.barTop && shortPhone.noScroll, shortPhone);
- ok('patch632: #mapWrap is the new 26vh (173px) short-phone height at 390x667, not the 34vh tall-phone one',
-    parseFloat(shortPhone.wrapHeight)<200 && parseFloat(shortPhone.wrapHeight)>150, shortPhone);
+ ok('#mapWrap is the short-phone planet band at 390x667 (20vh, 133px - was 26vh before the small-phone layout pass)',
+    parseFloat(shortPhone.wrapHeight)<150 && parseFloat(shortPhone.wrapHeight)>120, shortPhone);
  ok('patch632: the planet still draws at the new box size - canvas backing store matches it, non-blank',
     shortPhone.canvasMatchesBox && shortPhone.canvasNonBlank, shortPhone);
  await ctx667.close();

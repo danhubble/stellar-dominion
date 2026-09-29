@@ -76,7 +76,10 @@ for(const k of ['warden','phantom','impaler']){
 // it, exactly once, per house rules for a pinned test whose behaviour intentionally
 // changed. What the pin actually protects (below) still holds unchanged: no
 // warden/phantom/impaler-specific color case exists anywhere in this line.
-const COL_LINE = 'const col=(BT.t&&BT.t.final)?"#ff4d5e":K.boss?"#ff5f6d":e.k==="swift"?"#ffd166":e.k==="heal"?"#5ce6a5":\n              e.k==="bomber"?"#ff9a6b":e.k==="split"?"#b07cff":BT.T.col;';
+// Raids refresh (owner-approved "enemies read red"): every hostile now draws in the
+// rose family, kinds told apart by shade and silhouette - pin updated once, per the
+// house rule above. The warden/phantom/impaler guarantee below is unchanged.
+const COL_LINE = 'const col=(BT.t&&BT.t.final)?"#ff4d5e":K.boss?"#ff4d5e":e.k==="swift"?"#ff8fa3":e.k==="heal"?"#ffa3b5":\n              e.k==="bomber"?"#ff7a6b":e.k==="split"?"#e85a8a":"#ff6b8a";';
 ok('enemy fill-color logic (col=...) has exactly the patch591c mirror override and no warden/phantom/impaler color case',
    html.includes(COL_LINE) && !/warden|phantom|impaler/.test(COL_LINE));
 
