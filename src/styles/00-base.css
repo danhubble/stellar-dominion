@@ -88,7 +88,10 @@ body{
    --nbot, which renderNotice() measures. */
 .noticebar.banner{background:transparent;padding-bottom:var(--nbot,12px)}
 .noticebar.banner.on{pointer-events:none}
-.noticebar.banner .noticepanel{pointer-events:auto;padding:7px 10px;box-shadow:0 6px 20px -6px rgba(0,0,0,.7)}
+.noticebar.banner .noticepanel{pointer-events:none;padding:7px 10px;box-shadow:0 6px 20px -6px rgba(0,0,0,.7)}
+/* only a showing banner takes taps - a dismissed one keeps .banner while it fades, and
+   must not leave an invisible card over the buttons above Scan */
+.noticebar.banner.on .noticepanel{pointer-events:auto}
 .noticebar.banner .vegaav{width:34px;height:34px;margin-right:8px}
 body.nb-on #toasts,body.syspage.nb-on #toasts{bottom:calc(var(--nbot,12px) + var(--nbh,0px))}
 /* while a banner is up, the scroller gets its height as extra bottom room so the last
