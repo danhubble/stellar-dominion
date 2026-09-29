@@ -226,14 +226,18 @@ main{flex:1 1 auto;display:flex;min-height:0}
    is still keyed to the id #scan specifically, on purpose - see the patch
    header for why the sheet's own button must NOT inherit it. */
 .scanbtn{
-  width:100%;padding:14px 10px;border-radius:12px;cursor:pointer;
-  border:1px solid rgba(72,226,255,.45);
-  background:linear-gradient(180deg,rgba(72,226,255,.20),rgba(72,226,255,.05));
-  color:#eafcff;font:700 13px/1 system-ui;letter-spacing:.18em;
-  box-shadow:0 0 22px rgba(72,226,255,.12) inset;transition:transform .06s,box-shadow .2s
-}
-.scanbtn:active{transform:scale(.97);box-shadow:0 0 32px rgba(72,226,255,.35) inset}
-.scanbtn small{display:block;margin-top:5px;font:400 10px/1 ui-monospace,monospace;letter-spacing:.05em;color:#a9e9ff}
+  width:100%;padding:14px 10px 15px;border-radius:12px;cursor:pointer;
+  border:1px solid #7deeff;
+  background:linear-gradient(180deg,#5be8ff,#38c9e6);position:relative;overflow:hidden;
+  color:#04121a;font:800 13px/1 system-ui;letter-spacing:.18em;
+  box-shadow:0 1px 0 rgba(255,255,255,.35) inset;
+  transition:transform .06s}
+.scanbtn::after{content:"";position:absolute;left:0;right:0;bottom:0;height:4px;background:#1c8fa8;pointer-events:none}
+.scanbtn:active{transform:translateY(3px)}
+.scanbtn:active::after{height:1px}
+.scanbtn:focus-visible{outline:2px solid #eafcff;outline-offset:3px}
+.scanbtn small{display:block;margin-top:5px;font:600 11px/1 ui-monospace,monospace;letter-spacing:.05em;color:#06303c}
+.scanbtn small .ci{color:#06303c}
 
 .mini{border:1px solid var(--line);border-radius:10px;padding:8px;background:var(--panel)}
 .mini h4{margin:0 0 6px;font:600 11px/1 system-ui;letter-spacing:.14em;color:var(--dim);text-transform:uppercase}
@@ -1066,10 +1070,10 @@ button.ghost{background:transparent;border-color:var(--line);color:var(--mut)}
    not depend on selector-count arithmetic against patch619's own #mapWrap.homeonly
    rule just above - the coordinator asked for that explicitly, not left to chance
    if either rule changes later. */
-body.syspage #mapWrap{height:34vh;max-height:34vh;aspect-ratio:auto;width:auto;
+body.syspage #mapWrap{height:24vh;max-height:24vh;aspect-ratio:auto;width:auto;
   margin:0 calc(-12px - env(safe-area-inset-right,0px)) 0 calc(-12px - env(safe-area-inset-left,0px));
   border-radius:0;border-left:none;border-right:none}
-body.syspage #mapWrap.homeonly{height:34vh;max-height:34vh}
+body.syspage #mapWrap.homeonly{height:24vh;max-height:24vh}
 /* patch632: on a short phone (max-height:720px - 390x667, not 390x844) the 34vh
    band above leaves #sysBuildRows' first row's own BUY button half-covered by
    #sshScanBar, the pinned SCAN SECTOR bar - a brand-new player's very first
@@ -1079,8 +1083,8 @@ body.syspage #mapWrap.homeonly{height:34vh;max-height:34vh}
    inside a query the taller 390x844 case never matches - the standard shape
    for "override under a query", same as the base rule needing no changes. */
 @media(max-height:720px){
-  body.syspage #mapWrap{height:26vh;max-height:26vh}
-  body.syspage #mapWrap.homeonly{height:26vh;max-height:26vh}
+  body.syspage #mapWrap{height:20vh;max-height:20vh}
+  body.syspage #mapWrap.homeonly{height:20vh;max-height:20vh}
 }
 #mapLinks{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 #mapBg{position:absolute;inset:0;width:100%;height:100%;display:block}

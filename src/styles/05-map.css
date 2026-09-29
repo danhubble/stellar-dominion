@@ -30,10 +30,10 @@
    not depend on selector-count arithmetic against patch619's own #mapWrap.homeonly
    rule just above - the coordinator asked for that explicitly, not left to chance
    if either rule changes later. */
-body.syspage #mapWrap{height:34vh;max-height:34vh;aspect-ratio:auto;width:auto;
+body.syspage #mapWrap{height:24vh;max-height:24vh;aspect-ratio:auto;width:auto;
   margin:0 calc(-12px - env(safe-area-inset-right,0px)) 0 calc(-12px - env(safe-area-inset-left,0px));
   border-radius:0;border-left:none;border-right:none}
-body.syspage #mapWrap.homeonly{height:34vh;max-height:34vh}
+body.syspage #mapWrap.homeonly{height:24vh;max-height:24vh}
 /* patch632: on a short phone (max-height:720px - 390x667, not 390x844) the 34vh
    band above leaves #sysBuildRows' first row's own BUY button half-covered by
    #sshScanBar, the pinned SCAN SECTOR bar - a brand-new player's very first
@@ -43,8 +43,8 @@ body.syspage #mapWrap.homeonly{height:34vh;max-height:34vh}
    inside a query the taller 390x844 case never matches - the standard shape
    for "override under a query", same as the base rule needing no changes. */
 @media(max-height:720px){
-  body.syspage #mapWrap{height:26vh;max-height:26vh}
-  body.syspage #mapWrap.homeonly{height:26vh;max-height:26vh}
+  body.syspage #mapWrap{height:20vh;max-height:20vh}
+  body.syspage #mapWrap.homeonly{height:20vh;max-height:20vh}
 }
 #mapLinks{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 #mapBg{position:absolute;inset:0;width:100%;height:100%;display:block}
