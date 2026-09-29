@@ -1592,9 +1592,12 @@ function renderMap(){
   renderSysBuild(s,held);
   renderSysGov(s,held);
   let rows="";
+  /* compact header (small-phone pass): the name already sits in the zoom bar above,
+     so it is not repeated here; home's Structures/Output ride on the meta line as
+     one readout; a system you already hold drops its flavour line. */
+  let stat="";
   if(s.home){
-    rows=`<div class="sysrow"><span>Structures</span><b>${fmt(tot())}</b></div>
-      <div class="sysrow"><span>Output</span><b>${fmt(rate())} /s</b></div>`;
+    stat=`<div class="sysstat"><b>${fmt(tot())}</b> built · <b>${fmt(rate())}</b> /s</div>`;
     /* patch598 polish fix: dropped the "Incoming fleet" row here - #sysThreat's own
        red block (held systems, home included) already says rival + clock, so this
        was saying the same thing twice. */
@@ -1643,10 +1646,9 @@ function renderMap(){
   }
   const rvid=sysOwner(s), rv=rvid?RIVALMAP[rvid]:null;
   const owner = rv ? ("HELD BY "+rv.n) : (held?"Yours":(s.owner?"Driven off \u2014 unclaimed":"Unclaimed"));
-  const ih=`<h4 style="color:${e?e.col:"var(--gr)"}">${s.n}</h4>
-    <div class="sysmeta" ${rv?`style="color:${rv.col}"`:""}>${
-      s.home?"HOME SYSTEM":"RING "+s.ring} \u00b7 ${owner.toUpperCase()}</div>
-    <div class="sysd">${s.d}${rv?" <b style=\"color:"+rv.col+"\">"+rv.t+"</b>":""}</div>${rows}`;
+  const ih=`<div class="syshead"><div class="sysmeta" style="color:${rv?rv.col:(e?e.col:"var(--gr)")}">${
+      s.home?"HOME SYSTEM":"RING "+s.ring} \u00b7 ${owner.toUpperCase()}</div>${stat}</div>
+    ${held?"":`<div class="sysd">${s.d}${rv?" <b style=\"color:"+rv.col+"\">"+rv.t+"</b>":""}</div>`}${rows}`;
   if(info.dataset.h!==ih){ info.dataset.h=ih; info.innerHTML=ih }
   if(s.home||!act){
     if(act&&act.dataset.h!==""){ act.dataset.h=""; act.innerHTML="" }

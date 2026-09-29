@@ -230,6 +230,10 @@ body.syspage #sysSheet{display:block}
 .sshscanbot[hidden]{display:none}
 #sysInfo h4{margin:0;font:700 15px/1.2 system-ui}
 .sysmeta{font:600 11px/1 system-ui;letter-spacing:.1em;color:var(--dim);margin-top:4px}
+.syshead{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:8px}
+.syshead .sysmeta{margin-top:0;font-weight:700}
+.sysstat{font:600 12px/1 ui-monospace,monospace;color:var(--mut);white-space:nowrap}
+.sysstat b{color:var(--txt)}
 .sysd{font-size:11.5px;color:var(--mut);line-height:1.5;margin:8px 0 10px}
 .sysrow{display:flex;justify-content:space-between;gap:10px;font-size:11.5px;padding:3px 0;
   border-top:1px solid rgba(255,255,255,.05)}
