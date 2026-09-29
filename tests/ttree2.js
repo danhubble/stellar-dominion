@@ -31,13 +31,13 @@ const { chromium } = require('playwright-core');
  await p.evaluate(()=>{ __SD.S.xpn=1e9; __SD.S.lvl=80; __SD.S.lvSeen=80; });   // open the level-gated tabs
  await p.evaluate(()=>{ __SD.S.rs={drill:5,amp:4,cryo:3,cold:1,auto:2}; __SD.S.cry=5e4; });
  await p.click('.tab[data-p="p-res"]'); await p.waitForTimeout(700);
- console.log('chips',await p.$$eval('.rchip',n=>n.length),'nodes',await p.$$eval('.rn',n=>n.length),'segs',await p.$$eval('#treeLines path',n=>n.length));
+ console.log('picker',await p.$$eval('#resPick',n=>n.length),'track rows',await p.$$eval('#rtrack .rtr',n=>n.length),'buy',await p.$$eval('#riBuy',n=>n.length));
  await p.screenshot({path:SHOTS+'r2-drill.png'});
- await p.click('.rchip:nth-child(6)'); await p.waitForTimeout(600);
+ await p.click('#resPick'); await p.waitForTimeout(200); await p.click('.rbr:nth-child(6)'); await p.waitForTimeout(600);
  await p.screenshot({path:SHOTS+'r2-void.png'});
- await p.click('.rchip:nth-child(1)'); await p.waitForTimeout(400);
+ await p.click('#resPick'); await p.waitForTimeout(200); await p.click('.rbr:nth-child(1)'); await p.waitForTimeout(400);
  const before=await p.evaluate(()=>__SD.S.rs.drill);
- await p.click('#treeGrid .rn:nth-child(6)'); await p.waitForTimeout(300); await p.click('#nmBuy'); await p.waitForTimeout(400);
+ await p.click('#riBuy'); await p.waitForTimeout(1200);   // research track: the next node's own button (RESEARCHED beat holds ~0.9s)
  console.log('drill',before,'->',await p.evaluate(()=>__SD.S.rs.drill));
  await p.click('.tab[data-p="p-map"]'); await p.waitForTimeout(400);
  // patch628b: #sysSheet.open is gone - body.syspage is the fact now.

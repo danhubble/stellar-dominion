@@ -972,18 +972,31 @@ button.ghost{background:transparent;border-color:var(--line);color:var(--mut)}
   .bh-n{font-size:13px}
   .bab button b{font-size:10px}
 }
-/* ---------- research ---------- */
-#resTabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;margin-bottom:10px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.18) transparent}
-#resTabs::-webkit-scrollbar{height:4px}
-#resTabs::-webkit-scrollbar-thumb{background:rgba(255,255,255,.18);border-radius:2px}
-.rchip{display:flex;align-items:center;gap:7px;flex:none;cursor:pointer;
-  border:1px solid var(--line);border-radius:10px;padding:6px 10px;background:rgba(10,14,32,.7);
-  color:var(--mut);font:600 11px/1.15 system-ui;white-space:nowrap}
-.rchip svg{width:19px;height:19px;color:var(--a);flex:none}
-.rchip b{font:700 9.5px/1 ui-monospace,monospace;color:var(--dim);letter-spacing:.06em}
-.rchip.on{border-color:var(--a);color:var(--txt);background:var(--a2)}
-.rchip.lk{opacity:.5}
-.rchip.lk::after{content:"🔒";font-size:9px}
+/* ---------- research ----------
+   One branch at a time as a vertical track: a branch picker, a single line for the
+   nodes already researched, the next node as a card with its effect and a violet
+   crystal slab (same build as Buy and Claim), then the nodes still to come. Branches
+   share one calm steel accent instead of borrowing the signal colours. */
+#resTabs{margin-bottom:10px}
+.rpick{display:flex;align-items:center;gap:10px;width:100%;min-height:44px;cursor:pointer;
+  border:1px solid var(--line2);border-radius:10px;padding:6px 12px;background:var(--panel);color:var(--txt);text-align:left}
+.rpick svg.ri{width:22px;height:22px;color:var(--sv);flex:none}
+.rpick b{font:600 14px/1.2 system-ui;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rpick .rpc{font:700 12px/1 ui-monospace,monospace;color:var(--mut);white-space:nowrap}
+.rpick .rpc i{font-style:normal;color:var(--txt)}
+.rpick svg.chev{width:14px;height:14px;color:var(--mut);flex:none}
+.rpick:focus-visible,.rbr:focus-visible,.rtr:focus-visible{outline:2px solid #eafcff;outline-offset:2px}
+/* the branch list (modal) */
+.rbrs{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.rbr{display:flex;align-items:center;gap:10px;min-height:44px;cursor:pointer;border:1px solid var(--line);
+  border-radius:10px;padding:6px 12px;background:rgba(10,14,32,.7);color:var(--txt);text-align:left;width:100%}
+.rbr svg.ri{width:20px;height:20px;color:var(--sv);flex:none}
+.rbr span{flex:1;font:600 13px/1.25 system-ui}
+.rbr small{display:block;font:500 11px/1.3 system-ui;color:var(--mut)}
+.rbr b{font:700 12px/1 ui-monospace,monospace;color:var(--mut)}
+.rbr.on{border-color:var(--line2);background:rgba(72,226,255,.07)}
+.rbr.lk span{color:var(--mut)}
+.rlock{width:12px;height:12px;vertical-align:-1px;margin-right:4px}
 .rmode{display:flex;gap:6px;margin-bottom:10px}
 .rmbtn{flex:1;cursor:pointer;border:1px solid var(--line);border-radius:10px;padding:8px 6px;
   background:rgba(10,14,32,.7);color:var(--mut);font:700 11px/1 system-ui;letter-spacing:.06em;
@@ -997,66 +1010,76 @@ button.ghost{background:transparent;border-color:var(--line);color:var(--mut)}
 /* programme rows on this tab have no accordion (see renderProg()) - always open, not
    clickable, so the .sysrow2 pointer cursor they otherwise inherit would be misleading */
 .proghead{cursor:default}
+#resProgPane .card button.resslab{margin-top:4px}
 
-#rinfo{position:sticky;top:-12px;z-index:5;margin-bottom:12px;padding:9px 11px;border-radius:10px;
-  border:1px solid var(--line);background:rgba(9,13,30,.94);backdrop-filter:blur(8px)}
-#rinfo .ri-t{font:700 12px/1.3 system-ui;color:var(--txt);display:flex;align-items:center;gap:7px;flex-wrap:wrap}
-#rinfo .ri-t .lv{font:600 9.5px/1 ui-monospace,monospace;color:var(--dim);letter-spacing:.1em}
-#rinfo .ri-b{font-size:11px;color:var(--mut);margin-top:3px}
-#rinfo .ri-e{font-size:11px;color:var(--gd);font-family:ui-monospace,monospace;margin-top:3px}
-#rinfo .ri-a{margin-top:7px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-#rinfo button{border:1px solid var(--line2);background:rgba(72,226,255,.10);color:var(--txt);
-  border-radius:8px;padding:6px 12px;cursor:pointer;font:600 11px/1 ui-monospace,monospace}
-#rinfo button:disabled{opacity:.4;cursor:not-allowed}
-#rinfo .warnt{font-size:10.5px;color:var(--rd)}
+/* violet crystal slab - research is paid in crystal */
+.resslab{position:relative;overflow:hidden;width:100%;min-height:44px;border-radius:9px;cursor:pointer;
+  border:1px solid #c7a8ff;background:linear-gradient(180deg,#9d74f0,#7a52d6);color:#fff;
+  font:800 12px/1 system-ui;letter-spacing:.14em;padding:0 12px 3px;
+  box-shadow:0 1px 0 rgba(255,255,255,.3) inset;transition:transform .06s}
+.resslab::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;background:#4b2d99;pointer-events:none}
+.resslab:active:not(:disabled){transform:translateY(2px)}
+.resslab:active:not(:disabled)::after{height:1px}
+.resslab:focus-visible{outline:2px solid #efe4ff;outline-offset:2px}
+.resslab b{font:800 13px/1 ui-monospace,monospace;letter-spacing:0;margin-left:6px}
+.resslab .ci{width:1.2em;height:1.2em;vertical-align:-.25em;color:#fff}
+.resslab:disabled .ci{color:var(--vi)}
+.resslab:disabled{cursor:not-allowed;border-color:var(--line);background:rgba(255,255,255,.035);color:var(--mut);box-shadow:none}
+.resslab:disabled::after{background:rgba(255,255,255,.06)}
+.resslab:disabled b{color:var(--txt)}
+
+/* the track */
+.rtk{position:relative}
+.rtr{display:grid;grid-template-columns:28px 1fr;gap:10px;position:relative;padding:0 0 10px;width:100%;
+  border:0;background:none;color:inherit;text-align:left;font:inherit;cursor:default}
+button.rtr{cursor:pointer}
+.rtr::before{content:"";position:absolute;left:13px;top:28px;bottom:-2px;width:2px;background:rgba(255,255,255,.1)}
+.rtr.got::before{background:var(--sv)}
+.rtr:last-child::before{display:none}
+.rdot{width:28px;height:28px;border-radius:50%;border:2px solid rgba(255,255,255,.18);display:grid;place-items:center;
+  font:700 11px/1 ui-monospace,monospace;color:var(--mut);background:var(--bg);position:relative;z-index:1}
+.rdot svg{width:14px;height:14px}
+.rtr.got .rdot{border-color:var(--sv);background:var(--sv);color:#0b1020}
+.rtr.next .rdot{border-color:var(--vi);color:var(--txt);box-shadow:0 0 0 4px rgba(168,120,255,.15)}
+.rtr .rnm{font:600 13px/28px system-ui;color:var(--txt)}
+.rtr.got .rnm{color:var(--mut);font-weight:500}
+.rtr.far .rnm{color:var(--dim2);font-weight:500}
+.rtr .rfx{font:600 12px/1 ui-monospace,monospace;color:var(--dim2);margin-left:6px}
+.rtr.flash .rdot{animation:rflash .5s ease-out}
+@keyframes rflash{0%{box-shadow:0 0 0 0 rgba(169,188,212,.8)}100%{box-shadow:0 0 0 10px rgba(169,188,212,0)}}
+.rnext{border:1px solid rgba(168,120,255,.5);border-radius:11px;padding:10px 12px 12px;margin-top:2px;
+  background:linear-gradient(rgba(168,120,255,.06),rgba(168,120,255,.06)),var(--panel)}
+.rnext.lkd{border-color:var(--line);background:var(--panel)}
+.rnext .rtop{display:flex;justify-content:space-between;gap:8px;margin-bottom:5px;
+  font:700 11px/1 system-ui;letter-spacing:.14em;color:var(--dim2)}
+.rnext .rtop span:last-child{color:var(--vi)}
+.rnext.lkd .rtop span:last-child{color:var(--mut)}
+.rnext h3{margin:0 0 4px;font:600 15px/1.25 system-ui;color:var(--txt)}
+.rnext .ref{font:700 13px/1.35 ui-monospace,monospace;color:var(--gd);margin-bottom:4px}
+.rnext .ref span{color:var(--mut);font-weight:600}
+.rnext .rfl{font-size:12px;color:var(--mut);margin-bottom:10px}
+.rnext .rreq{font:600 12px/1.4 system-ui;color:var(--mut)}
+.rnext .rconf{font:700 12px/1 ui-monospace,monospace;color:var(--gr);height:14px;margin:-4px 0 8px;display:none}
+.rnext .rconf::after{content:"";display:inline-block;width:.55em;height:1em;margin-left:3px;vertical-align:-2px;
+  background:var(--gr);animation:misblink 1s steps(1) infinite}
+.rnext.done{border-color:rgba(92,230,165,.6)}
+.rnext.done .rconf{display:block}
+@media(prefers-reduced-motion:reduce){.rtr.flash .rdot{animation:none}.rnext .rconf::after{animation:none}}
 
 .nmh{display:flex;gap:13px;align-items:center}
 .modal .nmh h3{text-transform:none;letter-spacing:.01em;font:700 16px/1.25 system-ui}
 .nmt{width:60px;height:60px;border-radius:18px;display:grid;place-items:center;flex:none;
-  border:2px solid var(--a);background:var(--a2);color:var(--a)}
+  border:2px solid var(--line2);background:rgba(169,188,212,.08);color:var(--sv)}
 .nmt svg{width:32px;height:32px;display:block}
-.nmm{font:600 10px/1.4 ui-monospace,monospace;color:var(--mut);letter-spacing:.06em}
+.nmm{font:600 11px/1.4 ui-monospace,monospace;color:var(--mut);letter-spacing:.06em}
 .nmbal{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:11px;padding:8px 11px;
   border-radius:9px;border:1px solid var(--line);background:rgba(255,255,255,.03);
-  font:11px/1.5 ui-monospace,monospace;color:var(--dim)}
+  font:11px/1.5 ui-monospace,monospace;color:var(--mut)}
 .nmbal b{color:var(--txt);font-weight:700}
 .nmbal .sep{opacity:.5}
-.nmbal .nmneed{margin-left:auto;color:var(--rd);font-size:10.5px}
+.nmbal .nmneed{margin-left:auto;color:var(--txt);font-size:11px}
 .nme{margin-top:9px;padding:9px 11px;border-radius:9px;border:1px solid var(--line);
   background:rgba(255,209,102,.06);font:11.5px/1.5 ui-monospace,monospace;color:var(--gd)}
-#tree{position:relative;padding-bottom:10px}
-#treeLines{position:absolute;inset:0;width:100%;height:100%;z-index:1;pointer-events:none;overflow:visible}
-#treeGrid{position:relative;z-index:2;display:grid;gap:12px 10px;justify-items:center}
-.rn{display:flex;flex-direction:column;align-items:center;gap:6px;width:100%;cursor:default}
-.rn .tile{position:relative;width:74px;height:74px;border-radius:22px;display:grid;place-items:center;
-  border:2px solid rgba(96,142,255,.22);background:rgba(9,13,30,.92);color:var(--dim);transition:.15s}
-.rn .tile svg{width:36px;height:36px;display:block}
-.rn .tile .k{position:absolute;top:-7px;right:-7px;min-width:20px;height:20px;border-radius:10px;
-  display:grid;place-items:center;font:700 10px/1 ui-monospace,monospace;
-  border:1px solid var(--line);background:#0a0e20;color:var(--dim);padding:0 4px}
-.rn .nm{font:600 9.5px/1.25 system-ui;color:var(--dim);text-align:center;max-width:100px;
-  height:24px;overflow:hidden}
-.rn.got .tile{border-color:var(--a);color:var(--a);background:var(--a2);box-shadow:0 0 16px var(--a2)}
-.rn.got .tile .k{border-color:var(--a);color:var(--a)}
-.rn.got .nm{color:var(--mut)}
-.rn.next .tile{border-color:var(--a);border-style:dashed;color:var(--txt)}
-.rn.next{cursor:pointer}
-.rn.next.rich .tile{border-style:solid;background:var(--a2);color:var(--a);animation:nodep 1.7s ease-in-out infinite}
-.rn.next.rich .nm{color:var(--txt)}
-.rn.next:hover .tile{transform:scale(1.07)}
-.rn.far{opacity:.4}
-.rn.lockb{opacity:.25}
-.rn.sel .tile{outline:2px solid var(--gr);outline-offset:3px;box-shadow:0 0 18px rgba(92,230,165,.35)}
-.rn.sel .nm{color:var(--gr)}
-@keyframes nodep{50%{box-shadow:0 0 0 6px var(--a2)}}
-@media(max-width:760px){
-  #rinfo{padding:8px 10px}
-  #rinfo .ri-b{font-size:10.5px}
-  .rn .tile{width:60px;height:60px;border-radius:18px}
-  .rn .tile svg{width:29px;height:29px}
-  .rn .nm{font-size:8.6px;max-width:84px;height:22px}
-  #treeGrid{gap:10px 6px}
-}
 .ach{border:1px solid var(--line);border-radius:9px;padding:8px 10px;background:rgba(10,14,32,.6);opacity:.45}
 .ach.got{opacity:1;border-color:rgba(255,209,102,.45);background:rgba(60,48,14,.28)}
 .ach b{display:block;font-size:11.5px} .ach span{font-size:10px;color:var(--mut)}
@@ -1727,8 +1750,7 @@ body.syspage #toasts{bottom:calc(var(--sysbarh) + 8px + env(safe-area-inset-bott
         </div>
         <div id="resTreePane">
           <div id="resTabs"></div>
-          <div id="rinfo"></div>
-          <div id="tree"><svg id="treeLines" aria-hidden="true"></svg><div id="treeGrid"></div></div>
+          <div id="rtrack" class="rtk"></div>
         </div>
         <div id="resProgPane" hidden>
           <div id="progList"></div>
@@ -6640,7 +6662,7 @@ function render(){
      that is now these same ladderTierRow()s inline in the sheet. The function
      stays defined (dead) until patch612 deletes it with the rest of the widget. */
   if(dirty){ dirty=false; renderRes(); renderProg(); renderNex(); renderMis(); renderAch(); renderRaids(); renderArmoury(); }
-  else { softButtons(); if($("#p-res").classList.contains("on")){resMark();resInfo()} }
+  else { softButtons(); if($("#p-res").classList.contains("on"))resInfo() }
   if(nmLive&&$("#mask").classList.contains("on"))nmTick();
   if(rmLive&&$("#mask").classList.contains("on"))rmTick();
   if(lfPromptLive&&$("#mask").classList.contains("on"))lfPromptTick();   /* FIX 1 (2026-09-06) */
@@ -8237,7 +8259,6 @@ function exoModal(){
     <div class="row"><button id="rmClose">CLOSE</button></div>`,
     ()=>{ $("#rmClose").onclick=hideModal; rmTick(); });
 }
-let resSel=null;
 let resMode="tree";           /* which half of the Research tab is showing - "tree" or
                                   "prog". Not persisted: presentation-only, always opens
                                   on the tech tree, same as the tab itself always did. */
@@ -8274,38 +8295,98 @@ function resCur(r){ return r.cur||"cry" }
 function resBal(r){ return resCur(r)==="sv" ? (S.sv||0) : S.cry }
 function resIncome(r){ return resCur(r)==="sv" ? 0 : cryRate() }
 function curBranch(){ return RESH[Math.min(RESH.length-1,Math.max(0,S.rtab|0))] }
+/* The Research tab is one branch at a time, drawn as a vertical track (every branch is
+   a straight line of nodes, so a tree grid only cost space). renderRes() rebuilds the
+   picker and the track on a real change only (dataset.h guards - tchurn2 sweeps this
+   pane for buttons that get swapped out mid-click); resInfo() runs every render() pass
+   and only updates the next node's button in place (disabled state and "need X"). */
+const R_CHEV='<svg class="chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 6l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const R_CHECK='<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3L13 5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const R_LOCK='<svg class="rlock" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="1.5" fill="currentColor"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>';
+let resFxUntil=0, resFlash=false;
+function resIcon(r){ return `<svg class="ri" viewBox="0 0 48 48" aria-hidden="true">${r.ic}</svg>` }
+function resNodeName(r,k){ return (RNAMES[r.id]||[])[k-1]||("Level "+k) }
+function resBtnHTML(r,cost){
+  const have=resBal(r);
+  return have>=cost ? `RESEARCH<b>${fmt(cost)} ${RI(resCur(r))}</b>`
+                    : `NEED<b>${fmt(cost-have)} ${RI(resCur(r))}</b>`;
+}
+/* "+75% all ore production" -> "+101% all ore production" reads as
+   "+75% -> +101% all ore production": when the two lines differ in one word only,
+   show that word changing and the rest once. */
+function resEffDiff(a,b){
+  const A=a.split(" "), B=b.split(" ");
+  if(A.length===B.length){ const d=A.map((w,i)=>w!==B[i]?i:-1).filter(i=>i>=0);
+    if(d.length===1){ const i=d[0];
+      return A.slice(0,i).join(" ")+(i?" ":"")+`<span>${A[i]} →</span> ${B[i]}`+(i<A.length-1?" "+A.slice(i+1).join(" "):""); } }
+  return `<span>${a} →</span> ${b}`;
+}
+function resPicker(){
+  showModal(`<h3>Research branches</h3><div class="rbrs">${RESH.map((r,i)=>{
+      const l=lv(S.rs,r.id), lk=resLocked(r);
+      return `<button type="button" class="rbr${i===(S.rtab|0)?" on":""}${lk?" lk":""}" data-i="${i}">${resIcon(r)}
+        <span>${r.n}${lk?`<small>${R_LOCK}${resReqText(r)}</small>`:""}</span><b>${l}/${r.max}</b></button>`;
+    }).join("")}</div><div class="row"><button id="rbClose">CLOSE</button></div>`,()=>{
+      $("#rbClose").onclick=hideModal;
+      $$(".rbr").forEach(b=>b.onclick=()=>{ S.rtab=+b.dataset.i; hideModal(); dirty=true; render(); save(); });
+    });
+}
 function renderRes(){
-  // branch chips
-  const tabs=$("#resTabs"); tabs.innerHTML="";
-  RESH.forEach((r,i)=>{
-    const l=lv(S.rs,r.id), locked=resLocked(r);
-    const b=document.createElement("button");
-    b.className="rchip"+(i===(S.rtab|0)?" on":"")+(locked?" lk":"");
-    b.style.setProperty("--a",r.col); b.style.setProperty("--a2",rgba(r.col,.16));
-    b.innerHTML=`<svg viewBox="0 0 48 48">${r.ic}</svg><span>${r.n}</span><b>${l}/${r.max}</b>`;
-    b.onclick=()=>{ S.rtab=i; resSel=null; dirty=true; render(); save(); };
-    tabs.appendChild(b);
-  });
-  if(resTabsHsUpd)resTabsHsUpd();
-  const r=curBranch(), l=lv(S.rs,r.id), locked=resLocked(r), max=l>=r.max;
-  // nodes
-  const host=$("#treeGrid"); host.innerHTML="";
-  host.style.setProperty("--a",r.col); host.style.setProperty("--a2",rgba(r.col,.18));
-  const bi=RESH.indexOf(r);
-  for(let k=1;k<=r.max;k++){
-    const el=document.createElement("div");
-    let cls="rn";
-    if(locked)cls+=" lockb far"; else if(k<=l)cls+=" got"; else if(k===l+1)cls+=" next"; else cls+=" far";
-    el.className=cls; el.dataset.k=k;
-    el.innerHTML=`<div class="tile"><svg viewBox="0 0 48 48">${glyphFor(bi,k)}</svg><span class="k">${k}</span></div>
-      <div class="nm">${(RNAMES[r.id]||[])[k-1]||("Level "+k)}</div>`;
-    el.onclick=()=>{ resSel=k; resInfo(); resMark(); nodeModal(r,k); };
-    el.onmouseenter=()=>{ resSel=k; resInfo(); resMark(); };
-    host.appendChild(el);
+  const cs=$("#resCryStrip"); if(cs)cs.hidden = resMode!=="prog";
+  if(Date.now()<resFxUntil)return;           /* a RESEARCHED beat is playing - leave the card be */
+  const r=curBranch(), l=lv(S.rs,r.id), locked=resLocked(r), cost=resCost(r,l);
+  const tabs=$("#resTabs");
+  const ph=`<button type="button" class="rpick" id="resPick" aria-label="Change research branch">${resIcon(r)}<b>${r.n}</b>
+    <span class="rpc"><i>${l}</i> / ${r.max}</span>${R_CHEV}</button>`;
+  if(tabs.dataset.h!==ph){ tabs.dataset.h=ph; tabs.innerHTML=ph; $("#resPick").onclick=resPicker; }
+  let h="";
+  if(l>0) h+=`<div class="rtr got${resFlash?" flash":""}"><div class="rdot">${R_CHECK}</div>
+      <div class="rnm">${l} researched<span class="rfx">${r.d(l)}</span></div></div>`;
+  if(l<r.max){
+    const k=l+1;
+    const eff = l>0 ? resEffDiff(r.d(l),r.d(k)) : r.d(k);
+    h+=`<div class="rtr next"><div class="rdot">${k}</div><div class="rnext${locked?" lkd":""}" id="rNext">
+      <div class="rtop"><span>NODE ${k} / ${r.max}</span><span>${locked?"LOCKED":"NEXT UP"}</span></div>
+      <h3>${resNodeName(r,k)}</h3><div class="ref">${eff}</div><div class="rfl">${r.t}</div>
+      ${locked?`<div class="rreq">${R_LOCK}${resReqText(r)}</div>`
+        :`<div class="rconf" id="rConf"></div><button type="button" class="resslab" id="riBuy">${resBtnHTML(r,cost)}</button>`}
+      </div></div>`;
+    for(let j=k+1;j<=r.max;j++) h+=`<button type="button" class="rtr far" data-k="${j}"><div class="rdot">${j}</div>
+      <div class="rnm">${resNodeName(r,j)}</div></button>`;
+  } else {
+    h+=`<div class="rtr next"><div class="rdot">${R_CHECK}</div><div class="rnext"><div class="rtop"><span>${r.max} / ${r.max}</span><span>COMPLETE</span></div>
+      <h3>${r.n} complete</h3><div class="ref">${r.d(l)}</div></div></div>`;
   }
-  layoutTree();
-  resInfo(); resMark();
-  requestAnimationFrame(()=>{layoutTree();drawTreeLines()});
+  const tk=$("#rtrack");
+  if(tk.dataset.h!==h){
+    tk.dataset.h=h; tk.innerHTML=h;
+    tk.querySelectorAll(".rtr.far").forEach(b=>b.onclick=()=>nodeModal(r,+b.dataset.k));
+    const bt=$("#riBuy"); if(bt)bt.onclick=()=>resBuyFx(r);
+  }
+  resFlash=false;
+  resInfo();
+}
+/* the per-frame part: the next node's button follows the balance without a rebuild */
+function resInfo(){
+  const bt=$("#riBuy"); if(!bt||Date.now()<resFxUntil)return;
+  const r=curBranch(), cost=resCost(r,lv(S.rs,r.id));
+  const ok=resBal(r)>=cost, html=resBtnHTML(r,cost);
+  if(bt.disabled===ok)bt.disabled=!ok;
+  if(bt.dataset.h!==html){ bt.dataset.h=html; bt.innerHTML=html; }
+}
+/* buy, then the console confirmation: RESEARCHED types in on the card, and the track
+   rebuilds a beat later with the researched line flashing */
+function resBuyFx(r){
+  const slow=lowMotion(), hold=slow?250:900;
+  resFxUntil=Date.now()+hold;
+  if(!buyRes(r)){ resFxUntil=0; return }
+  const card=$("#rNext"), conf=$("#rConf"), bt=$("#riBuy");
+  if(card)card.classList.add("done");
+  if(bt)bt.disabled=true;
+  if(conf){ const w="RESEARCHED";
+    if(slow)conf.textContent=w; else { let n=0;
+      const t=setInterval(()=>{ conf.textContent=w.slice(0,++n); if(n>=w.length||!conf.isConnected)clearInterval(t) },45) } }
+  setTimeout(()=>{ resFxUntil=0; resFlash=true; dirty=true; render(); }, hold);
 }
 /* ---------------- Research tab: exotic programmes (Stage 1 / v3) ----------------
    Moved here from the Empire accordion (patch416-428) - same XPROG data, same costs,
@@ -8350,8 +8431,8 @@ function progRow(exoId){
     const l=xlv(r.id), max=l>=r.max, c=xpCost(r,l);
     h+=`<div class="card${max?" done":""}"><h5>${r.n} <span class="lv">Lv ${l}/${r.max}</span></h5>
       <p>${r.t}</p><div class="eff">${r.d(l)}${max?"":" \u2192 "+r.d(l+1)}</div>
-      ${max?"<button disabled>MAXED</button>"
-           :`<button data-xp="${r.id}">${fmt(c)} ${e.n}</button>`}</div>`;
+      ${max?"<button class=\"resslab\" disabled>MAXED</button>"
+           :`<button class="resslab" data-xp="${r.id}">UPGRADE<b>${fmt(c)} ${e.n}</b></button>`}</div>`;
   }
   h+="</div>";
   body.innerHTML=h;
@@ -8372,78 +8453,32 @@ function syncResMode(){
   const t=$("#resTreePane"), pr=$("#resProgPane");
   if(t)t.hidden = resMode!=="tree";
   if(pr)pr.hidden = resMode!=="prog";
-}
-function layoutTree(){
-  const host=$("#treeGrid"); if(!host||!host.offsetParent)return;
-  const w=host.clientWidth||600;
-  const tile=innerWidth<=760?60:74, gap=innerWidth<=760?6:10;
-  const cols=Math.max(2,Math.min(8,Math.floor((w+gap)/(tile+22+gap))));
-  host.style.gridTemplateColumns="repeat("+cols+",1fr)";
-  [...host.children].forEach((el,i)=>{
-    const row=Math.floor(i/cols), inRow=i%cols;
-    el.style.gridRow=(row+1);
-    el.style.gridColumn=((row%2)?(cols-inRow):(inRow+1));
-  });
-}
-function resMark(){
-  const r=curBranch(), l=lv(S.rs,r.id), aff=resBal(r)>=resCost(r,l);
-  $$("#treeGrid .rn").forEach(n=>{
-    n.classList.toggle("sel", resSel===+n.dataset.k);
-    if(n.classList.contains("next"))n.classList.toggle("rich",aff);
-  });
-}
-function resInfo(){
-  const box=$("#rinfo"); if(!box)return;
-  const r=curBranch(), l=lv(S.rs,r.id), locked=resLocked(r);
-  const k=resSel||Math.min(r.max,l+1);
-  const nm=(RNAMES[r.id]||[])[k-1]||("Level "+k);
-  const cost=resCost(r,k-1);
-  const state = k<=l ? "RESEARCHED" : (locked ? "LOCKED" : (k===l+1 ? "NEXT UP" : "QUEUED"));
-  let act="";
-  if(k<=l) act=`<span class="lv" style="color:var(--gr)">✓ RESEARCHED</span>`;
-  else if(locked) act=`<span class="warnt">🔒 ${resReqText(r)}</span>`;
-  else if(k>l+1) act=`<span class="lv">Research node ${l+1} first</span>`;
-  else act=`<button id="riBuy" ${resBal(r)>=cost?"":"disabled"}>RESEARCH · ${fmt(cost)} ${RI(resCur(r))}</button>`;
-  const html=`<div class="ri-t"><span style="color:${r.col}">${nm}</span>
-      <span class="lv">${r.n.toUpperCase()} · NODE ${k}/${r.max} · ${state}</span></div>
-    <div class="ri-b">${r.t}</div>
-    <div class="ri-e">${r.d(Math.max(0,k-1))} → ${r.d(k)}</div>
-    <div class="ri-a">${act}</div>`;
-  /* render() calls resInfo() every ~90ms while the Research tab is open (see the
-     HANDOVER note on why), so without this guard #riBuy was a brand-new element
-     10x/second - a real mousedown/mouseup (unlike Playwright's instant click) landed
-     on two different buttons and never fired. The string only actually changes when
-     the selected node, level, lock state or affordability changes - exactly when a
-     rebuild is wanted. */
-  if(box.dataset.h===html)return;
-  box.dataset.h=html;
-  box.innerHTML=html;
-  const bt=$("#riBuy"); if(bt)bt.onclick=()=>buyRes(r);
+  const cs=$("#resCryStrip"); if(cs)cs.hidden = resMode!=="prog";   /* exotic context card belongs with the programmes */
 }
 function nodeModal(r,k){
   const l=lv(S.rs,r.id), locked=resLocked(r), cost=resCost(r,k-1);
   const bi=RESH.indexOf(r), nm=(RNAMES[r.id]||[])[k-1]||("Level "+k);
-  const state = k<=l ? ["RESEARCHED","var(--gr)"] : locked ? ["LOCKED","var(--rd)"]
-              : k===l+1 ? ["NEXT UP","var(--cy)"] : ["QUEUED","var(--dim)"];
+  const state = k<=l ? ["RESEARCHED","var(--gr)"] : locked ? ["LOCKED","var(--mut)"]
+              : k===l+1 ? ["NEXT UP","var(--vi)"] : ["QUEUED","var(--mut)"];
   let act;
   if(k<=l) act=`<button id="nmClose">CLOSE</button>`;
   else if(locked) act=`<button id="nmClose">CLOSE</button>`;
   else if(k>l+1) act=`<button id="nmClose">CLOSE</button>`;
-  else act=`<button id="nmClose">CLOSE</button><button id="nmBuy" ${resBal(r)>=cost?"":"disabled"}>RESEARCH · ${fmt(cost)} ${RI(resCur(r))}</button>`;
+  else act=`<button id="nmClose">CLOSE</button><button id="nmBuy" class="resslab" ${resBal(r)>=cost?"":"disabled"}>${resBtnHTML(r,cost)}</button>`;
   showModal(`<div class="nmh" style="--a:${r.col};--a2:${rgba(r.col,.18)}">
       <div class="nmt"><svg viewBox="0 0 48 48">${glyphFor(bi,k)}</svg></div>
       <div style="min-width:0">
-        <h3 style="margin:0 0 2px;color:${r.col}">${nm}</h3>
+        <h3 style="margin:0 0 2px">${nm}</h3>
         <div class="nmm">${r.n} · Node ${k}/${r.max} · <b style="color:${state[1]}">${state[0]}</b></div>
       </div></div>
     <p style="margin:12px 0 0">${r.t}</p>
     <div class="nme">${r.d(Math.max(0,k-1))} <span style="color:var(--dim)">→</span> ${r.d(k)}</div>
-    ${locked?`<p style="color:var(--rd);margin-top:10px">🔒 ${resReqText(r)}</p>`:""}
+    ${locked?`<p style="color:var(--mut);margin-top:10px">${R_LOCK}${resReqText(r)}</p>`:""}
     ${(!locked&&k>l+1)?`<p style="color:var(--mut);margin-top:10px">Research node ${l+1} (${(RNAMES[r.id]||[])[l]||""}) first.</p>`:""}
     ${(k>l&&!locked&&k===l+1)?`<div class="nmbal" id="nmBal"></div>`:""}
     <div class="row">${act}</div>`,()=>{
       $("#nmClose").onclick=hideModal;
-      const bt=$("#nmBuy"); if(bt)bt.onclick=()=>{ buyRes(r); hideModal(); };
+      const bt=$("#nmBuy"); if(bt)bt.onclick=()=>{ hideModal(); resBuyFx(r); };
       nmLive={r,k,cost}; nmTick();
     });
 }
@@ -8460,40 +8495,9 @@ function nmTick(){
   const eta=(!ok&&rate>0)?fmtT((need-have)/rate):null;
   bal.innerHTML=`<span>Cost</span><b>${fmt(need)} ${RI(cur)}</b>
     <span class="sep">·</span><span>You have</span>
-    <b style="color:${ok?'var(--gr)':'var(--rd)'}">${fmt(have)} ${RI(cur)}</b>
-    ${ok?'':`<span class="nmneed">short ${fmt(need-have)}${eta?` · ~${eta}`:""}</span>`}`;
+    <b style="color:${ok?'var(--gr)':'var(--txt)'}">${fmt(have)} ${RI(cur)}</b>
+    ${ok?'':`<span class="nmneed">need ${fmt(need-have)}${eta?` · ~${eta}`:""}</span>`}`;
 }
-function drawTreeLines(){
-  const svg=$("#treeLines"), wrap=$("#tree"), host=$("#treeGrid");
-  if(!svg||!wrap||!host||!wrap.offsetParent)return;
-  const wr=wrap.getBoundingClientRect();
-  svg.setAttribute("viewBox","0 0 "+wr.width+" "+wr.height);
-  const r=curBranch(), l=lv(S.rs,r.id);
-  const pts=[...host.querySelectorAll(".rn .tile")].map(t=>{
-    const b=t.getBoundingClientRect();
-    return {x:b.left-wr.left+b.width/2, y:b.top-wr.top+b.height/2, w:b.width};
-  });
-  let out="";
-  for(let i=0;i<pts.length-1;i++){
-    const A=pts[i], B=pts[i+1];
-    const dx=B.x-A.x, dy=B.y-A.y, len=Math.hypot(dx,dy)||1, ux=dx/len, uy=dy/len;
-    const a={x:A.x+ux*A.w/2, y:A.y+uy*A.w/2, w:A.w};
-    const b={x:B.x-ux*B.w/2, y:B.y-uy*B.w/2, w:B.w};
-    const done=(i+2)<=l;
-    const col=done?r.col:"rgba(120,150,220,.9)";
-    const op=done?.75:.22;
-    let d;
-    if(Math.abs(a.y-b.y)<4||Math.abs(a.x-b.x)<4){ d=`M${a.x} ${a.y} L${b.x} ${b.y}`; }
-    else{
-      const out2=(a.x>b.x?1:-1)*(a.w*0.8);
-      d=`M${a.x} ${a.y} C ${a.x+out2} ${a.y}, ${b.x+out2} ${b.y}, ${b.x} ${b.y}`;
-    }
-    out+=`<path d="${d}" fill="none" stroke="${col}" stroke-width="${done?3:2}" stroke-linecap="round"
-      opacity="${op}" ${done?"":'stroke-dasharray="5 6"'}/>`;
-  }
-  svg.innerHTML=out;
-}
-addEventListener("resize",()=>requestAnimationFrame(()=>{layoutTree();drawTreeLines()}));
 function renderArmoury(){
   const ab=$("#ammoBar");
   if(ab){
@@ -13572,7 +13576,7 @@ $$(".tab").forEach(t=>t.onclick=()=>{
   const fk=S.notifyQueue&&S.notifyQueue[0], fv=fk&&fk.indexOf("vega:")===0&&VEGA[fk.slice(5)];
   if(fv&&fv.go===id&&!noticeIsStory(fk))dismissNotice();
   if(id==="p-raid" && thq().length>0){ raidMode="targets"; syncRaidMode(); }
-  dirty=true; render(); requestAnimationFrame(drawTreeLines);
+  dirty=true; render();
   if(view){
     const to = paneNeedsTop(id) ? 0 : (paneScroll[id]||0);
     /* grids, the tree canvas and the map settle over more than one frame, so reassert

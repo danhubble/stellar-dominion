@@ -122,7 +122,7 @@ $$(".tab").forEach(t=>t.onclick=()=>{
   const fk=S.notifyQueue&&S.notifyQueue[0], fv=fk&&fk.indexOf("vega:")===0&&VEGA[fk.slice(5)];
   if(fv&&fv.go===id&&!noticeIsStory(fk))dismissNotice();
   if(id==="p-raid" && thq().length>0){ raidMode="targets"; syncRaidMode(); }
-  dirty=true; render(); requestAnimationFrame(drawTreeLines);
+  dirty=true; render();
   if(view){
     const to = paneNeedsTop(id) ? 0 : (paneScroll[id]||0);
     /* grids, the tree canvas and the map settle over more than one frame, so reassert

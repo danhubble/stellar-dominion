@@ -285,7 +285,7 @@ function render(){
      that is now these same ladderTierRow()s inline in the sheet. The function
      stays defined (dead) until patch612 deletes it with the rest of the widget. */
   if(dirty){ dirty=false; renderRes(); renderProg(); renderNex(); renderMis(); renderAch(); renderRaids(); renderArmoury(); }
-  else { softButtons(); if($("#p-res").classList.contains("on")){resMark();resInfo()} }
+  else { softButtons(); if($("#p-res").classList.contains("on"))resInfo() }
   if(nmLive&&$("#mask").classList.contains("on"))nmTick();
   if(rmLive&&$("#mask").classList.contains("on"))rmTick();
   if(lfPromptLive&&$("#mask").classList.contains("on"))lfPromptTick();   /* FIX 1 (2026-09-06) */
@@ -1882,7 +1882,6 @@ function exoModal(){
     <div class="row"><button id="rmClose">CLOSE</button></div>`,
     ()=>{ $("#rmClose").onclick=hideModal; rmTick(); });
 }
-let resSel=null;
 let resMode="tree";           /* which half of the Research tab is showing - "tree" or
                                   "prog". Not persisted: presentation-only, always opens
                                   on the tech tree, same as the tab itself always did. */
@@ -1919,38 +1918,98 @@ function resCur(r){ return r.cur||"cry" }
 function resBal(r){ return resCur(r)==="sv" ? (S.sv||0) : S.cry }
 function resIncome(r){ return resCur(r)==="sv" ? 0 : cryRate() }
 function curBranch(){ return RESH[Math.min(RESH.length-1,Math.max(0,S.rtab|0))] }
+/* The Research tab is one branch at a time, drawn as a vertical track (every branch is
+   a straight line of nodes, so a tree grid only cost space). renderRes() rebuilds the
+   picker and the track on a real change only (dataset.h guards - tchurn2 sweeps this
+   pane for buttons that get swapped out mid-click); resInfo() runs every render() pass
+   and only updates the next node's button in place (disabled state and "need X"). */
+const R_CHEV='<svg class="chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 6l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const R_CHECK='<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3L13 5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const R_LOCK='<svg class="rlock" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="1.5" fill="currentColor"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>';
+let resFxUntil=0, resFlash=false;
+function resIcon(r){ return `<svg class="ri" viewBox="0 0 48 48" aria-hidden="true">${r.ic}</svg>` }
+function resNodeName(r,k){ return (RNAMES[r.id]||[])[k-1]||("Level "+k) }
+function resBtnHTML(r,cost){
+  const have=resBal(r);
+  return have>=cost ? `RESEARCH<b>${fmt(cost)} ${RI(resCur(r))}</b>`
+                    : `NEED<b>${fmt(cost-have)} ${RI(resCur(r))}</b>`;
+}
+/* "+75% all ore production" -> "+101% all ore production" reads as
+   "+75% -> +101% all ore production": when the two lines differ in one word only,
+   show that word changing and the rest once. */
+function resEffDiff(a,b){
+  const A=a.split(" "), B=b.split(" ");
+  if(A.length===B.length){ const d=A.map((w,i)=>w!==B[i]?i:-1).filter(i=>i>=0);
+    if(d.length===1){ const i=d[0];
+      return A.slice(0,i).join(" ")+(i?" ":"")+`<span>${A[i]} →</span> ${B[i]}`+(i<A.length-1?" "+A.slice(i+1).join(" "):""); } }
+  return `<span>${a} →</span> ${b}`;
+}
+function resPicker(){
+  showModal(`<h3>Research branches</h3><div class="rbrs">${RESH.map((r,i)=>{
+      const l=lv(S.rs,r.id), lk=resLocked(r);
+      return `<button type="button" class="rbr${i===(S.rtab|0)?" on":""}${lk?" lk":""}" data-i="${i}">${resIcon(r)}
+        <span>${r.n}${lk?`<small>${R_LOCK}${resReqText(r)}</small>`:""}</span><b>${l}/${r.max}</b></button>`;
+    }).join("")}</div><div class="row"><button id="rbClose">CLOSE</button></div>`,()=>{
+      $("#rbClose").onclick=hideModal;
+      $$(".rbr").forEach(b=>b.onclick=()=>{ S.rtab=+b.dataset.i; hideModal(); dirty=true; render(); save(); });
+    });
+}
 function renderRes(){
-  // branch chips
-  const tabs=$("#resTabs"); tabs.innerHTML="";
-  RESH.forEach((r,i)=>{
-    const l=lv(S.rs,r.id), locked=resLocked(r);
-    const b=document.createElement("button");
-    b.className="rchip"+(i===(S.rtab|0)?" on":"")+(locked?" lk":"");
-    b.style.setProperty("--a",r.col); b.style.setProperty("--a2",rgba(r.col,.16));
-    b.innerHTML=`<svg viewBox="0 0 48 48">${r.ic}</svg><span>${r.n}</span><b>${l}/${r.max}</b>`;
-    b.onclick=()=>{ S.rtab=i; resSel=null; dirty=true; render(); save(); };
-    tabs.appendChild(b);
-  });
-  if(resTabsHsUpd)resTabsHsUpd();
-  const r=curBranch(), l=lv(S.rs,r.id), locked=resLocked(r), max=l>=r.max;
-  // nodes
-  const host=$("#treeGrid"); host.innerHTML="";
-  host.style.setProperty("--a",r.col); host.style.setProperty("--a2",rgba(r.col,.18));
-  const bi=RESH.indexOf(r);
-  for(let k=1;k<=r.max;k++){
-    const el=document.createElement("div");
-    let cls="rn";
-    if(locked)cls+=" lockb far"; else if(k<=l)cls+=" got"; else if(k===l+1)cls+=" next"; else cls+=" far";
-    el.className=cls; el.dataset.k=k;
-    el.innerHTML=`<div class="tile"><svg viewBox="0 0 48 48">${glyphFor(bi,k)}</svg><span class="k">${k}</span></div>
-      <div class="nm">${(RNAMES[r.id]||[])[k-1]||("Level "+k)}</div>`;
-    el.onclick=()=>{ resSel=k; resInfo(); resMark(); nodeModal(r,k); };
-    el.onmouseenter=()=>{ resSel=k; resInfo(); resMark(); };
-    host.appendChild(el);
+  const cs=$("#resCryStrip"); if(cs)cs.hidden = resMode!=="prog";
+  if(Date.now()<resFxUntil)return;           /* a RESEARCHED beat is playing - leave the card be */
+  const r=curBranch(), l=lv(S.rs,r.id), locked=resLocked(r), cost=resCost(r,l);
+  const tabs=$("#resTabs");
+  const ph=`<button type="button" class="rpick" id="resPick" aria-label="Change research branch">${resIcon(r)}<b>${r.n}</b>
+    <span class="rpc"><i>${l}</i> / ${r.max}</span>${R_CHEV}</button>`;
+  if(tabs.dataset.h!==ph){ tabs.dataset.h=ph; tabs.innerHTML=ph; $("#resPick").onclick=resPicker; }
+  let h="";
+  if(l>0) h+=`<div class="rtr got${resFlash?" flash":""}"><div class="rdot">${R_CHECK}</div>
+      <div class="rnm">${l} researched<span class="rfx">${r.d(l)}</span></div></div>`;
+  if(l<r.max){
+    const k=l+1;
+    const eff = l>0 ? resEffDiff(r.d(l),r.d(k)) : r.d(k);
+    h+=`<div class="rtr next"><div class="rdot">${k}</div><div class="rnext${locked?" lkd":""}" id="rNext">
+      <div class="rtop"><span>NODE ${k} / ${r.max}</span><span>${locked?"LOCKED":"NEXT UP"}</span></div>
+      <h3>${resNodeName(r,k)}</h3><div class="ref">${eff}</div><div class="rfl">${r.t}</div>
+      ${locked?`<div class="rreq">${R_LOCK}${resReqText(r)}</div>`
+        :`<div class="rconf" id="rConf"></div><button type="button" class="resslab" id="riBuy">${resBtnHTML(r,cost)}</button>`}
+      </div></div>`;
+    for(let j=k+1;j<=r.max;j++) h+=`<button type="button" class="rtr far" data-k="${j}"><div class="rdot">${j}</div>
+      <div class="rnm">${resNodeName(r,j)}</div></button>`;
+  } else {
+    h+=`<div class="rtr next"><div class="rdot">${R_CHECK}</div><div class="rnext"><div class="rtop"><span>${r.max} / ${r.max}</span><span>COMPLETE</span></div>
+      <h3>${r.n} complete</h3><div class="ref">${r.d(l)}</div></div></div>`;
   }
-  layoutTree();
-  resInfo(); resMark();
-  requestAnimationFrame(()=>{layoutTree();drawTreeLines()});
+  const tk=$("#rtrack");
+  if(tk.dataset.h!==h){
+    tk.dataset.h=h; tk.innerHTML=h;
+    tk.querySelectorAll(".rtr.far").forEach(b=>b.onclick=()=>nodeModal(r,+b.dataset.k));
+    const bt=$("#riBuy"); if(bt)bt.onclick=()=>resBuyFx(r);
+  }
+  resFlash=false;
+  resInfo();
+}
+/* the per-frame part: the next node's button follows the balance without a rebuild */
+function resInfo(){
+  const bt=$("#riBuy"); if(!bt||Date.now()<resFxUntil)return;
+  const r=curBranch(), cost=resCost(r,lv(S.rs,r.id));
+  const ok=resBal(r)>=cost, html=resBtnHTML(r,cost);
+  if(bt.disabled===ok)bt.disabled=!ok;
+  if(bt.dataset.h!==html){ bt.dataset.h=html; bt.innerHTML=html; }
+}
+/* buy, then the console confirmation: RESEARCHED types in on the card, and the track
+   rebuilds a beat later with the researched line flashing */
+function resBuyFx(r){
+  const slow=lowMotion(), hold=slow?250:900;
+  resFxUntil=Date.now()+hold;
+  if(!buyRes(r)){ resFxUntil=0; return }
+  const card=$("#rNext"), conf=$("#rConf"), bt=$("#riBuy");
+  if(card)card.classList.add("done");
+  if(bt)bt.disabled=true;
+  if(conf){ const w="RESEARCHED";
+    if(slow)conf.textContent=w; else { let n=0;
+      const t=setInterval(()=>{ conf.textContent=w.slice(0,++n); if(n>=w.length||!conf.isConnected)clearInterval(t) },45) } }
+  setTimeout(()=>{ resFxUntil=0; resFlash=true; dirty=true; render(); }, hold);
 }
 /* ---------------- Research tab: exotic programmes (Stage 1 / v3) ----------------
    Moved here from the Empire accordion (patch416-428) - same XPROG data, same costs,
@@ -1995,8 +2054,8 @@ function progRow(exoId){
     const l=xlv(r.id), max=l>=r.max, c=xpCost(r,l);
     h+=`<div class="card${max?" done":""}"><h5>${r.n} <span class="lv">Lv ${l}/${r.max}</span></h5>
       <p>${r.t}</p><div class="eff">${r.d(l)}${max?"":" \u2192 "+r.d(l+1)}</div>
-      ${max?"<button disabled>MAXED</button>"
-           :`<button data-xp="${r.id}">${fmt(c)} ${e.n}</button>`}</div>`;
+      ${max?"<button class=\"resslab\" disabled>MAXED</button>"
+           :`<button class="resslab" data-xp="${r.id}">UPGRADE<b>${fmt(c)} ${e.n}</b></button>`}</div>`;
   }
   h+="</div>";
   body.innerHTML=h;
@@ -2017,78 +2076,32 @@ function syncResMode(){
   const t=$("#resTreePane"), pr=$("#resProgPane");
   if(t)t.hidden = resMode!=="tree";
   if(pr)pr.hidden = resMode!=="prog";
-}
-function layoutTree(){
-  const host=$("#treeGrid"); if(!host||!host.offsetParent)return;
-  const w=host.clientWidth||600;
-  const tile=innerWidth<=760?60:74, gap=innerWidth<=760?6:10;
-  const cols=Math.max(2,Math.min(8,Math.floor((w+gap)/(tile+22+gap))));
-  host.style.gridTemplateColumns="repeat("+cols+",1fr)";
-  [...host.children].forEach((el,i)=>{
-    const row=Math.floor(i/cols), inRow=i%cols;
-    el.style.gridRow=(row+1);
-    el.style.gridColumn=((row%2)?(cols-inRow):(inRow+1));
-  });
-}
-function resMark(){
-  const r=curBranch(), l=lv(S.rs,r.id), aff=resBal(r)>=resCost(r,l);
-  $$("#treeGrid .rn").forEach(n=>{
-    n.classList.toggle("sel", resSel===+n.dataset.k);
-    if(n.classList.contains("next"))n.classList.toggle("rich",aff);
-  });
-}
-function resInfo(){
-  const box=$("#rinfo"); if(!box)return;
-  const r=curBranch(), l=lv(S.rs,r.id), locked=resLocked(r);
-  const k=resSel||Math.min(r.max,l+1);
-  const nm=(RNAMES[r.id]||[])[k-1]||("Level "+k);
-  const cost=resCost(r,k-1);
-  const state = k<=l ? "RESEARCHED" : (locked ? "LOCKED" : (k===l+1 ? "NEXT UP" : "QUEUED"));
-  let act="";
-  if(k<=l) act=`<span class="lv" style="color:var(--gr)">✓ RESEARCHED</span>`;
-  else if(locked) act=`<span class="warnt">🔒 ${resReqText(r)}</span>`;
-  else if(k>l+1) act=`<span class="lv">Research node ${l+1} first</span>`;
-  else act=`<button id="riBuy" ${resBal(r)>=cost?"":"disabled"}>RESEARCH · ${fmt(cost)} ${RI(resCur(r))}</button>`;
-  const html=`<div class="ri-t"><span style="color:${r.col}">${nm}</span>
-      <span class="lv">${r.n.toUpperCase()} · NODE ${k}/${r.max} · ${state}</span></div>
-    <div class="ri-b">${r.t}</div>
-    <div class="ri-e">${r.d(Math.max(0,k-1))} → ${r.d(k)}</div>
-    <div class="ri-a">${act}</div>`;
-  /* render() calls resInfo() every ~90ms while the Research tab is open (see the
-     HANDOVER note on why), so without this guard #riBuy was a brand-new element
-     10x/second - a real mousedown/mouseup (unlike Playwright's instant click) landed
-     on two different buttons and never fired. The string only actually changes when
-     the selected node, level, lock state or affordability changes - exactly when a
-     rebuild is wanted. */
-  if(box.dataset.h===html)return;
-  box.dataset.h=html;
-  box.innerHTML=html;
-  const bt=$("#riBuy"); if(bt)bt.onclick=()=>buyRes(r);
+  const cs=$("#resCryStrip"); if(cs)cs.hidden = resMode!=="prog";   /* exotic context card belongs with the programmes */
 }
 function nodeModal(r,k){
   const l=lv(S.rs,r.id), locked=resLocked(r), cost=resCost(r,k-1);
   const bi=RESH.indexOf(r), nm=(RNAMES[r.id]||[])[k-1]||("Level "+k);
-  const state = k<=l ? ["RESEARCHED","var(--gr)"] : locked ? ["LOCKED","var(--rd)"]
-              : k===l+1 ? ["NEXT UP","var(--cy)"] : ["QUEUED","var(--dim)"];
+  const state = k<=l ? ["RESEARCHED","var(--gr)"] : locked ? ["LOCKED","var(--mut)"]
+              : k===l+1 ? ["NEXT UP","var(--vi)"] : ["QUEUED","var(--mut)"];
   let act;
   if(k<=l) act=`<button id="nmClose">CLOSE</button>`;
   else if(locked) act=`<button id="nmClose">CLOSE</button>`;
   else if(k>l+1) act=`<button id="nmClose">CLOSE</button>`;
-  else act=`<button id="nmClose">CLOSE</button><button id="nmBuy" ${resBal(r)>=cost?"":"disabled"}>RESEARCH · ${fmt(cost)} ${RI(resCur(r))}</button>`;
+  else act=`<button id="nmClose">CLOSE</button><button id="nmBuy" class="resslab" ${resBal(r)>=cost?"":"disabled"}>${resBtnHTML(r,cost)}</button>`;
   showModal(`<div class="nmh" style="--a:${r.col};--a2:${rgba(r.col,.18)}">
       <div class="nmt"><svg viewBox="0 0 48 48">${glyphFor(bi,k)}</svg></div>
       <div style="min-width:0">
-        <h3 style="margin:0 0 2px;color:${r.col}">${nm}</h3>
+        <h3 style="margin:0 0 2px">${nm}</h3>
         <div class="nmm">${r.n} · Node ${k}/${r.max} · <b style="color:${state[1]}">${state[0]}</b></div>
       </div></div>
     <p style="margin:12px 0 0">${r.t}</p>
     <div class="nme">${r.d(Math.max(0,k-1))} <span style="color:var(--dim)">→</span> ${r.d(k)}</div>
-    ${locked?`<p style="color:var(--rd);margin-top:10px">🔒 ${resReqText(r)}</p>`:""}
+    ${locked?`<p style="color:var(--mut);margin-top:10px">${R_LOCK}${resReqText(r)}</p>`:""}
     ${(!locked&&k>l+1)?`<p style="color:var(--mut);margin-top:10px">Research node ${l+1} (${(RNAMES[r.id]||[])[l]||""}) first.</p>`:""}
     ${(k>l&&!locked&&k===l+1)?`<div class="nmbal" id="nmBal"></div>`:""}
     <div class="row">${act}</div>`,()=>{
       $("#nmClose").onclick=hideModal;
-      const bt=$("#nmBuy"); if(bt)bt.onclick=()=>{ buyRes(r); hideModal(); };
+      const bt=$("#nmBuy"); if(bt)bt.onclick=()=>{ hideModal(); resBuyFx(r); };
       nmLive={r,k,cost}; nmTick();
     });
 }
@@ -2105,40 +2118,9 @@ function nmTick(){
   const eta=(!ok&&rate>0)?fmtT((need-have)/rate):null;
   bal.innerHTML=`<span>Cost</span><b>${fmt(need)} ${RI(cur)}</b>
     <span class="sep">·</span><span>You have</span>
-    <b style="color:${ok?'var(--gr)':'var(--rd)'}">${fmt(have)} ${RI(cur)}</b>
-    ${ok?'':`<span class="nmneed">short ${fmt(need-have)}${eta?` · ~${eta}`:""}</span>`}`;
+    <b style="color:${ok?'var(--gr)':'var(--txt)'}">${fmt(have)} ${RI(cur)}</b>
+    ${ok?'':`<span class="nmneed">need ${fmt(need-have)}${eta?` · ~${eta}`:""}</span>`}`;
 }
-function drawTreeLines(){
-  const svg=$("#treeLines"), wrap=$("#tree"), host=$("#treeGrid");
-  if(!svg||!wrap||!host||!wrap.offsetParent)return;
-  const wr=wrap.getBoundingClientRect();
-  svg.setAttribute("viewBox","0 0 "+wr.width+" "+wr.height);
-  const r=curBranch(), l=lv(S.rs,r.id);
-  const pts=[...host.querySelectorAll(".rn .tile")].map(t=>{
-    const b=t.getBoundingClientRect();
-    return {x:b.left-wr.left+b.width/2, y:b.top-wr.top+b.height/2, w:b.width};
-  });
-  let out="";
-  for(let i=0;i<pts.length-1;i++){
-    const A=pts[i], B=pts[i+1];
-    const dx=B.x-A.x, dy=B.y-A.y, len=Math.hypot(dx,dy)||1, ux=dx/len, uy=dy/len;
-    const a={x:A.x+ux*A.w/2, y:A.y+uy*A.w/2, w:A.w};
-    const b={x:B.x-ux*B.w/2, y:B.y-uy*B.w/2, w:B.w};
-    const done=(i+2)<=l;
-    const col=done?r.col:"rgba(120,150,220,.9)";
-    const op=done?.75:.22;
-    let d;
-    if(Math.abs(a.y-b.y)<4||Math.abs(a.x-b.x)<4){ d=`M${a.x} ${a.y} L${b.x} ${b.y}`; }
-    else{
-      const out2=(a.x>b.x?1:-1)*(a.w*0.8);
-      d=`M${a.x} ${a.y} C ${a.x+out2} ${a.y}, ${b.x+out2} ${b.y}, ${b.x} ${b.y}`;
-    }
-    out+=`<path d="${d}" fill="none" stroke="${col}" stroke-width="${done?3:2}" stroke-linecap="round"
-      opacity="${op}" ${done?"":'stroke-dasharray="5 6"'}/>`;
-  }
-  svg.innerHTML=out;
-}
-addEventListener("resize",()=>requestAnimationFrame(()=>{layoutTree();drawTreeLines()}));
 function renderArmoury(){
   const ab=$("#ammoBar");
   if(ab){
