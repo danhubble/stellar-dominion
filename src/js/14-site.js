@@ -444,30 +444,14 @@ function drawSysScene(g,W,H,vid,t,D,compose){
 
     // planet
     const evKind=evs?(KIND_INFO[evs.kind]||KIND_INFO.mixed):null;
-    const pg=g.createRadialGradient(cx-R*.45,cy-R*.5,R*.08,cx,cy,R*1.05);
-    pg.addColorStop(0,"#8ee6ff"); pg.addColorStop(.42,evKind?evKind.col:"#3a72dd"); pg.addColorStop(1,"#0a1236");
-    g.fillStyle=pg; g.beginPath(); g.arc(cx,cy,R,0,6.2832); g.fill();
-    // --- surface: continents, terminator, settlements ---
-    g.save(); g.beginPath(); g.arc(cx,cy,R,0,6.2832); g.clip();
-    g.fillStyle="rgba(26,92,104,.42)";
-    for(const c of CONT){ g.beginPath(); g.ellipse(cx+c.x*R,cy+c.y*R,c.rx*R,c.ry*R,c.a,0,6.2832); g.fill(); }
-    const ng=g.createLinearGradient(cx-R*.7,cy-R*.7,cx+R,cy+R);
-    ng.addColorStop(0,"rgba(2,4,14,0)"); ng.addColorStop(.42,"rgba(2,4,14,.1)"); ng.addColorStop(.72,"rgba(2,4,14,.62)"); ng.addColorStop(1,"rgba(1,2,9,.93)");
-    g.fillStyle=ng; g.fillRect(cx-R,cy-R,R*2,R*2);
-    /* home keeps the exact original pair (see patch604's header note for why - its
-       own ladder's true top two are late-game tiers that would leave the default
-       Empire-tab view dark); every other system uses its own ladder's top two tiers,
-       so a night side actually has something to light it up with. */
-    const litIdx=vid==="home"?[2,3]:ladder.slice(-2);
-    const nl=Math.min(LIGHTS.length,litIdx.reduce((sum,gi)=>sum+vc(gi),0));
-    for(let k=0;k<nl;k++){ const L=LIGHTS[k];
-      const tw=(.45+.55*Math.abs(Math.sin(t/700+L.p)))*L.n;
-      g.globalAlpha=tw; g.fillStyle="#ffd9a0";
-      g.beginPath(); g.arc(cx+L.x*R,cy+L.y*R,L.s*D*.85,0,6.2832); g.fill();
-      g.globalAlpha=tw*.25;
-      g.beginPath(); g.arc(cx+L.x*R,cy+L.y*R,L.s*D*2.6,0,6.2832); g.fill(); }
-    g.globalAlpha=1; g.restore();
-    g.strokeStyle=evKind?rgba(evKind.col,.55):"rgba(150,215,255,.45)"; g.lineWidth=1.2*D; g.stroke();
+    /* the painted, lit, slowly turning body - see 13b-planets.js. It carries its own
+       terminator and atmosphere, which replaced the flat gradient + continent
+       ellipses + night-side overlay that used to be drawn here. */
+    /* city lights spread over the surface with the system's structure count (replaced
+       a screen-fixed field of night-side dots, LIGHTS in 13-sky.js) */
+    PLANETS.draw(g,cx,cy,R,t,evs?evs.kind:"home",vid,ladder.reduce((sum,gi)=>sum+vc(gi),0));
+    g.beginPath(); g.arc(cx,cy,R,0,6.2832);
+    g.strokeStyle=evKind?rgba(evKind.col,.16):"rgba(150,215,255,.14)"; g.lineWidth=1.2*D; g.stroke();
     g.strokeStyle="rgba(110,200,255,.12)"; g.lineWidth=4*D;
     g.beginPath(); g.arc(cx,cy,R*1.10,0,6.2832); g.stroke();
     // orbital ring band (tier 5)
