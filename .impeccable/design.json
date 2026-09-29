@@ -1,0 +1,354 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-29T13:51:33.474709Z",
+  "title": "Design System: Stellar Dominion",
+  "extensions": {
+    "colorMeta": {
+      "scan-cyan": {
+        "role": "primary",
+        "displayName": "Scan Cyan",
+        "canonical": "#48e2ff",
+        "tonalRamp": [
+          "#16444c",
+          "#287f8f",
+          "#3cbed6",
+          "#5ce5ff",
+          "#8aecff",
+          "#b1f3ff",
+          "#ccf7ff",
+          "#dcf9ff"
+        ]
+      },
+      "nexus-violet": {
+        "role": "secondary",
+        "displayName": "Nexus Violet",
+        "canonical": "#a878ff",
+        "tonalRamp": [
+          "#32244c",
+          "#5e438f",
+          "#8d65d6",
+          "#b187ff",
+          "#c7a9ff",
+          "#dac6ff",
+          "#e7d9ff",
+          "#eee5ff"
+        ]
+      },
+      "credit-gold": {
+        "role": "secondary",
+        "displayName": "Credit Gold",
+        "canonical": "#ffd166",
+        "tonalRamp": [
+          "#4c3f1f",
+          "#8f7539",
+          "#d6b056",
+          "#ffd677",
+          "#ffe29d",
+          "#ffebbe",
+          "#fff2d4",
+          "#fff6e2"
+        ]
+      },
+      "go-green": {
+        "role": "tertiary",
+        "displayName": "Go Green",
+        "canonical": "#5ce6a5",
+        "tonalRamp": [
+          "#1c4532",
+          "#34815c",
+          "#4dc18b",
+          "#6ee9af",
+          "#97efc5",
+          "#baf4d9",
+          "#d1f8e6",
+          "#e0faee"
+        ]
+      },
+      "alarm-rose": {
+        "role": "tertiary",
+        "displayName": "Alarm Rose",
+        "canonical": "#ff6b8a",
+        "tonalRamp": [
+          "#4c2029",
+          "#8f3c4d",
+          "#d65a74",
+          "#ff7b97",
+          "#ffa0b4",
+          "#ffc0cd",
+          "#ffd6de",
+          "#ffe3e9"
+        ]
+      },
+      "void-black": {
+        "role": "neutral",
+        "displayName": "Void Black",
+        "canonical": "#04050d",
+        "tonalRamp": [
+          "#010204",
+          "#020307",
+          "#03040b",
+          "#1f2027",
+          "#5e5f64",
+          "#959598",
+          "#b9b9bb",
+          "#cfcfd1"
+        ]
+      },
+      "starlight-text": {
+        "role": "neutral",
+        "displayName": "Starlight Text",
+        "canonical": "#dde5ff",
+        "tonalRamp": [
+          "#42454c",
+          "#7c808f",
+          "#bac0d6",
+          "#e1e8ff",
+          "#e9eeff",
+          "#f1f4ff",
+          "#f5f8ff",
+          "#f9faff"
+        ]
+      },
+      "muted-blue": {
+        "role": "neutral",
+        "displayName": "Muted Blue",
+        "canonical": "#8390bd",
+        "tonalRamp": [
+          "#272b39",
+          "#49516a",
+          "#6e799f",
+          "#909cc4",
+          "#b0b8d5",
+          "#cad0e3",
+          "#dce0ed",
+          "#e7eaf2"
+        ]
+      },
+      "salvage-bronze": {
+        "role": "secondary",
+        "displayName": "Salvage Bronze",
+        "canonical": "#b97a45",
+        "tonalRamp": [
+          "#1c1109",
+          "#3a2413",
+          "#5c3a1f",
+          "#7a4a22",
+          "#b97a45",
+          "#d08d57",
+          "#e0a672",
+          "#f0c49a"
+        ]
+      },
+      "faint-blue": {
+        "role": "neutral",
+        "displayName": "Faint Blue",
+        "canonical": "#7280ae",
+        "tonalRamp": [
+          "#11131a",
+          "#22273a",
+          "#3a4263",
+          "#56608e",
+          "#7280ae",
+          "#8f9bc4",
+          "#b2bbd9",
+          "#d6dbec"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "brand": {
+        "displayName": "Brand",
+        "purpose": "Game title with gradient."
+      },
+      "numeral": {
+        "displayName": "Numeral",
+        "purpose": "All quantities, rates and prices, in monospace."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Uppercase tabs, section heads, chips."
+      }
+    },
+    "shadows": [
+      {
+        "name": "scan-inset-glow",
+        "value": "0 0 22px rgba(72,226,255,.12) inset",
+        "purpose": "Resting Scan button glow."
+      },
+      {
+        "name": "overlay-drop",
+        "value": "0 8px 28px -8px rgba(0,0,0,.6)",
+        "purpose": "Notice panel over the game."
+      },
+      {
+        "name": "ready-pulse",
+        "value": "0 0 16px 0 rgba(255,209,102,.28)",
+        "purpose": "Pulsing outline when something is ready."
+      }
+    ],
+    "motion": [
+      {
+        "name": "press",
+        "value": ".06s transform, scale(.97)",
+        "purpose": "Tap feedback on Scan."
+      },
+      {
+        "name": "panel-slide",
+        "value": ".2s ease, translateY(16px)",
+        "purpose": "Notice panel entrance."
+      },
+      {
+        "name": "claim-sweep",
+        "value": ".6s ease-out light sweep",
+        "purpose": "Mission claim acknowledgement."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "compact",
+        "value": "760px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Scan Key",
+      "kind": "button",
+      "refersTo": "button-scan",
+      "description": "The main free action; the bright cyan key.",
+      "html": "<button class=\"ds-slab ds-scan\">SCAN SECTOR</button>",
+      "css": ".ds-slab{position:relative;overflow:hidden;min-height:44px;padding:0 14px 3px;border-radius:9px;font:800 12px/1 system-ui;letter-spacing:.14em;cursor:pointer;transition:transform .06s}.ds-slab::after{content:'';position:absolute;left:0;right:0;bottom:0;height:3px}.ds-slab:active{transform:translateY(2px)}.ds-slab:active::after{height:1px}.ds-slab b{font:800 13px/1 ui-monospace,monospace;letter-spacing:0;margin-left:6px}.ds-slab:focus-visible{outline:2px solid #eafcff;outline-offset:2px}.ds-scan{border:1px solid #7deeff;background:linear-gradient(180deg,#5be8ff,#38c9e6);color:#04121a;width:100%}.ds-scan::after{background:#1c8fa8}"
+    },
+    {
+      "name": "Ore Slab",
+      "kind": "button",
+      "refersTo": "slab-ore",
+      "description": "Anything paid in ore.",
+      "html": "<button class=\"ds-slab ds-ore\">BUY<b>322</b></button>",
+      "css": ".ds-slab{position:relative;overflow:hidden;min-height:44px;padding:0 14px 3px;border-radius:9px;font:800 12px/1 system-ui;letter-spacing:.14em;cursor:pointer;transition:transform .06s}.ds-slab::after{content:'';position:absolute;left:0;right:0;bottom:0;height:3px}.ds-slab:active{transform:translateY(2px)}.ds-slab:active::after{height:1px}.ds-slab b{font:800 13px/1 ui-monospace,monospace;letter-spacing:0;margin-left:6px}.ds-slab:focus-visible{outline:2px solid #eafcff;outline-offset:2px}.ds-ore{border:1px solid rgba(125,238,255,.5);background:linear-gradient(180deg,#1d4460,#132e45);color:#dde5ff}.ds-ore b{color:#48e2ff}.ds-ore::after{background:#0b6f86}"
+    },
+    {
+      "name": "Reward Slab",
+      "kind": "button",
+      "refersTo": "slab-reward",
+      "description": "Mission claims and Dark Matter.",
+      "html": "<button class=\"ds-slab ds-gold\">CLAIM</button>",
+      "css": ".ds-slab{position:relative;overflow:hidden;min-height:44px;padding:0 14px 3px;border-radius:9px;font:800 12px/1 system-ui;letter-spacing:.14em;cursor:pointer;transition:transform .06s}.ds-slab::after{content:'';position:absolute;left:0;right:0;bottom:0;height:3px}.ds-slab:active{transform:translateY(2px)}.ds-slab:active::after{height:1px}.ds-slab b{font:800 13px/1 ui-monospace,monospace;letter-spacing:0;margin-left:6px}.ds-slab:focus-visible{outline:2px solid #eafcff;outline-offset:2px}.ds-gold{border:1px solid #ffe29a;background:linear-gradient(180deg,#ffd873,#e9b444);color:#2b1c00}.ds-gold::after{background:#a47716}"
+    },
+    {
+      "name": "Crystal Slab",
+      "kind": "button",
+      "refersTo": "slab-crystal",
+      "description": "Crystal research and the Nexus.",
+      "html": "<button class=\"ds-slab ds-vi\">RESEARCH<b>486</b></button>",
+      "css": ".ds-slab{position:relative;overflow:hidden;min-height:44px;padding:0 14px 3px;border-radius:9px;font:800 12px/1 system-ui;letter-spacing:.14em;cursor:pointer;transition:transform .06s}.ds-slab::after{content:'';position:absolute;left:0;right:0;bottom:0;height:3px}.ds-slab:active{transform:translateY(2px)}.ds-slab:active::after{height:1px}.ds-slab b{font:800 13px/1 ui-monospace,monospace;letter-spacing:0;margin-left:6px}.ds-slab:focus-visible{outline:2px solid #eafcff;outline-offset:2px}.ds-vi{border:1px solid #c7a8ff;background:linear-gradient(180deg,#9d74f0,#7a52d6);color:#fff}.ds-vi::after{background:#4b2d99}"
+    },
+    {
+      "name": "Salvage Slab",
+      "kind": "button",
+      "refersTo": "slab-salvage",
+      "description": "Anything paid or earned in salvage.",
+      "html": "<button class=\"ds-slab ds-br\">UPGRADE<b>12</b></button>",
+      "css": ".ds-slab{position:relative;overflow:hidden;min-height:44px;padding:0 14px 3px;border-radius:9px;font:800 12px/1 system-ui;letter-spacing:.14em;cursor:pointer;transition:transform .06s}.ds-slab::after{content:'';position:absolute;left:0;right:0;bottom:0;height:3px}.ds-slab:active{transform:translateY(2px)}.ds-slab:active::after{height:1px}.ds-slab b{font:800 13px/1 ui-monospace,monospace;letter-spacing:0;margin-left:6px}.ds-slab:focus-visible{outline:2px solid #eafcff;outline-offset:2px}.ds-br{border:1px solid #f0c49a;background:linear-gradient(180deg,#e0a672,#b97a45);color:#1e0f04}.ds-br::after{background:#7a4a22}"
+    },
+    {
+      "name": "Need State",
+      "kind": "button",
+      "refersTo": "slab-disabled",
+      "description": "Unaffordable: never faded, says what is missing.",
+      "html": "<button class=\"ds-slab ds-need\" disabled>NEED<b>6.6K</b></button>",
+      "css": ".ds-slab{position:relative;overflow:hidden;min-height:44px;padding:0 14px 3px;border-radius:9px;font:800 12px/1 system-ui;letter-spacing:.14em;cursor:pointer;transition:transform .06s}.ds-slab::after{content:'';position:absolute;left:0;right:0;bottom:0;height:3px}.ds-slab:active{transform:translateY(2px)}.ds-slab:active::after{height:1px}.ds-slab b{font:800 13px/1 ui-monospace,monospace;letter-spacing:0;margin-left:6px}.ds-slab:focus-visible{outline:2px solid #eafcff;outline-offset:2px}.ds-need{border:1px solid rgba(96,142,255,.2);background:rgba(255,255,255,.035);color:#8390bd;cursor:not-allowed}.ds-need b{color:#dde5ff}.ds-need::after{background:rgba(255,255,255,.06)}"
+    },
+    {
+      "name": "Chip",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "Buy-amount selector (×1, ×10, ×100, MAX).",
+      "html": "<button class=\"ds-chip on\">×1</button>",
+      "css": ".ds-chip{border:1px solid rgba(96,142,255,.2);background:rgba(255,255,255,.04);color:#8390bd;border-radius:7px;padding:5px 10px;font:600 11px/1 system-ui;cursor:pointer}.ds-chip.on{border-color:#48e2ff;color:#48e2ff;background:rgba(72,226,255,.10)}"
+    },
+    {
+      "name": "Generator Row",
+      "kind": "card",
+      "refersTo": "generator-row",
+      "description": "A building tier with icon, output and buy control.",
+      "html": "<div class=\"ds-g\"><div class=\"ds-gi\"></div><div><div class=\"ds-gn\">Mining Drone</div><div class=\"ds-gm\">+0.2 /s</div></div><div class=\"ds-gc\">3</div></div>",
+      "css": ".ds-g{display:grid;grid-template-columns:40px 1fr auto;gap:10px;align-items:center;border:1px solid rgba(92,230,165,.42);border-radius:11px;padding:9px 10px;background:rgba(14,19,42,.72);color:#dde5ff}.ds-gi{width:42px;height:42px;border-radius:11px;border:1px solid rgba(96,142,255,.2);background:linear-gradient(180deg,rgba(120,170,255,.10),rgba(10,14,34,.6))}.ds-gn{font:600 13px/1.35 system-ui}.ds-gm{font:700 11.5px ui-monospace,monospace;color:#5ce6a5}.ds-gc{font:700 15px ui-monospace,monospace}"
+    },
+    {
+      "name": "Resource Card",
+      "kind": "card",
+      "refersTo": "resource-card",
+      "description": "Header currency readout.",
+      "html": "<div class=\"ds-rc\"><div class=\"ds-val\">5.01K</div><div class=\"ds-sub\">0.6 /s</div></div>",
+      "css": ".ds-rc{border:1px solid rgba(96,142,255,.2);border-radius:10px;padding:6px 8px;background:linear-gradient(180deg,rgba(30,40,80,.45),rgba(12,16,36,.45))}.ds-val{font:600 17px/1.15 ui-monospace,monospace;color:#48e2ff}.ds-sub{font:10px ui-monospace,monospace;color:#8390bd}"
+    },
+    {
+      "name": "Tab",
+      "kind": "nav",
+      "refersTo": "nav",
+      "description": "Top-level view switch.",
+      "html": "<button class=\"ds-tab on\">EMPIRE</button>",
+      "css": ".ds-tab{border:1px solid transparent;border-bottom:none;background:none;color:#8390bd;padding:7px 12px;border-radius:9px 9px 0 0;cursor:pointer;font:600 11px/1 system-ui;letter-spacing:.10em}.ds-tab.on{color:#dde5ff;border-color:rgba(96,142,255,.2);background:rgba(14,19,42,.72);box-shadow:0 -2px 0 #48e2ff inset}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Command Console",
+    "overview": "Stellar Dominion looks like the instrument panel of a ship: dark panels over a live starfield, painted planets, and controls that feel like physical keys. Every paid action is a raised slab whose colour is its currency, and meaningful moments confirm themselves by typing a status word behind a blinking cursor.",
+    "keyCharacteristics": [
+      "Deep-space navy base with a faint violet and cyan glow",
+      "Solid slab buttons for every purchase; fill colour is the currency",
+      "Monospace numerals; labels at 11px and up",
+      "Colour as signal, never decoration",
+      "Phone-first: 390x667 and 390x844, 44px taps"
+    ],
+    "rules": [
+      {
+        "name": "The Signal Rule",
+        "body": "Cyan act/ore, violet crystal/Nexus, gold reward, bronze salvage, green good/done, rose danger/enemy. Use Silver Steel for identity.",
+        "section": "colors"
+      },
+      {
+        "name": "The Enemy Is Red Rule",
+        "body": "Anything hostile is rose regardless of faction; faction colours are for names only.",
+        "section": "colors"
+      },
+      {
+        "name": "The Kind Tint Rule",
+        "body": "A held system row takes its kind colour as a wash, border and inset bar.",
+        "section": "colors"
+      },
+      {
+        "name": "The 11px Floor Rule",
+        "body": "Nothing the player reads is smaller than 11px.",
+        "section": "typography"
+      },
+      {
+        "name": "The Numbers Are Mono Rule",
+        "body": "Every quantity the player might compare is monospace.",
+        "section": "typography"
+      },
+      {
+        "name": "The Glow Is Status Rule",
+        "body": "A glow means ready, active or waiting; resting controls do not glow.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do make every paid action a slab in its currency's colour, with a verb and the amount.",
+      "Do say NEED X (or the honest reason) instead of fading a button.",
+      "Do keep text at 11px+, contrast 4.5:1 and taps 44px, checked at 390x667 and 390x844.",
+      "Do confirm meaningful actions with a typed status word.",
+      "Do protect the player from selling what they need.",
+      "Do honour prefers-reduced-motion."
+    ],
+    "donts": [
+      "Don't go cartoony or bright mobile-game.",
+      "Don't use a signal colour to tell things apart; use Silver Steel.",
+      "Don't colour enemies by faction; enemies are rose.",
+      "Don't fade whole locked cards; dim the frame, keep text readable, use a drawn lock.",
+      "Don't hint at the VEGA twist; the ??? node reveals nothing.",
+      "Don't add ambient glow to resting controls."
+    ]
+  }
+}

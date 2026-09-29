@@ -3,3 +3,8 @@ node_modules/
 *.png
 docs/mocks/*.png
 .DS_Store
+
+# Impeccable runtime state (the design files and critiques above them are tracked)
+.impeccable/hook.cache.json
+.impeccable/live/
+.impeccable/config.local.json
