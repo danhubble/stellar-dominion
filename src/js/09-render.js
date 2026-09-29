@@ -105,6 +105,15 @@ function missionStrip(m){
    either the same way, and the strip rebuilds in the exact same pass as the row
    itself (its own churn key below folds in S.mi and the mission's own gCount, so a
    claim or a mission rolling over rebuilds it with no extra flicker window). */
+/* The Buy button's caption: what a tap will do, or, when it cannot be afforded, what
+   is missing ("need 435"), never "BUY x0". Shared by the row build and the per-frame
+   pass in updateEmpBars() so it counts down live as ore comes in. */
+function gbCaption(sysId,gi,cost,xid,xc,can){
+  if(can) return "BUY ×"+(S.buy==="max"?Math.max(1,ladderMaxAff(sysId,gi)):S.buy);
+  if(S.ore<cost) return "need "+fmt(cost-S.ore);
+  if(xc) return "need "+(exoDef(xid)?exoDef(xid).n:"exotic");
+  return "BUY";
+}
 function ladderTierRow(sysId,gi,isNext){
   const g=GENS[gi];
   const el=document.createElement("div"); el.className="g"+(isNext?" next":"");
@@ -125,7 +134,7 @@ function ladderTierRow(sysId,gi,isNext){
     <div style="display:flex;align-items:center;gap:10px">
       <div class="gcount">${c}</div>
       <button class="gb" data-cost="${cost}" ${can?"":"disabled"}><b>${fmt(cost)} ${RI('ore')}</b>
-        <i>BUY ${S.buy==="max"?"\u00d7"+Math.max(0,ladderMaxAff(sysId,gi)):"\u00d7"+S.buy}</i>
+        <i class="gbc">${gbCaption(sysId,gi,cost,xid,xc,can)}</i>
         ${xc>0?`<i class="gexo" style="display:block;--a:${exoDef(xid)?exoDef(xid).col:"#fff"}">+ ${fmt(xc)} ${exoDef(xid)?exoDef(xid).n:""}</i>`:""}
       </button>
     </div>`;
@@ -178,7 +187,9 @@ function updateEmpBars(){
     const can = S.ore>=cost && (!xc||exo(xid)>=xc) && affK;
     el.classList.toggle("ok",can);
     el.style.setProperty("--p",Math.min(100,S.ore/Math.max(cost,1e-9)*100)+"%");
-    const b=el.querySelector(".gb"); if(b)b.disabled=!can;
+    const b=el.querySelector(".gb"); if(b){ b.disabled=!can;
+      const cap=b.querySelector(".gbc"), txt=gbCaption(sysId,gi,cost,xid,xc,can);
+      if(cap&&cap.textContent!==txt)cap.textContent=txt; }
   }
   /* patch614: same split as the .g rows above - the rebuild guard in
      renderMapList() excludes S.ore, so the badge's own live affordability check

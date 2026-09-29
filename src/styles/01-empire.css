@@ -57,13 +57,25 @@
   box-shadow:inset 3px 0 0 var(--gd);font:600 11px/1.25 system-ui;color:var(--mut)}
 .mstrip b{color:var(--gd);font-family:ui-monospace,monospace}
 .mstrip i{font-style:normal;color:var(--gd);letter-spacing:.08em;font-size:11px;margin-right:6px}
+/* Buy: the Scan key's construction at row scale - a solid raised slab with a darker
+   lip that collapses on press. The affordable state is the one that carries colour;
+   an unaffordable button stays fully legible (no opacity) and says what it needs. */
 .gb{
-  border:1px solid var(--line2);border-radius:9px;padding:7px 10px;min-width:104px;cursor:pointer;
-  background:rgba(72,226,255,.07);color:var(--txt);text-align:right
+  position:relative;overflow:hidden;border:1px solid rgba(125,238,255,.5);border-radius:9px;
+  padding:6px 10px 9px;min-width:104px;cursor:pointer;color:var(--txt);text-align:right;
+  background:linear-gradient(180deg,#1d4460,#132e45);
+  box-shadow:0 1px 0 rgba(255,255,255,.14) inset;transition:transform .06s
 }
-.gb:disabled{opacity:.4;cursor:not-allowed}
-.gb b{display:block;font:700 11px/1.1 ui-monospace,monospace;color:var(--cy)}
-.gb i{display:block;font:400 11px/1.3 system-ui;font-style:normal;color:var(--dim);letter-spacing:.06em}
+.gb::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;background:#0b6f86;pointer-events:none}
+.gb:active:not(:disabled){transform:translateY(2px)}
+.gb:active:not(:disabled)::after{height:1px}
+.gb:focus-visible{outline:2px solid #eafcff;outline-offset:2px}
+.gb:disabled{cursor:not-allowed;border-color:var(--line);background:rgba(255,255,255,.035);box-shadow:none}
+.gb:disabled::after{background:rgba(255,255,255,.06)}
+.gb b{display:block;font:700 14px/1.1 ui-monospace,monospace;color:var(--cy)}
+.gb:disabled b{color:var(--mut)}
+.gb i{display:block;font:600 11px/1.3 system-ui;font-style:normal;color:#b9c6ea;letter-spacing:.06em;margin-top:2px}
+.gb:disabled i{color:var(--dim2);font-weight:500;letter-spacing:.02em}
 .gcount{font:700 15px/1 ui-monospace,monospace;text-align:right;color:var(--txt);min-width:44px}
 .auto{position:absolute;top:6px;right:8px;font-size:11px;color:var(--dim);cursor:pointer;letter-spacing:.1em}
 .auto.on{color:var(--gr)}
