@@ -95,6 +95,14 @@ body{
   background:rgba(20,28,58,.96);box-shadow:0 8px 28px -8px rgba(0,0,0,.6);
   transform:translateY(16px);transition:transform .2s ease}
 .noticebar.on .noticepanel{transform:translateY(0)}
+/* banner mode (routine notices, see noticeIsStory()): no backdrop and the bar itself
+   lets taps through - only the card takes them - docked above the Scan button at
+   --nbot, which renderNotice() measures. */
+.noticebar.banner{background:transparent;padding-bottom:var(--nbot,12px)}
+.noticebar.banner.on{pointer-events:none}
+.noticebar.banner .noticepanel{pointer-events:auto;padding:7px 10px;box-shadow:0 6px 20px -6px rgba(0,0,0,.7)}
+.noticebar.banner .vegaav{width:34px;height:34px;margin-right:8px}
+body.nb-on #toasts,body.syspage.nb-on #toasts{bottom:calc(var(--nbot,12px) + var(--nbh,0px))}
 .noticebody{flex:1;min-width:0;display:flex;align-items:flex-start}
 .noticecontent{flex:1;min-width:0}
 .vegaav{flex:none;width:44px;height:44px;margin-right:10px}
@@ -1975,13 +1983,24 @@ function fmtT(s){ s=Math.max(0,Math.floor(s));
    ladderBuy()/grantXp() call rather than teaching either function about governors.
    Never set anywhere else; always false again before the next player-facing call. */
 let hush=false;
+/* One toast on screen at a time: a burst (a MAX buy can fire four) plays as a short
+   queue instead of a stack covering the building rows. Only the newest three are
+   kept; while more are waiting each one is shown for less time. */
+const toastQ=[]; let toastBusy=false;
 function toast(msg,cls){
   if(hush)return;
-  const host=$("#toasts");
-  const d=document.createElement("div"); d.className="toast "+(cls||""); d.textContent=msg;
+  toastQ.push([msg,cls]);
+  if(toastQ.length>3) toastQ.splice(0,toastQ.length-3);
+  if(!toastBusy) nextToast();
+}
+function nextToast(){
+  const it=toastQ.shift(); if(!it){ toastBusy=false; return }
+  toastBusy=true;
+  const host=$("#toasts"); host.textContent="";
+  const d=document.createElement("div"); d.className="toast "+(it[1]||""); d.textContent=it[0];
   host.appendChild(d);
-  while(host.children.length>4) host.firstChild.remove();
-  setTimeout(()=>{d.style.transition="opacity .4s";d.style.opacity="0";setTimeout(()=>d.remove(),420)},2600);
+  setTimeout(()=>{ d.style.transition="opacity .3s"; d.style.opacity="0";
+    setTimeout(()=>{ d.remove(); nextToast() },300) }, toastQ.length?1400:2600);
 }
 /* ============================ audio: synthesis engine ============================
    No samples, pure Web Audio. One AudioContext, built lazily on first sound and torn
@@ -6255,6 +6274,12 @@ NOTICES["vega:map"].go=()=>{ S.msel=null; gotoTab("p-map"); };
    (renderNotice() resolves the speaker from S.rvMsg at render time, since it is
    rolled per-save, not fixed like VEGA's). */
 for(const k in RIVAL_MSG) NOTICES["rival:"+k]={t:RIVAL_MSG[k].t, go: RIVAL_MSG[k].go ? ()=>gotoTab(RIVAL_MSG[k].go) : null};
+/* Story beats keep the full-screen card (dimmed backdrop, has to be answered). Every
+   other notice - tips, unlocks, level-up - shows as a banner docked just above the
+   Scan button: no backdrop, never covers Scan, play carries on under it. */
+const STORY_NOTICES=new Set(["vega:boot","vega:nexus","vega:project",
+  "vega:drift25","vega:drift35","vega:drift45","vega:drift55","vega:drift65"]);
+function noticeIsStory(key){ return STORY_NOTICES.has(key)||key.indexOf("rival:")===0 }
 function queueNotice(key){
   if(S.end>=1 && key.indexOf("vega:")===0)return;   /* patch589: advisor dark once the turn has come */
   if(!S.seen||typeof S.seen!=="object")S.seen={};
@@ -6328,7 +6353,8 @@ function checkUnlocks(){
 let noticeShownKey=null;   /* only rebuild the header/avatar when the front key changes */
 function renderNotice(){
   const el=$("#notice"); if(!el)return;
-  if(!Array.isArray(S.notifyQueue)||!S.notifyQueue.length){ el.classList.remove("on"); noticeShownKey=null; return; }
+  if(!Array.isArray(S.notifyQueue)||!S.notifyQueue.length){ el.classList.remove("on"); noticeShownKey=null;
+    document.body.classList.remove("nb-on"); return; }
   const key=S.notifyQueue[0];
   const n=NOTICES[key];
   if(!n){ S.notifyQueue.shift(); renderNotice(); return; }  /* an unknown key can't be shown - drop it, don't get stuck */
@@ -6350,7 +6376,24 @@ function renderNotice(){
   }
   $("#noticeTxt").textContent=n.t;
   const go=$("#noticeGo"); if(go)go.hidden=!n.go;
+  const banner=!noticeIsStory(key);
+  el.classList.toggle("banner",banner);
   el.classList.add("on");
+  placeNoticeBanner(banner);
+}
+/* Banner mode docks the notice just above whichever Scan button is on screen (the
+   pinned one on a system page, the #left one elsewhere) and lifts #toasts above the
+   banner, via --nbot/--nbh on :root. Measured each call, so a page switch while a
+   banner is up re-docks it. */
+function placeNoticeBanner(banner){
+  const root=document.documentElement;
+  document.body.classList.toggle("nb-on",banner);
+  if(!banner)return;
+  const sc=$$(".scanbtn").find(b=>b.offsetParent&&b.getBoundingClientRect().height);
+  const bot=sc?Math.max(12,Math.round(innerHeight-sc.getBoundingClientRect().top+8)):12;
+  root.style.setProperty("--nbot",bot+"px");
+  const p=$("#notice .noticepanel");
+  if(p)root.style.setProperty("--nbh",(p.offsetHeight+8)+"px");
 }
 function dismissNotice(){
   if(Array.isArray(S.notifyQueue)&&S.notifyQueue.length)S.notifyQueue.shift();

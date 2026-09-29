@@ -32,7 +32,8 @@ function checkUnlocks(){
 let noticeShownKey=null;   /* only rebuild the header/avatar when the front key changes */
 function renderNotice(){
   const el=$("#notice"); if(!el)return;
-  if(!Array.isArray(S.notifyQueue)||!S.notifyQueue.length){ el.classList.remove("on"); noticeShownKey=null; return; }
+  if(!Array.isArray(S.notifyQueue)||!S.notifyQueue.length){ el.classList.remove("on"); noticeShownKey=null;
+    document.body.classList.remove("nb-on"); return; }
   const key=S.notifyQueue[0];
   const n=NOTICES[key];
   if(!n){ S.notifyQueue.shift(); renderNotice(); return; }  /* an unknown key can't be shown - drop it, don't get stuck */
@@ -54,7 +55,24 @@ function renderNotice(){
   }
   $("#noticeTxt").textContent=n.t;
   const go=$("#noticeGo"); if(go)go.hidden=!n.go;
+  const banner=!noticeIsStory(key);
+  el.classList.toggle("banner",banner);
   el.classList.add("on");
+  placeNoticeBanner(banner);
+}
+/* Banner mode docks the notice just above whichever Scan button is on screen (the
+   pinned one on a system page, the #left one elsewhere) and lifts #toasts above the
+   banner, via --nbot/--nbh on :root. Measured each call, so a page switch while a
+   banner is up re-docks it. */
+function placeNoticeBanner(banner){
+  const root=document.documentElement;
+  document.body.classList.toggle("nb-on",banner);
+  if(!banner)return;
+  const sc=$$(".scanbtn").find(b=>b.offsetParent&&b.getBoundingClientRect().height);
+  const bot=sc?Math.max(12,Math.round(innerHeight-sc.getBoundingClientRect().top+8)):12;
+  root.style.setProperty("--nbot",bot+"px");
+  const p=$("#notice .noticepanel");
+  if(p)root.style.setProperty("--nbh",(p.offsetHeight+8)+"px");
 }
 function dismissNotice(){
   if(Array.isArray(S.notifyQueue)&&S.notifyQueue.length)S.notifyQueue.shift();

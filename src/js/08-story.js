@@ -163,6 +163,12 @@ NOTICES["vega:map"].go=()=>{ S.msel=null; gotoTab("p-map"); };
    (renderNotice() resolves the speaker from S.rvMsg at render time, since it is
    rolled per-save, not fixed like VEGA's). */
 for(const k in RIVAL_MSG) NOTICES["rival:"+k]={t:RIVAL_MSG[k].t, go: RIVAL_MSG[k].go ? ()=>gotoTab(RIVAL_MSG[k].go) : null};
+/* Story beats keep the full-screen card (dimmed backdrop, has to be answered). Every
+   other notice - tips, unlocks, level-up - shows as a banner docked just above the
+   Scan button: no backdrop, never covers Scan, play carries on under it. */
+const STORY_NOTICES=new Set(["vega:boot","vega:nexus","vega:project",
+  "vega:drift25","vega:drift35","vega:drift45","vega:drift55","vega:drift65"]);
+function noticeIsStory(key){ return STORY_NOTICES.has(key)||key.indexOf("rival:")===0 }
 function queueNotice(key){
   if(S.end>=1 && key.indexOf("vega:")===0)return;   /* patch589: advisor dark once the turn has come */
   if(!S.seen||typeof S.seen!=="object")S.seen={};

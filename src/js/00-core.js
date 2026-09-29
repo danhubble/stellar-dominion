@@ -31,13 +31,24 @@ function fmtT(s){ s=Math.max(0,Math.floor(s));
    ladderBuy()/grantXp() call rather than teaching either function about governors.
    Never set anywhere else; always false again before the next player-facing call. */
 let hush=false;
+/* One toast on screen at a time: a burst (a MAX buy can fire four) plays as a short
+   queue instead of a stack covering the building rows. Only the newest three are
+   kept; while more are waiting each one is shown for less time. */
+const toastQ=[]; let toastBusy=false;
 function toast(msg,cls){
   if(hush)return;
-  const host=$("#toasts");
-  const d=document.createElement("div"); d.className="toast "+(cls||""); d.textContent=msg;
+  toastQ.push([msg,cls]);
+  if(toastQ.length>3) toastQ.splice(0,toastQ.length-3);
+  if(!toastBusy) nextToast();
+}
+function nextToast(){
+  const it=toastQ.shift(); if(!it){ toastBusy=false; return }
+  toastBusy=true;
+  const host=$("#toasts"); host.textContent="";
+  const d=document.createElement("div"); d.className="toast "+(it[1]||""); d.textContent=it[0];
   host.appendChild(d);
-  while(host.children.length>4) host.firstChild.remove();
-  setTimeout(()=>{d.style.transition="opacity .4s";d.style.opacity="0";setTimeout(()=>d.remove(),420)},2600);
+  setTimeout(()=>{ d.style.transition="opacity .3s"; d.style.opacity="0";
+    setTimeout(()=>{ d.remove(); nextToast() },300) }, toastQ.length?1400:2600);
 }
 /* ============================ audio: synthesis engine ============================
    No samples, pure Web Audio. One AudioContext, built lazily on first sound and torn
