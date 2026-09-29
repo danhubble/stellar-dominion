@@ -57,6 +57,67 @@
 .resslab:disabled::after{background:rgba(255,255,255,.06)}
 .resslab:disabled b{color:var(--txt)}
 
+/* ---------- Nexus (approved nexus-mock) ----------
+   DM nodes are compact rows, THE PROJECT a violet chamber whose track is built like
+   Research's .rtr, ??? a sealed hatched card. The slab is .resslab itself (Nexus is
+   violet too); .nxslab only tints the amount - gold for DM, pale Node green for Nodes. */
+.nxsec{font:700 11px/1 system-ui;letter-spacing:.14em;color:var(--dim2);margin:4px 0 8px}
+.nxsec b{font-family:ui-monospace,monospace;color:var(--txt)}
+.nxr{display:grid;grid-template-columns:1fr 150px;gap:10px;align-items:center;border:1px solid var(--line);
+  border-radius:11px;background:var(--panel);padding:9px 10px 9px 12px;margin-bottom:8px}
+.nxr .nxrt{min-width:0}
+.nxr h3{margin:0;font:600 14px/1.25 system-ui;color:var(--txt)}
+.nxr h3 span{font:700 11px/1 ui-monospace,monospace;color:var(--mut);margin-left:6px}
+.nxr .ef,.nxc .ef{font:600 12px/1.35 ui-monospace,monospace;color:var(--txt)}
+.nxr .ef span,.nxc .ef span{color:var(--mut)}
+.nxr .bar{height:3px;border-radius:2px;background:rgba(255,255,255,.08);margin-top:6px;overflow:hidden}
+.nxr .bar i{display:block;height:100%;background:var(--vi)}
+.nxslab .dm{color:#ffe08a}
+.nxslab .en{color:#b6ffe6}
+/* the LINKED beat typed into a DM row's slab: stays violet, not the grey of a dead button */
+.resslab.nxfx:disabled{border-color:rgba(168,120,255,.6);background:rgba(168,120,255,.16);color:#e6dcff}
+.nxtype::after,.nxconf::after{content:"";display:inline-block;width:.55em;height:1em;margin-left:3px;vertical-align:-2px;
+  background:var(--vi);animation:misblink 1s steps(1) infinite}
+.nxproj{margin-top:18px;border:1px solid rgba(168,120,255,.35);border-radius:13px;padding:12px;
+  background:linear-gradient(180deg,rgba(60,30,110,.28),rgba(14,19,42,.72))}
+.nxph{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:4px}
+.nxph h2{margin:0;font:700 14px/1 system-ui;letter-spacing:.2em;color:#d9c6ff}
+.nxph .held{font:700 13px/1 ui-monospace,monospace;color:var(--en);white-space:nowrap}
+.nxph .held span{color:var(--mut);font-weight:600}
+.nxproj .pjexpl{font-size:12px;margin:0 0 2px}
+.nxproj .pjrate{font-size:11.5px;color:var(--mut);margin:0 0 12px}
+.nxn{display:grid;grid-template-columns:28px 1fr;gap:10px;position:relative;padding-bottom:12px}
+.nxn::before{content:"";position:absolute;left:13px;top:28px;bottom:-2px;width:2px;background:rgba(168,120,255,.18)}
+.nxn.on::before{background:var(--vi)}
+.nxn:last-child::before{display:none}
+.nxd{width:28px;height:28px;border-radius:50%;border:2px solid rgba(168,120,255,.3);background:var(--bg);display:grid;place-items:center;
+  font:700 11px/1 ui-monospace,monospace;color:var(--mut);position:relative;z-index:1}
+.nxd svg{width:14px;height:14px}
+.nxn.on .nxd{background:var(--vi);border-color:var(--vi);color:#1a0d33}
+.nxn.next .nxd{border-color:var(--vi);color:var(--txt);box-shadow:0 0 0 4px rgba(168,120,255,.15)}
+.nxc{min-width:0}
+.nxc h3{margin:3px 0 2px;font:600 14px/1.25 system-ui;color:var(--txt)}
+.nxc .ef{margin-bottom:3px}
+.nxc .fl{font-size:12px;color:var(--mut);margin-bottom:8px}
+.nxc .st{font:700 11px/1 ui-monospace,monospace;letter-spacing:.12em;color:var(--vi);margin-top:3px}
+.nxc .rq{font:600 12px/1.4 system-ui;color:var(--mut)}
+.nxn.lk h3{color:var(--mut)}
+.nxconf{font:700 12px/1 ui-monospace,monospace;color:var(--vi);letter-spacing:.12em;height:14px;margin-bottom:8px;display:none}
+.nxn.done .nxconf{display:block}
+.nxend button.resslab{margin-top:2px}
+/* the sealed node: cost and requirements only - the bars stand in for the effect */
+.nxseal{border:1px solid rgba(168,120,255,.55);border-radius:11px;padding:10px 12px;
+  background:repeating-linear-gradient(135deg,rgba(168,120,255,.05) 0 6px,transparent 6px 12px),rgba(8,6,20,.9);
+  animation:nxbreathe 5s ease-in-out infinite}
+@keyframes nxbreathe{50%{box-shadow:0 0 0 1px rgba(168,120,255,.35),0 0 22px -6px rgba(168,120,255,.7)}}
+.nxseal h3{margin:0 0 6px;font:800 16px/1 ui-monospace,monospace;letter-spacing:.3em;color:#d9c6ff}
+.nxred{display:block;height:9px;border-radius:2px;background:rgba(168,120,255,.22);margin:5px 0}
+.nxseal .ef{color:var(--mut);margin:8px 0 2px}
+.nxseal .ef b{color:var(--en)}
+.nxseal .resslab{margin-top:6px}
+.nxseal .vs{font:italic 500 12px/1.4 system-ui;color:#c4b2e8;margin-top:4px}
+@media(prefers-reduced-motion:reduce){.nxseal{animation:none}.nxtype::after,.nxconf::after{animation:none}}
+
 /* the track */
 .rtk{position:relative}
 .rtr{display:grid;grid-template-columns:28px 1fr;gap:10px;position:relative;padding:0 0 10px;width:100%;

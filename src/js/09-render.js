@@ -190,11 +190,6 @@ function ladderTierRow(sysId,gi,isNext){
    game's GENS.forEach in render() did. This array is what that pass walks; it is
    rebuilt every time renderSysBuild() rebuilds the sheet's own rows (patch610/611). */
 let empSlotEls=[];
-/* PLAN-pacing: Project cards' "you make R/h · ~T to go" line - S.en ticks every
-   frame outside of dirty (same reason resProgEls/mapListEls exist below), so the
-   text refreshes here on an unconditional per-frame pass instead of waiting for
-   renderNex()'s own dataset-free full rebuild. Rebuilt every time renderNex() runs. */
-let projEls=[];
 function updateEmpBars(){
   for(const {el,sysId,gi} of empSlotEls){
     if(!el.isConnected)continue;
@@ -233,12 +228,10 @@ function updateEmpBars(){
       });
     }
   }
-  for(const q of projEls){
-    if(!q.el.isConnected)continue;
-    const enR=enRate(), have=S.en||0, r=(enR*3600).toFixed(1);
-    q.el.textContent = have>=q.cost ? `you make ${r} Nodes/h · ready`
-      : `you make ${r} Nodes/h · ~${fmtT(Math.max(0,(q.cost-have)/Math.max(enR,1e-9)))} to go`;
-  }
+  /* PLAN-pacing: the Project's "you make R/h · ~T to go" line (and the Nexus slabs'
+     LINK/NEED) - S.en ticks every frame outside of dirty, so nexLive() refreshes them
+     in place on this unconditional pass; renderNex() only rebuilds on a real change. */
+  if($("#p-nex").classList.contains("on"))nexLive();
 }
 function render(){
   syncSysPage();
@@ -2273,72 +2266,142 @@ function renderArmoury(){
   });
   raidLive();
 }
+/* The Nexus tab (approved nexus-mock): Dark Matter nodes as compact rows, THE PROJECT
+   as a violet chamber with a vertical track (same build as Research's .rtr), and ???
+   as a sealed card that says nothing about what it does. Like renderRes(), the pane
+   rebuilds only when its markup would actually change (#nex dataset.h - tchurn2 sweeps
+   this pane for buttons swapped out mid-click); balances, LINK/NEED captions and the
+   ETA line are left empty here and written in place by nexLive() every frame. */
+let nexFxUntil=0;
+function nexReq(r){   /* display only - nexLocked()/nexReqText() stay the rules */
+  if(r.id==="pjx")return nexReqText(r);
+  const src=NEXUS.find(x=>x.id===r.req);
+  return `Link ${src?src.n:r.req} first · ${fmt(nexCost(r))} Nodes`;
+}
+function nexSlab(r){ return `<button type="button" class="resslab nxslab" data-nx="${r.id}"></button>` }
 function renderNex(){
-  const host=$("#nex"); host.innerHTML="";
+  const host=$("#nex");
+  if(Date.now()<nexFxUntil)return;           /* a LINKED beat is playing - leave the pane be */
   const seized=S.end===1;   /* patch589: every card, DM or Project, freezes at the turn */
-  NEXUS.forEach(r=>{
-    if(r.cur==="en")return;   /* Project nodes render in their own block below */
-    const l=lv(S.nx,r.id), max=l>=r.max, c=nexCost(r,l);
-    const d=document.createElement("div"); d.className="card"+(max?" done":"")+(seized?" seized":"");
-    d.innerHTML=`<h5>${r.n} <span class="lv">Lv ${l}/${r.max}</span></h5>
-      <p>${r.t}</p><div class="eff">${r.d(l)}${max?"":" → "+r.d(l+1)}</div>
-      ${seized?'<button disabled>SEIZED</button>':max?'<button disabled>MAXED</button>':`<button data-cost="${c}" data-cur="dm">${fmt(c)} ${RI('dm')}</button>`}`;
-    if(!max&&!seized)d.querySelector("button").onclick=()=>buyNex(r);
-    host.appendChild(d);
-  });
+  const proj=NEXUS.filter(r=>r.cur==="en");
   /* THE PROJECT (patch583): hidden entirely until the first Exotic Node - same
      "ever produced/held" test the strip uses, so it can never go hidden again once
      shown (spending the bank to 0 does not stop a held ring-3/4 system producing). */
-  const proj=NEXUS.filter(r=>r.cur==="en");
-  projEls=[];
-  if(proj.length && ((S.en||0)>0 || enRate()>0)){
-    const head=document.createElement("div");
-    head.className="sechead pjhead"; head.textContent="THE PROJECT";
-    host.appendChild(head);
-    /* PLAN-pacing: "nothing tells you where they come from" - one line, built from
-       the rate constants and the sector names, never hard-coded numbers. */
-    const secName=k=>{ const sec=SECTORS.find(x=>x.key===k); return sec?sec.n:k; };
-    const expl=document.createElement("p"); expl.className="pjexpl";
-    expl.textContent=`Nodes come from held systems in ${secName("frontier")} `
-      +`(${EN_RING3}/h each), ${secName("deep")} and ${secName("beyond")} (${EN_RING4}/h).`;
-    host.appendChild(expl);
-    proj.forEach(r=>{
-      /* patch592: the game is won - pjx stops reading as just another MAXED card
-         and offers its way back into the ending screen instead. */
-      if(r.id==="pjx" && S.end===2){
-        const l=lv(S.nx,r.id);
-        const d=document.createElement("div"); d.className="card done";
-        d.innerHTML=`<h5>${r.n} <span class="lv">Lv ${l}/${r.max}</span></h5>
-          <p>${STORY.nodeHint}</p><div class="eff">COMPLETE</div>
-          <button>COMPLETE \u00b7 VIEW ENDING</button>`;
-        d.querySelector("button").onclick=()=>showEnding();
-        host.appendChild(d);
-        return;
-      }
-      const l=lv(S.nx,r.id), max=l>=r.max, c=nexCost(r,l), locked=nexLocked(r);
-      const desc = r.id==="pjx" ? STORY.nodeHint : r.t;
-      const d=document.createElement("div");
-      d.className="card"+(max?" done":"")+(locked&&!seized?" locked":"")+(seized?" seized":"");
-      d.innerHTML = seized
-        ? `<h5>${r.n} <span class="lv">Lv ${l}/${r.max}</span></h5><p>${desc}</p><div class="eff">SEIZED</div><button disabled>SEIZED</button>`
-        : `<h5>${locked?"\ud83d\udd12 ":""}${r.n} <span class="lv">Lv ${l}/${r.max}</span></h5>
-        <p>${desc}</p>
-        ${locked?`<div class="eff">${nexReqText(r)}</div><button disabled>LOCKED</button>`
-          :`<div class="eff">${r.d(l)}${max?"":" → "+r.d(l+1)}</div>
-            ${max?'<button disabled>MAXED</button>':`<button data-cost="${c}" data-cur="en">${fmt(c)} Nodes</button>`}`}`;
-      if(!max&&!locked&&!seized)d.querySelector("button").onclick=()=>buyNex(r);
-      /* PLAN-pacing: "you make R/h · ~T to go" - only where it means anything
-         (producing, buyable, not already maxed/locked/seized). Text itself is
-         refreshed every frame by updateEmpBars() (projEls), not rebuilt here. */
-      if(enRate()>0 && !max && !locked && !seized){
-        const eta=document.createElement("p"); eta.className="pjeta";
-        d.appendChild(eta);
-        projEls.push({el:eta, cost:c});
-      }
-      host.appendChild(d);
+  const showProj=proj.length && ((S.en||0)>0 || enRate()>0);
+  /* PLAN-pacing: "nothing tells you where they come from" - one line, built from
+     the rate constants and the sector names, never hard-coded numbers. */
+  const secName=k=>{ const sec=SECTORS.find(x=>x.key===k); return sec?sec.n:k; };
+  const rateLine=`Nodes come from held systems in ${secName("frontier")} `
+    +`(${EN_RING3}/h each), ${secName("deep")} and ${secName("beyond")} (${EN_RING4}/h).`;
+  let h="";
+  if(seized){
+    /* the turn: the old plain cards, greyed and SEIZED - nothing here is clickable */
+    const card=r=>{ const l=lv(S.nx,r.id), desc=r.id==="pjx"?STORY.nodeHint:r.t;
+      return `<div class="card seized"><h5>${r.n} <span class="lv">Lv ${l}/${r.max}</span></h5>
+        <p>${desc}</p><div class="eff">SEIZED</div><button disabled>SEIZED</button></div>`; };
+    h+=`<div class="grid">${NEXUS.filter(r=>r.cur!=="en").map(card).join("")}</div>`;
+    if(showProj)h+=`<div class="sechead pjhead">THE PROJECT</div><p class="pjexpl">${rateLine}</p>
+      <div class="grid">${proj.map(card).join("")}</div>`;
+  } else {
+    h+=`<div class="nxsec">DARK MATTER · <b id="nxDm"></b> held</div>`;
+    NEXUS.forEach(r=>{
+      if(r.cur==="en")return;   /* Project nodes render in their own chamber below */
+      const l=lv(S.nx,r.id), max=l>=r.max;
+      /* "current -> next", current muted; a level-0 node has no current worth showing */
+      const ef = max ? r.d(l) : l>0 ? resEffDiff(r.d(l),r.d(l+1)) : `<span>→</span> ${r.d(1)}`;
+      h+=`<div class="nxr${max?" max":""}" data-nxi="${r.id}"><div class="nxrt">
+        <h3>${r.n}<span>${l}/${r.max}</span></h3><div class="ef">${ef}</div>
+        <div class="bar"><i style="width:${(l/r.max*100).toFixed(1)}%"></i></div></div>
+        ${max?'<button type="button" class="resslab nxslab" disabled>LINKED</button>':nexSlab(r)}</div>`;
     });
+    if(showProj){
+      h+=`<div class="nxproj" style="--en:${EN_COL}"><div class="nxph"><h2>THE PROJECT</h2>
+        <div class="held"><b id="nxEn"></b> <span>Nodes held</span></div></div>
+        <p class="pjexpl">VEGA calls it the Project. Exotic Nodes from ring 3 and 4 systems power it.</p>
+        <p class="pjrate">${rateLine}</p><div class="nxtk">`;
+      proj.forEach((r,i)=>{
+        const l=lv(S.nx,r.id), max=l>=r.max, c=nexCost(r,l), locked=nexLocked(r);
+        /* PLAN-pacing: "you make R/h · ~T to go" - only where it means anything */
+        const eta = enRate()>0 ? `<p class="pjeta" data-c="${c}"></p>` : "";
+        const rq = `<div class="rq">${R_LOCK}${nexReq(r)}</div>`;
+        if(r.id==="pjx"){
+          /* patch592: the game is won - pjx offers its way back into the ending screen */
+          if(S.end===2){
+            h+=`<div class="nxn on"><div class="nxd">${R_CHECK}</div><div class="nxc"><div class="card done nxend">
+              <h5>${r.n} <span class="lv">Lv ${l}/${r.max}</span></h5><p>${STORY.nodeHint}</p><div class="eff">COMPLETE</div>
+              <button type="button" class="resslab" data-nxend="1">COMPLETE · VIEW ENDING</button></div></div></div>`;
+            return;
+          }
+          /* sealed: cost and requirements only. Nothing (not r.d, not r.t) says what it does. */
+          h+=`<div class="nxn${max?" on":locked?" lk":" next"}" data-nxi="${r.id}"><div class="nxd">${max?R_CHECK:"?"}</div>
+            <div class="nxc"><div class="nxseal"><h3>???</h3>
+            <span class="nxred" style="width:86%"></span><span class="nxred" style="width:64%"></span>
+            <div class="ef">Effect: unknown · <b>${fmt(c)} Nodes</b></div>
+            ${max?'<div class="st">LINKED</div>':locked?rq:nexSlab(r)+eta}
+            <div class="vs">“${STORY.nodeHint}”</div></div></div></div>`;
+          return;
+        }
+        if(max){
+          h+=`<div class="nxn on" data-nxi="${r.id}"><div class="nxd">${R_CHECK}</div><div class="nxc">
+            <div class="st">LINKED</div><h3>${r.n}</h3><div class="ef">${r.d(l)}</div></div></div>`;
+          return;
+        }
+        h+=`<div class="nxn${locked?" lk":" next"}" data-nxi="${r.id}"><div class="nxd">${i+1}</div><div class="nxc">
+          <h3>${r.n}</h3><div class="ef"><span>→</span> ${r.d(1)}</div><div class="fl">${r.t}</div>
+          ${locked?rq:`<div class="nxconf"></div>${nexSlab(r)}${eta}`}</div></div>`;
+      });
+      h+="</div></div>";
+    }
   }
+  if(host.dataset.h!==h){
+    host.dataset.h=h; host.innerHTML=h;
+    host.querySelectorAll("button[data-nx]").forEach(b=>{
+      const r=NEXUS.find(x=>x.id===b.dataset.nx); b.onclick=()=>nexBuyFx(r); });
+    const eb=host.querySelector("[data-nxend]"); if(eb)eb.onclick=()=>showEnding();
+  }
+  nexLive();
   softButtons();
+}
+/* the per-frame part: balances, each slab's LINK/NEED (NEED names the shortfall) and
+   the ETA follow the balance in place, never a rebuild */
+function nexLive(){
+  const host=$("#nex"); if(!host||Date.now()<nexFxUntil)return;
+  const dm=$("#nxDm"); if(dm){ const t=fmt(S.dm); if(dm.textContent!==t)dm.textContent=t; }
+  const en=$("#nxEn"); if(en){ const t=fmt(S.en||0); if(en.textContent!==t)en.textContent=t; }
+  host.querySelectorAll("button[data-nx]").forEach(b=>{
+    const r=NEXUS.find(x=>x.id===b.dataset.nx); if(!r)return;
+    const c=nexCost(r), have=nexBal(r), ok=have>=c, isEn=nexCur(r)==="en", u=isEn?"Nodes":"DM";
+    const html = ok ? `LINK<b class="${isEn?"en":"dm"}">${fmt(c)} ${u}</b>` : `NEED<b>${fmt(Math.ceil(c-have))} ${u}</b>`;
+    if(b.disabled===ok)b.disabled=!ok;
+    if(b.dataset.h!==html){ b.dataset.h=html; b.innerHTML=html; }
+  });
+  host.querySelectorAll(".pjeta").forEach(el=>{
+    const cost=+el.dataset.c, enR=enRate(), have=S.en||0, r=(enR*3600).toFixed(1);
+    const t = have>=cost ? `you make ${r} Nodes/h · ready`
+      : `you make ${r} Nodes/h · ~${fmtT(Math.max(0,(cost-have)/Math.max(enR,1e-9)))} to go`;
+    if(el.textContent!==t)el.textContent=t;
+  });
+}
+/* buy through buyNex() unchanged, then the console confirmation: LINKED types in on the
+   row/node and the pane rebuilds a beat later. ??? gets no beat - buying it starts the
+   turn, whose own scene must not wait behind ours. */
+function nexBuyFx(r){
+  if(r.id==="pjx"){ buyNex(r); return }
+  const slow=lowMotion(), hold=slow?250:1100;
+  nexFxUntil=Date.now()+hold;
+  if(!buyNex(r)){ nexFxUntil=0; return }
+  const el=$("#nex").querySelector(`[data-nxi="${r.id}"]`);
+  if(el){
+    el.classList.add("done");
+    const bt=el.querySelector("button[data-nx]"); if(bt)bt.disabled=true;
+    /* a Project node types above its slab (the mock); a DM row types into the slab */
+    let out=el.querySelector(".nxconf");
+    if(!out&&bt){ bt.classList.add("nxfx"); bt.innerHTML='<span class="nxtype"></span>'; out=bt.firstChild; }
+    if(out){ const w="LINKED";
+      if(slow)out.textContent=w; else { let n=0;
+        const t=setInterval(()=>{ out.textContent=w.slice(0,++n); if(n>=w.length||!out.isConnected)clearInterval(t) },60) } }
+  }
+  setTimeout(()=>{ nexFxUntil=0; dirty=true; render(); }, hold);
 }
 /* ---------------- claiming a contract, as a moment ----------------
    claimMission() pays out and sets dirty, and the frame loop's dirty branch rebuilds this
