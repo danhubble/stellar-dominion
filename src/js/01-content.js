@@ -859,9 +859,11 @@ function fightOdds(t,f){
 }
 function riskOf(t){
   const o=fightOdds(t);
-  if(o>=2.2)return ["LOW","var(--gr)"];
-  if(o>=1.45)return ["MODERATE","var(--gd)"];
-  if(o>=1.05)return ["HIGH","#ffb45c"];
+  /* a neutral -> rose ramp: gold means reward and orange is the ore kind, so neither
+     may say "risk". The word always carries the level; the colour only backs it up. */
+  if(o>=2.2)return ["LOW","var(--mut)"];
+  if(o>=1.45)return ["MODERATE","#ffb3c2"];
+  if(o>=1.05)return ["HIGH","var(--rd)"];
   return ["SEVERE","var(--rd)"];
 }
 /* STAGE 1 auto-resolve (2026-09-05). AUTO_MULT TUNING-PENDING - "the fight is not

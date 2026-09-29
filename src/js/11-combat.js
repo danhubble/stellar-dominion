@@ -2093,7 +2093,7 @@ function bDraw(){
   // mender tethers, drawn under everything so they read as support beams
   for(const e of BT.en){ if(!e.alive||!(EK[e.k]&&EK[e.k].heal))continue;
     for(const o of BT.en){ if(o===e||!o.alive)continue;
-      bx.globalAlpha=.20+.12*Math.sin(BT.el*4); bx.strokeStyle="#5ce6a5"; bx.lineWidth=1.6*D;
+      bx.globalAlpha=.20+.12*Math.sin(BT.el*4); bx.strokeStyle="#ffa3b5"; bx.lineWidth=1.6*D;   /* a hostile's beam: rose, not the player's green */
       bx.beginPath(); bx.moveTo(e.x*BW,e.y*BH); bx.lineTo(o.x*BW,o.y*BH); bx.stroke(); }
   }
   bx.globalAlpha=1;
@@ -2109,8 +2109,11 @@ function bDraw(){
        true via e.rr); only the colour was still leaking the ordinary per-kind EK
        palette (green/yellow/red), which read as "the usual enemy glyphs" instead of
        a mirror of your own fleet. */
-    const col=(BT.t&&BT.t.final)?"#ff4d5e":K.boss?"#ff5f6d":e.k==="swift"?"#ffd166":e.k==="heal"?"#5ce6a5":
-              e.k==="bomber"?"#ff9a6b":e.k==="split"?"#b07cff":BT.T.col;
+    /* every hostile reads as the enemy: one rose/red family (var(--rd) #ff6b8a and
+       its shades), never the player's cyan/green or the reward gold. The kinds stay
+       told apart by their silhouettes below, the shade only nudges it. */
+    const col=(BT.t&&BT.t.final)?"#ff4d5e":K.boss?"#ff4d5e":e.k==="swift"?"#ff8fa3":e.k==="heal"?"#ffa3b5":
+              e.k==="bomber"?"#ff7a6b":e.k==="split"?"#e85a8a":"#ff6b8a";
     bx.save(); bx.translate(x,y); bx.rotate(Math.sin(e.px)*0.18);
     bx.shadowColor=col; bx.shadowBlur=12*D;
     bx.fillStyle=col;
@@ -2152,7 +2155,9 @@ function bDraw(){
     const p=Math.max(0,e.hp/e.max), RR=ER*1.5;
     bx.strokeStyle="rgba(255,255,255,.13)"; bx.lineWidth=3.2*D;
     bx.beginPath(); bx.arc(x,y,RR,0,6.2832); bx.stroke();
-    bx.strokeStyle=p>.5?"#5ce6a5":p>.22?"#ffd166":"#ff6b8a"; bx.lineWidth=3.2*D;
+    /* their health ring is theirs too - rose, fading paler as they weaken (never the
+       green/gold the player's own bars use) */
+    bx.strokeStyle=p>.5?"#ff6b8a":p>.22?"#ff9aae":"#ffcdd7"; bx.lineWidth=3.2*D;
     bx.beginPath(); bx.arc(x,y,RR,-1.5708,-1.5708+6.2832*p); bx.stroke();
 
     // weak point: the seam worth aiming at
@@ -2273,7 +2278,7 @@ function bDraw(){
   for(const f of BT.fx){
     bx.globalAlpha=Math.max(0,f.a);
     if(f.t==="boom"){
-      bx.strokeStyle=BT.T.col; bx.lineWidth=3.5*D;
+      bx.strokeStyle="#ff6b8a"; bx.lineWidth=3.5*D;   /* a hostile going down: its own rose */
       bx.beginPath(); bx.arc(f.x,f.y,f.r,0,6.2832); bx.stroke();
       bx.strokeStyle="#fff"; bx.lineWidth=1.6*D;
       bx.beginPath(); bx.arc(f.x,f.y,f.r*.55,0,6.2832); bx.stroke();
@@ -2598,7 +2603,11 @@ function renderFleetTabs(){
   const key=fls.map(f=>f.id).join(",")+"|"+S.flSel;
   if(host.dataset.h===key)return;
   host.dataset.h=key;
-  host.innerHTML=fls.map(f=>
+  /* one fleet: no selector at all - a lone full-width glowing chip read as a choice
+     with nothing to choose between, and the strip right under it already names the
+     fleet. display, not [hidden]: .buybar's own display:flex outranks [hidden]. */
+  host.style.display = fls.length>1 ? "" : "none";
+  host.innerHTML=fls.length<2 ? "" : fls.map(f=>
     `<button type="button" class="chip${f.id===S.flSel?" on":""}" data-fl="${f.id}">${f.n}</button>`
   ).join("");
   host.querySelectorAll("[data-fl]").forEach(b=>{
@@ -2613,9 +2622,10 @@ function renderRaids(){
      the empire-wide total - fleetCap() applies per fleet, so "112/60" is cf's own
      onboard+attributed-hangar power against the one cap every fleet gets. */
   const pw=fleetTotalPower(cf), cp=fleetCap(), over=pw>cp;
-  const thinCap=cp>0&&pw<cp*0.7;
+  /* cyan while there is room, gold exactly full, rose over (the thin-fleet warning
+     is #flWarn's job below, not this number's colour) */
   st.innerHTML=fmt(fleetDPS(cf))+" dps · "+fmt(fleetHPMax(cf))+" hull"
-    +` <b class="flcap${over?" over":thinCap?" thin":""}">⚡${pw}/${cp}</b>`;
+    +` <b class="flcap${over?" over":(cp>0&&pw===cp)?" full":""}">⚡\ufe0e${pw}/${cp}</b>`;   /* U+FE0E (text presentation): the bolt, takes .flcap's colour instead of rendering as an orange emoji */
   /* PLAN-fleets run 3 (BRIEF commit 2): where the selected tab's own fleet actually
      is - independent of the ENGAGE/AUTO fleet a target card uses (that is always
      fleetAtSys(t.sys), never this tab). Plain textContent, same idiom the fleet
@@ -2626,7 +2636,8 @@ function renderRaids(){
     : "AT "+((SYSMAP[cf.at]||{}).n||cf.at).toUpperCase();
   const hp=cf.hp, bar=$(".fl-hp");
   bar.classList.toggle("hurt",hp<=.6&&hp>.3); bar.classList.toggle("crit",hp<=.3);
-  $("#flHp").style.width=(hp*100)+"%";
+  /* no ships = nothing to have integrity: an empty bar, not cf.hp's full one */
+  $("#flHp").style.width=(fleetCount(cf)?hp*100:0)+"%";
   $("#flHpT").textContent=fleetCount(cf)?("FLEET INTEGRITY "+Math.round(hp*100)+"%"+(hp<1?" · repairing":"")):"NO SHIPS";
   /* the single most useful thing the page can say to someone losing every fight */
   const wn=$("#flWarn");
@@ -2637,10 +2648,8 @@ function renderRaids(){
       Hostiles are sized against a full one, so raids will go badly until you build more
       \u2014 heavier hulls give far more per point of capacity.`;
   }
-  const fx=$("#flFix"), rc=repairCost(cf);
-  fx.classList.toggle("hide", !fleetCount(cf) || hp>=1);
-  fx.disabled = S.ore<rc || hp>=1;
-  fx.textContent = "REPAIR \u00b7 "+fmt(rc)+" ORE";
+  const fx=$("#flFix");
+  fx.classList.toggle("hide", !fleetCount(cf) || hp>=1);   /* its label/cost: raidLive() */
   const host=$("#flShips"); host.innerHTML="";
   /* run 3 (decision 6): no idle fleet at a yard (home, or batch C's Shipyard) right
      now - a BUY still queues (see buyShip()'s own comment), it just doesn't land in
@@ -2684,8 +2693,15 @@ function renderRaids(){
     const dps=fleetDPS(cf), hpm=fleetHPMax(cf);
     const eHP=dps*t.secs*t.dif, eDPS=(hpm*t.dmg)/t.secs;
     const risk=riskOf(t);
-    const rews=[rw.o?fmt(rw.o)+" "+RI('ore'):null,rw.c?fmt(rw.c)+" "+RI('cry'):null,rw.m?fmt(rw.m)+" "+RI('dm'):null,
-      "~"+SVBASE[t.ti]*Math.round(t.dif)+" "+RI('sv')].filter(Boolean).join(" · ");
+    /* each amount in its own currency colour (.rw-o/c/m/s, 03-combat.css), not the
+       whole line in reward gold */
+    const svEst=SVBASE[t.ti]*Math.round(t.dif);
+    const rews=[rw.o?`<b class="rw-o">${fmt(rw.o)}</b> ${RI('ore')}`:null,rw.c?`<b class="rw-c">${fmt(rw.c)}</b> ${RI('cry')}`:null,
+      rw.m?`<b class="rw-m">${fmt(rw.m)}</b> ${RI('dm')}`:null,
+      `<b class="rw-s">~${svEst}</b> ${RI('sv')}`].filter(Boolean).join(" · ");
+    /* the stake ENGAGE plays for, straight from the reward line above - ore if the
+       target pays ore, else its salvage estimate. Nothing new computed. */
+    const stake = rw.o ? `+${fmt(rw.o)} ${RI('ore')}` : `~${svEst} ${RI('sv')}`;
     const d=document.createElement("div"); d.className="tcard"; d.style.setProperty("--a",T.col);
     /* PLAN-fleets run 2 (decision 3): a raid is somewhere, and engaging it needs a
        fleet actually there - hereFleet, not curFleet(). None there yet: offer to
@@ -2696,17 +2712,19 @@ function renderRaids(){
     let actHtml, auto=false;
     if(hereFleet){
       auto=canAutoResolve(t,hereFleet);
+      /* ENGAGE / SEND is the bright cyan slab (.raidgo); AUTO-RESOLVE the plain outline
+         secondary, FIGHT IT ANYWAY the quiet ghost - button order is unchanged */
       actHtml = auto
-        ? '<button>AUTO-RESOLVE</button><button class="ghost" style="margin-top:6px">FIGHT IT ANYWAY</button>'
-        : "<button>ENGAGE</button>";
+        ? '<button>AUTO-RESOLVE</button><button class="ghost">FIGHT IT ANYWAY</button>'
+        : `<button class="raidgo">ENGAGE<b>· ${stake}</b></button>`;
     } else {
       const enRoute=fleetTravelingTo(t.sys);
-      if(enRoute) actHtml=`<button disabled>ARRIVING · ${Math.max(0,Math.ceil(enRoute.eta))}s</button>`;
+      if(enRoute) actHtml=`<button class="raidgo" disabled>ARRIVING<b>· ${Math.max(0,Math.ceil(enRoute.eta))}s</b></button>`;
       else {
         const nf=nearestIdleFleetTo(t.sys);
         actHtml = nf
-          ? `<button>SEND ${nf.n.toUpperCase()} · ${Math.round(travelSecs(nf.at,t.sys))}s</button>`
-          : `<button disabled>ALL FLEETS BUSY</button>`;
+          ? `<button class="raidgo">SEND ${nf.n.toUpperCase()}<b>· ${Math.round(travelSecs(nf.at,t.sys))}s</b></button>`
+          : `<button class="raidgo" disabled>ALL FLEETS BUSY</button>`;
       }
     }
     d.innerHTML=`<h5>${t.name} <span class="risk" style="color:${risk[1]}">${risk[0]}</span></h5>
@@ -2740,12 +2758,13 @@ function renderRaids(){
   REFIT.forEach(r=>{
     const l=rfl(r.id), max=l>=r.max, c=refitCost(r);
     const d=document.createElement("div");
-    d.className="rfc"+(max?" done":""); d.style.setProperty("--a",r.col);
+    /* steel identity accent for every refit (r.col is left in the data, unused here):
+       the signal hues are for state, not for telling one refit from another */
+    d.className="rfc"+(max?" done":""); d.style.setProperty("--a","var(--sv)");
     d.innerHTML=`<h5>${r.n}<span class="lv">Lv ${l}/${r.max}</span></h5>
       <p>${r.t}</p>
       <div class="eff">${r.d(l)}${max?"":" \u2192 "+r.d(l+1)}</div>
-      ${max?'<button disabled>MAXED</button>':
-        `<button ${S.sv>=c?"":"disabled"}>${fmt(c)} ${RI('sv')}</button>`}`;
+      ${max?'<button class="svslab" disabled>MAXED</button>':svSlab("UPGRADE",c)}`;
     if(!max)d.querySelector("button").onclick=()=>buyRefit(r);
     rh.appendChild(d);
   });
@@ -2763,9 +2782,10 @@ function renderRaids(){
       const R=c?ROLES.find(r=>r.id===c.role):null;
       const d=document.createElement("div");
       d.className="bslot"+(c?" full":"")+(open?"":" lock");
-      d.style.setProperty("--a",R?R.col:"var(--dim)");
-      d.style.setProperty("--a2",R?rgba(R.col,.14):"rgba(255,255,255,.03)");
-      d.innerHTML = !open ? `<span class="bempty">LOCKED \u00b7 ${i===1?40:150} WINS</span>`
+      /* steel identity, same as the roster rows below - the role is named in text */
+      d.style.setProperty("--a",R?"var(--sv)":"var(--dim)");
+      d.style.setProperty("--a2",R?"rgba(169,188,212,.13)":"rgba(255,255,255,.03)");
+      d.innerHTML = !open ? `<span class="bempty">${R_LOCK}LOCKED \u00b7 ${i===1?40:150} WINS</span>`
         : c ? `<div class="bi">${R.n.slice(0,3).toUpperCase()}</div>
                <div style="min-width:0"><div class="bn">${c.n}</div>
                  <div class="be">${RAR[c.r].n} ${R.n} \u00b7 ${R.d(c.deck?1:RAR[c.r].m)}</div></div>`
@@ -2777,15 +2797,15 @@ function renderRaids(){
     (S.crew||[]).forEach(c=>{
       const R=ROLES.find(r=>r.id===c.role), on=S.bridge.indexOf(c.id)>=0;
       const d=document.createElement("div");
-      d.className="crw"+(on?" on":""); d.style.setProperty("--a",R.col);
-      d.style.setProperty("--a2",rgba(R.col,.13));
+      /* steel identity accent; on the bridge (a state) is what turns the row cyan */
+      d.className="crw"+(on?" on":""); d.style.setProperty("--a","var(--sv)");
       d.innerHTML=`<div style="min-width:0">
           <div class="cn">${c.n}</div>
           <div class="cr" style="color:${RAR[c.r].col}">${RAR[c.r].n.toUpperCase()} \u00b7 ${R.n.toUpperCase()}</div>
           <div class="ce">${R.d(c.deck?1:RAR[c.r].m)}</div></div>
         <div class="cb">
-          <button data-a>${on?"STAND DOWN":"ASSIGN"}</button>
-          ${c.deck?"":`<button data-d>SELL ${dismissValue(c)}</button>`}</div>`;
+          <button class="rdghost" data-a>${on?"STAND DOWN":"ASSIGN"}</button>
+          ${c.deck?"":`<button class="rdghost quiet" data-d>SELL<b>+${dismissValue(c)} ${RI('sv')}</b></button>`}</div>`;
       d.querySelector("[data-a]").onclick=()=>assignCrew(c.id);
       const dd=d.querySelector("[data-d]"); if(dd)dd.onclick=()=>dismissCrew(c.id);
       ro.appendChild(d);
@@ -2799,29 +2819,68 @@ function renderRaids(){
       ensureCrewPool();
       pool.innerHTML="";
       (S.crewPool||[]).forEach(cand=>{
-        const R=ROLES.find(r=>r.id===cand.role), hc=hireCost(), can=S.sv>=hc;
+        const R=ROLES.find(r=>r.id===cand.role), hc=hireCost();
         const d=document.createElement("div");
-        d.className="crw cand"; d.style.setProperty("--a",R.col);
-        d.style.setProperty("--a2",rgba(R.col,.13));
+        d.className="crw cand"; d.style.setProperty("--a","var(--sv)");
         d.innerHTML=`<div style="min-width:0">
             <div class="cn">${cand.n}</div>
             <div class="cr" style="color:${RAR[cand.r].col}">${RAR[cand.r].n.toUpperCase()} \u00b7 ${R.n.toUpperCase()}</div>
             <div class="ce">${R.d(RAR[cand.r].m)}</div></div>
-          <div class="cb"><button ${can?"":"disabled"}>HIRE ${fmt(hc)}</button></div>`;
+          <div class="cb">${svSlab("HIRE",hc)}</div>`;
         d.querySelector("button").onclick=()=>{ if(!hireCandidate(cand.id))blip(140,.08,"sine",.03) };
         pool.appendChild(d);
       });
       rb.style.display="";
-      const rc=crewRefreshCost();
-      rb.disabled=S.sv<rc;
-      rb.innerHTML="REFRESH \u00b7 "+fmt(rc)+" salvage";
+      /* the static #btnRefreshCrew node becomes a salvage slab in place (never
+         replaced); raidLive() writes its label/disabled from data-svc */
+      rb.className="svslab"; rb.dataset.svc=crewRefreshCost(); rb.dataset.verb="REFRESH";
       $("#hireNote").textContent="Roster "+(S.crew||[]).filter(c=>!c.deck).length+" \u00b7 each hire costs more";
     }
   }
 
   $("#raidHint").textContent = fleetCount(cf)? "Tap the glowing seam on a hostile for a critical. Chain hits without missing to build a damage multiplier."
     : "Build warships below, then engage a target.";
+  raidLive();
   raidSubFlags();
+}
+/* The Raids tab's priced buttons, following the balance in place - same split as
+   gbCaption()/updateEmpBars() and resInfo(): renderRaids()/renderArmoury() build the
+   buttons on a real change only, this runs on every render() pass (dirty or not) and
+   only ever rewrites a button's contents/disabled, never the node (tchurn2). A
+   salvage slab says what a tap does ("HIRE <b>49</b>") or, short, what is missing
+   ("NEED <b>12</b>"). */
+function svSlabHTML(verb,cost){
+  const have=S.sv||0;
+  return have>=cost ? `${verb}<b>${fmt(cost)} ${RI('sv')}</b>` : `NEED<b>${fmt(cost-have)} ${RI('sv')}</b>`;
+}
+function svSlab(verb,cost){
+  return `<button class="svslab" data-svc="${cost}" data-verb="${verb}" ${(S.sv||0)>=cost?"":"disabled"}>${svSlabHTML(verb,cost)}</button>`;
+}
+/* an ore-priced .gb: cost on top, caption under it - the verb when it can be paid,
+   "need X" when it cannot, exactly as gbCaption() words it on the Map's buy rows */
+function oreGbHTML(verb,cost){
+  return `<b>${fmt(cost)} ${RI('ore')}</b><i>${S.ore>=cost?verb:"need "+fmt(cost-S.ore)}</i>`;
+}
+function raidSet(b,html,dis){
+  if(b.disabled!==dis)b.disabled=dis;
+  if(b.dataset.h!==html){ b.dataset.h=html; b.innerHTML=html; }
+}
+function raidLive(){
+  const pane=$("#p-raid"); if(!pane)return;
+  pane.querySelectorAll("button.svslab[data-svc]").forEach(b=>{
+    const c=+b.dataset.svc;
+    raidSet(b, svSlabHTML(b.dataset.verb||"BUY",c), (S.sv||0)<c);
+  });
+  /* REPAIR: its cost moves every frame (hull mends while you watch), so the whole
+     label lives here rather than in renderRaids() */
+  const fx=$("#flFix");
+  if(fx&&!fx.classList.contains("hide")){
+    const cf=curFleet(), rc=repairCost(cf);
+    raidSet(fx, oreGbHTML("REPAIR",rc), S.ore<rc||cf.hp>=1);
+  }
+  /* rockets: priced off rate(), which moves as income does */
+  const am=$("#buyAmmo");
+  if(am){ const c=ammoCost(AMMO_LOT); raidSet(am, oreGbHTML("BUY +"+AMMO_LOT,c), S.ore<c); }
 }
 /* Sub-tab alert dots for the Raids tab: cheap affordability/attention checks, same shape
    as the checks renderRaids() already does per-row above — nothing new is computed, just

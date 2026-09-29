@@ -614,74 +614,116 @@ button.ghost{background:transparent;border-color:var(--line);color:var(--mut)}
   font:700 11px/1 ui-monospace,monospace;display:flex;align-items:center;gap:4px}
 .svchip:hover{border-color:var(--sv)}
 .svchip svg{width:13px;height:13px}
-.shsub{font:400 9.5px/1 system-ui;letter-spacing:.08em;color:var(--dim);text-transform:none;margin-left:7px}
+/* the chip keeps its compact look; an invisible hit area takes it out to 44px tall,
+   same trick the header's small controls use (06-overlays.css) */
+.svchip{position:relative}
+.svchip::before{content:"";position:absolute;left:-4px;right:-4px;top:50%;height:44px;transform:translateY(-50%)}
+.shsub{font:400 11px/1 system-ui;letter-spacing:.02em;color:var(--dim);text-transform:none;margin-left:7px}
+/* Bronze salvage slab. Salvage is scrap, so what it buys is priced on scrap-metal
+   bronze - one look for every salvage purchase on the Raids tab (weapons, refits,
+   HIRE, REFRESH). Same construction as .misslab (gold) and .resslab (violet): gradient
+   fill, lighter 1px border, a dark lip that collapses on press. Unaffordable stays
+   fully legible (no opacity) and reads "NEED <b>X</b>", updated in place per frame by
+   raidLive() (11-combat.js) so the button node itself is never rebuilt for it. */
+.svslab{position:relative;overflow:hidden;width:100%;min-height:44px;border-radius:9px;cursor:pointer;
+  border:1px solid #f0c49a;background:linear-gradient(180deg,#e0a672,#b97a45);color:#1e0f04;
+  font:800 12px/1 system-ui;letter-spacing:.1em;padding:0 12px 3px;white-space:nowrap;
+  box-shadow:0 1px 0 rgba(255,255,255,.35) inset;transition:transform .06s}
+.svslab::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;background:#7a4a22;pointer-events:none}
+.svslab:active:not(:disabled){transform:translateY(2px)}
+.svslab:active:not(:disabled)::after{height:1px}
+.svslab:focus-visible{outline:2px solid #ffe6cc;outline-offset:2px}
+.svslab b{font:800 13px/1 ui-monospace,monospace;letter-spacing:0;margin-left:6px}
+.svslab .ci{width:1.2em;height:1.2em;vertical-align:-.25em;color:#1e0f04}
+.svslab:disabled{cursor:not-allowed;border-color:var(--line);background:rgba(255,255,255,.035);color:var(--mut);box-shadow:none}
+.svslab:disabled::after{background:rgba(255,255,255,.06)}
+.svslab:disabled b{color:var(--txt)}
+.svslab:disabled .ci{color:var(--sv)}
+/* quiet outline buttons for the Raids tab's secondary actions (ASSIGN, STAND DOWN,
+   SELL, FIT, UNFIT, AUTO-RESOLVE): full 44px thumb target, no fill, never louder than
+   the slab beside them. */
+.rdghost{min-height:44px;border:1px solid var(--line2);background:transparent;color:var(--txt);
+  border-radius:9px;padding:0 12px;cursor:pointer;font:700 11px/1 system-ui;letter-spacing:.06em;white-space:nowrap}
+.rdghost:hover{border-color:var(--sv)}
+.rdghost:focus-visible{outline:2px solid #eafcff;outline-offset:2px}
+.rdghost:disabled{cursor:not-allowed;color:var(--dim2);border-color:var(--line)}
+.rdghost.quiet{border-color:var(--line);color:var(--mut)}   /* SELL - destructive, kept quiet */
+.rdghost b{font:700 11px/1 ui-monospace,monospace;letter-spacing:0;margin-left:5px}
+@media(prefers-reduced-motion:reduce){.svslab,.tcard button.raidgo{transition:none}}
+/* refit cards and crew rows: one calm steel accent for identity (set as --a by
+   renderRaids()) - the bright hues stay reserved for state. */
 .rfc{border:1px solid var(--line);border-radius:11px;padding:9px 10px;background:var(--panel);
   border-left:3px solid var(--a)}
 .rfc h5{margin:0 0 2px;font:600 12.5px/1.2 system-ui}
-.rfc .lv{font:600 9.5px/1 ui-monospace,monospace;color:var(--dim);letter-spacing:.1em;margin-left:6px}
-.rfc p{font-size:10.5px;color:var(--mut);margin:0 0 6px;line-height:1.4}
-.rfc .eff{font:600 11px/1.3 ui-monospace,monospace;color:var(--a);margin-bottom:7px}
-.rfc button{width:100%;border:1px solid var(--line2);background:rgba(169,188,212,.10);color:var(--txt);
-  border-radius:8px;padding:6px;cursor:pointer;font:600 11px/1 ui-monospace,monospace;
-  display:flex;align-items:center;justify-content:center;gap:5px}
-.rfc button:disabled{cursor:not-allowed;color:var(--dim2);border-color:var(--line);background:rgba(255,255,255,.03)}
-.rfc.done{opacity:.55}
+.rfc .lv{font:600 11px/1 ui-monospace,monospace;color:var(--dim2);letter-spacing:.02em;margin-left:6px}
+.rfc p{font-size:11.5px;color:var(--mut);margin:0 0 6px;line-height:1.4}
+.rfc .eff{font:600 11.5px/1.3 ui-monospace,monospace;color:var(--txt);margin-bottom:7px}
+.rfc.done{opacity:.7}
 #bridge{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:7px;margin-bottom:9px}
 .bslot{border:1px dashed var(--line2);border-radius:10px;padding:8px 9px;min-height:52px;
   display:flex;align-items:center;gap:8px;background:rgba(10,14,32,.5)}
 .bslot.full{border-style:solid;border-color:var(--a);background:linear-gradient(180deg,var(--a2),rgba(10,14,32,.5))}
-.bslot.lock{opacity:.45}
-.bslot .bi{width:26px;height:26px;border-radius:8px;flex:none;display:grid;place-items:center;
-  background:var(--a2);color:var(--a);font:700 10px/1 system-ui}
-.bslot .bn{font:600 11.5px/1.25 system-ui;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.bslot .be{font:600 9.5px/1 ui-monospace,monospace;color:var(--a)}
-.bslot .bempty{font:600 9.5px/1 system-ui;letter-spacing:.14em;color:var(--dim)}
+/* locked berth: reads as locked (dashed faint edge, lock glyph, no fill) without
+   dropping the text below AA - the old opacity:.45 put it at ~1.9:1 */
+.bslot.lock{border-color:var(--line);background:transparent}
+.bslot.lock .bempty{color:var(--mut)}
+.bslot .rlock{width:12px;height:12px;margin-right:5px;vertical-align:-1px}
+.bslot .bi{width:30px;height:30px;border-radius:8px;flex:none;display:grid;place-items:center;
+  background:var(--a2);color:var(--txt);font:700 11px/1 system-ui}
+.bslot .bn{font:600 12px/1.25 system-ui;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bslot .be{font:600 11px/1.2 ui-monospace,monospace;color:var(--mut)}
+.bslot .bempty{font:600 11px/1.2 system-ui;letter-spacing:.06em;color:var(--dim2)}
 #roster{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:7px}
+/* name block left, the row's 44px buttons stacked on the right (one for a Deckhand
+   or a candidate, two for a hired hand) */
 .crw{border:1px solid var(--line);border-left:3px solid var(--a);border-radius:10px;padding:8px 9px;
-  background:var(--panel);display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center}
-.crw.on{background:linear-gradient(180deg,var(--a2),var(--panel))}
-.crw .cn{font:600 12px/1.2 system-ui}
-.crw .cr{font:600 9.5px/1 system-ui;letter-spacing:.12em;color:var(--a);margin-top:3px}
-.crw .ce{font:600 10px/1 ui-monospace,monospace;color:var(--mut);margin-top:4px}
-.crw .cb{display:flex;flex-direction:column;gap:4px}
-.crw .cb button{border:1px solid var(--line2);background:rgba(255,255,255,.04);color:var(--mut);
-  border-radius:7px;padding:4px 7px;cursor:pointer;font:600 9.5px/1 system-ui;letter-spacing:.08em}
-.crw .cb button:hover{color:var(--txt);border-color:var(--a)}
+  background:var(--panel);display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center}
+.crw.on{border-left-color:var(--cy);background:linear-gradient(180deg,rgba(72,226,255,.08),var(--panel))}
+.crw .cn{font:600 12.5px/1.2 system-ui}
+.crw .cr{font:600 11px/1.2 system-ui;letter-spacing:.04em;color:var(--a);margin-top:3px}
+.crw .ce{font:600 11px/1.2 ui-monospace,monospace;color:var(--mut);margin-top:4px}
+.crw .cb{display:flex;flex-direction:column;gap:6px}
+.crw .cb button{min-width:108px}
 .hirebar{display:flex;align-items:center;gap:10px;margin-top:9px;flex-wrap:wrap}
-.hirebar button{border:1px solid rgba(169,188,212,.45);background:rgba(169,188,212,.12);color:var(--txt);
-  border-radius:9px;padding:8px 14px;cursor:pointer;font:700 11px/1 ui-monospace,monospace;letter-spacing:.1em}
-.hirebar button:disabled{opacity:.4;cursor:not-allowed}
-.hirenote{font-size:10.5px;color:var(--dim)}
+.hirebar .svslab{width:auto;flex:none}
+.hirenote{font-size:11px;color:var(--dim2)}
 #bCombo{position:absolute;left:0;right:0;top:14%;text-align:center;pointer-events:none;z-index:3;
   font:800 26px/1 ui-monospace,monospace;color:var(--gd);opacity:0;transition:opacity .12s;
   text-shadow:0 0 14px rgba(255,209,102,.55)}
 #bCombo.on{opacity:1}
-#bCombo small{display:block;font:700 9px/1 system-ui;letter-spacing:.24em;color:var(--mut);margin-top:3px}
-#flStrip{border:1px solid rgba(255,143,208,.26);border-radius:12px;padding:7px 10px;margin-bottom:0;
-  background:linear-gradient(180deg,rgba(255,143,208,.06),rgba(10,14,32,.5))}
+#bCombo small{display:block;font:700 11px/1 system-ui;letter-spacing:.14em;color:var(--mut);margin-top:3px}
+/* neutral steel/starlight: the strip is the player's own fleet, not a signal */
+#flStrip{border:1px solid var(--line);border-radius:12px;padding:7px 10px;margin:0 0 8px;
+  background:linear-gradient(180deg,rgba(169,188,212,.05),rgba(10,14,32,.5))}
 .fl-h{display:flex;align-items:baseline;gap:10px}
-.fl-t{font:700 10px/1 system-ui;letter-spacing:.2em;color:#ff8fd0}
+.fl-t{font:700 11px/1 system-ui;letter-spacing:.12em;color:var(--sv)}
 .fl-st{margin-left:auto;font:600 11px/1 ui-monospace,monospace;color:var(--mut)}
 /* PLAN-fleets run 3: the selected tab's own "AT X"/"-> X . Ns" line - same idiom
    the fleet bar's .fstat span uses, one size down since this sits under a header. */
-.fl-loc{font:600 10px/1 ui-monospace,monospace;color:var(--mut);margin:3px 0 0}
-.flcap{color:#ffb45c;font-weight:700}
-.flcap.thin{color:#ffb45c}
+.fl-loc{font:600 11px/1.2 ui-monospace,monospace;color:var(--mut);margin:3px 0 0}
+/* command capacity: cyan while there is room, gold exactly full, rose over. Not the
+   ore-kind orange it used to borrow. */
+.flcap{color:var(--cy);font-weight:700}
+.flcap.full{color:var(--gd)}
 .flcap.over{color:var(--rd)}
-.fl-hp{position:relative;height:12px;border-radius:5px;background:rgba(255,255,255,.06);margin:9px 0 4px;overflow:hidden}
-.fl-hp i{display:block;height:100%;width:100%;transition:width .3s;
+/* the empty track is the default (an empty fleet shows an empty bar); renderRaids()
+   sets the real width. The label sits on its own dark pill so it reads over any fill
+   and over the empty track alike - dark text straight on the bar fell to ~1.1:1. */
+.fl-hp{position:relative;height:17px;border-radius:5px;background:rgba(255,255,255,.06);margin:8px 0 4px;overflow:hidden}
+.fl-hp i{display:block;height:100%;width:0;transition:width .3s;
   background:linear-gradient(90deg,#5ce6a5,#48e2ff)}
 .fl-hp.hurt i{background:linear-gradient(90deg,#ffb45c,#ffd166)}
 .fl-hp.crit i{background:linear-gradient(90deg,#ff6b8a,#ff9a6b)}
-.fl-hp span{position:absolute;inset:0;display:grid;place-items:center;
-  font:700 9.5px/1 ui-monospace,monospace;letter-spacing:.1em;color:#04050d}
+.fl-hp span{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);white-space:nowrap;
+  padding:2px 7px;border-radius:4px;background:rgba(4,6,16,.82);
+  font:700 11px/1 ui-monospace,monospace;letter-spacing:.04em;color:var(--txt)}
+@media(prefers-reduced-motion:reduce){.fl-hp i{transition:none}}
 /* polish batch A #9: TRANSFER's own button here is gone (still flex, in case a
-   future button joins REPAIR again) - REPAIR (flex:1) fills the row alone now. */
+   future button joins REPAIR again) - REPAIR (flex:1) fills the row alone now.
+   REPAIR is paid in ore, so it is the ore slab (.gb): verb, then cost, one line. */
 .flbtns{display:flex;gap:8px;margin-top:6px}
-#flFix{flex:1;border:1px solid rgba(92,230,165,.5);
-  background:rgba(92,230,165,.11);color:var(--gr);border-radius:9px;padding:8px;
-  font:700 10.5px/1 system-ui;letter-spacing:.08em;cursor:pointer}
-#flFix:disabled{opacity:.35;cursor:not-allowed}
+#flFix.gb{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;text-align:center;padding:0 10px 3px}
+#flFix.gb i{margin-top:0;font-weight:700;order:-1}   /* one line: the verb, then the cost */
 #flFix.hide{display:none}
 /* TRANSFER - violet, same family as the fleet card modal's own #fcTransfer below */
 .transfer{flex:1;border:1px solid rgba(168,120,255,.5);
@@ -702,23 +744,45 @@ button.ghost{background:transparent;border-color:var(--line);color:var(--mut)}
 #flWarn.on{display:block}
 #flWarn b{color:#ffb45c}
 .shp{display:grid;grid-template-columns:38px 1fr auto;gap:10px;align-items:center;
-  border-top:1px solid rgba(255,143,208,.14);padding:9px 0 3px}
+  border-top:1px solid var(--line);padding:9px 0 3px}
 .shp .si{width:38px;height:38px;color:var(--a)}
 .shp .si svg{width:100%;height:100%;display:block}
 .shp .sn{font:600 12.5px/1.2 system-ui}
-.shp .sd{font:10.5px/1.4 ui-monospace,monospace;color:var(--mut)}
+.shp .sd{font:11px/1.4 ui-monospace,monospace;color:var(--mut)}
 .shp .sc{font:700 15px/1 ui-monospace,monospace;min-width:34px;text-align:right}
 .tcard{border:1px solid var(--line);border-radius:11px;padding:10px;background:var(--panel);
   display:flex;flex-direction:column;gap:6px;border-left:3px solid var(--a)}
 .tcard h5{margin:0;font:600 12.5px/1.25 system-ui;color:var(--a)}
-.tcard .tloc{font:10.5px/1.4 ui-monospace,monospace;color:var(--dim2)}
-.tcard .tm{font:10.5px/1.5 ui-monospace,monospace;color:var(--mut)}
-.tcard .tr{font:11px/1.5 ui-monospace,monospace;color:var(--gd)}
-.tcard button{border:1px solid var(--a);background:rgba(255,255,255,.05);color:var(--txt);
-  border-radius:8px;padding:8px;cursor:pointer;font:700 11px/1 system-ui;letter-spacing:.14em}
-.tcard button:disabled{opacity:.35;cursor:not-allowed}
-.risk{display:inline-block;padding:1px 6px;border-radius:4px;font:700 8.5px/1.5 system-ui;
-  letter-spacing:.12em;border:1px solid currentColor}
+.tcard .tloc{font:11px/1.4 ui-monospace,monospace;color:var(--dim2)}
+.tcard .tm{font:11px/1.5 ui-monospace,monospace;color:var(--mut)}
+/* each amount in its own currency colour (ore cyan, crystal violet, DM gold, salvage
+   steel) rather than the whole line in reward gold */
+.tcard .tr{font:11.5px/1.5 ui-monospace,monospace;color:var(--mut)}
+.tcard .tr b{font-weight:700}
+.tcard .tr .rw-o{color:var(--cy)} .tcard .tr .rw-c{color:var(--vi)}
+.tcard .tr .rw-m{color:var(--gd)} .tcard .tr .rw-s{color:var(--sv)}
+/* AUTO-RESOLVE: secondary, plain outline. FIGHT IT ANYWAY: the quiet ghost. */
+.tcard button{min-height:44px;border:1px solid var(--line2);background:transparent;color:var(--txt);
+  border-radius:9px;padding:0 10px;cursor:pointer;font:700 11.5px/1 system-ui;letter-spacing:.1em}
+.tcard button:hover{border-color:var(--cy)}
+.tcard button:focus-visible{outline:2px solid #eafcff;outline-offset:2px}
+.tcard button.ghost{border-color:var(--line);color:var(--mut);letter-spacing:.06em}
+.tcard button:disabled{cursor:not-allowed;color:var(--dim2);border-color:var(--line)}
+/* ENGAGE / SEND: the card's one "act" key - the Scan key's bright cyan slab at card
+   scale (.scanbtn, 00-base.css), the stake it plays for in mono after the verb */
+.tcard button.raidgo{position:relative;overflow:hidden;border:1px solid #7deeff;
+  background:linear-gradient(180deg,#5be8ff,#38c9e6);color:#04121a;font:800 12.5px/1 system-ui;
+  letter-spacing:.14em;padding:0 10px 3px;box-shadow:0 1px 0 rgba(255,255,255,.35) inset;transition:transform .06s}
+.tcard button.raidgo::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;background:#1c8fa8;pointer-events:none}
+.tcard button.raidgo:active:not(:disabled){transform:translateY(2px)}
+.tcard button.raidgo:active:not(:disabled)::after{height:1px}
+.tcard button.raidgo b{font:700 12px/1 ui-monospace,monospace;letter-spacing:0;margin-left:6px;color:#06303c}
+.tcard button.raidgo .ci{color:#06303c}
+.tcard button.raidgo:disabled{border-color:var(--line);background:rgba(255,255,255,.035);color:var(--mut);box-shadow:none}
+.tcard button.raidgo:disabled::after{background:rgba(255,255,255,.06)}
+.tcard button.raidgo:disabled b{color:var(--mut)}
+.risk{display:inline-block;padding:1px 6px;border-radius:4px;font:700 11px/1.4 system-ui;
+  letter-spacing:.06em;border:1px solid currentColor}
 /* battle overlay */
 #defence{position:fixed;inset:0;z-index:41;display:none;background:#03040c}
 #defence.on{display:block}
@@ -759,16 +823,16 @@ button.ghost{background:transparent;border-color:var(--line);color:var(--mut)}
 .thrc p{margin:0;font-size:11.5px;color:var(--mut)}
 .thrc .who{font:700 11px/1.3 ui-monospace,monospace}
 .thrc button{border:1px solid rgba(255,107,138,.7);background:rgba(255,107,138,.18);
-  color:#ffe4ea;border-radius:9px;padding:11px;cursor:pointer;
+  color:#ffe4ea;border-radius:9px;padding:11px;cursor:pointer;min-height:44px;
   font:800 12px/1 system-ui;letter-spacing:.18em}
 .thrc button:hover{background:rgba(255,107,138,.28)}
 /* the quiet option: available, never the loud one */
 .thrc button.thrhold{border-color:var(--line2);background:rgba(255,255,255,.05);
   color:var(--mut);font:700 11px/1 system-ui;letter-spacing:.12em;padding:10px}
 .thrc button.thrhold:hover{background:rgba(255,255,255,.10);color:var(--txt)}
-.thrc .thrnote{font-size:10.5px;line-height:1.45;color:var(--dim)}
+.thrc .thrnote{font-size:11px;line-height:1.45;color:var(--dim2)}
 .thrc h5{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
-.thrc .thrt{font:700 10px/1 ui-monospace,monospace;color:var(--mut);letter-spacing:.06em}
+.thrc .thrt{font:700 11px/1 ui-monospace,monospace;color:var(--mut);letter-spacing:.04em}
 /* the last hour looks like the last hour */
 .awrep{margin:12px 0 0;padding:10px;border:1px solid var(--line);border-radius:10px;
   background:rgba(255,255,255,.03);text-align:left}
@@ -786,7 +850,7 @@ button.ghost{background:transparent;border-color:var(--line);color:var(--mut)}
 .thrc.sab{border-color:rgba(90,255,194,.55);background:rgba(90,255,194,.09)}  /* STAGE C */
 .thrc.sab h5{color:#8dffda}
 .thrc.sab .thrt{color:#8dffda}
-.thrc .rec{margin-top:2px;font:600 10.5px/1.4 system-ui;color:#ffe9b8}
+.thrc .rec{margin-top:2px;font:600 11px/1.4 system-ui;color:#ffe9b8}
 /* FIX 2 (2026-09-06): the compact Empire-tab live-fleet banner - one line, tappable,
    navigates to the Map tab. See renderLiveFleet(). */
 .lfmini{display:flex;align-items:center;gap:8px;width:100%;text-align:left;
@@ -800,10 +864,10 @@ button.ghost{background:transparent;border-color:var(--line);color:var(--mut)}
 .lfmini-cd{font:700 10px/1 ui-monospace,monospace;color:#ffe9b8;flex:0 0 auto}
 /* the pressure read-out, so escalation is legible rather than mysterious */
 .rvrow{display:flex;align-items:center;gap:8px;margin:5px 0}
-.rvrow .rvn{flex:0 0 108px;font:700 10px/1.2 ui-monospace,monospace}
+.rvrow .rvn{flex:0 0 120px;font:700 11px/1.2 ui-monospace,monospace}
 .rvrow .rvb{flex:1;height:7px;border-radius:4px;background:rgba(255,255,255,.07);overflow:hidden}
 .rvrow .rvb i{display:block;height:100%;width:0}
-.rvrow .rvp{flex:0 0 34px;text-align:right;font:700 9.5px/1 ui-monospace,monospace;color:var(--dim)}
+.rvrow .rvp{flex:0 0 36px;text-align:right;font:700 11px/1 ui-monospace,monospace;color:var(--dim2)}
 #battle{position:fixed;inset:0;z-index:40;display:none;background:#03040c}
 #battle.on{display:block}
 #bcv{position:absolute;inset:0;width:100%;height:100%;touch-action:manipulation}
@@ -819,19 +883,19 @@ button.ghost{background:transparent;border-color:var(--line);color:var(--mut)}
   cursor:pointer;padding:0}
 .phalf.pdn{left:0} .phalf.pup{right:0}
 .phalf:active{background:rgba(255,255,255,.10)}
-.pw .pn{font:800 8px/1 system-ui;letter-spacing:.1em;color:var(--mut)}
+.pw .pn{font:800 11px/1 system-ui;letter-spacing:.04em;color:var(--mut)}
 .pw .pp{display:flex;gap:2px}
 .pw .pp i{width:5px;height:9px;border-radius:1.5px;background:rgba(255,255,255,.14)}
 .pw .pp i.on{background:var(--a)}
 .pw.hot{border-color:var(--a)}
 .pw.hot .pn{color:var(--a)}
-.pw .mn{position:absolute;right:3px;top:2px;font:800 10px/1 system-ui;color:var(--mut)}
-#bPwrFree{flex:0 0 auto;display:grid;place-items:center;min-width:38px;
-  border:1px dashed var(--line2);border-radius:9px;font:800 9px/1.25 ui-monospace,monospace;
+.pw .mn{position:absolute;right:3px;top:2px;font:800 11px/1 system-ui;color:var(--mut)}
+#bPwrFree{flex:0 0 auto;display:grid;place-items:center;min-width:44px;
+  border:1px dashed var(--line2);border-radius:9px;font:800 11px/1.25 ui-monospace,monospace;
   color:var(--gd);text-align:center;padding:4px}
 #bPause{display:none;width:100%;margin-bottom:6px;border:1px solid var(--line2);
   background:rgba(255,255,255,.05);color:var(--mut);border-radius:9px;padding:7px;
-  font:700 10px/1 system-ui;letter-spacing:.18em;cursor:pointer}
+  font:700 11px/1 system-ui;letter-spacing:.12em;cursor:pointer}
 #battle.wep #bPause{display:block}
 #battle.cine #bPause{display:none}   /* patch634: found during this patch's own screenshot verification - see docstring */
 #bPause.on{border-color:var(--gd);background:rgba(255,209,102,.14);color:#ffeec2}
@@ -841,11 +905,11 @@ button.ghost{background:transparent;border-color:var(--line);color:var(--mut)}
 #battle.cine #bWep,#battle.cine #bPwr,#battle.cine #bTip{display:none}   /* patch633: the clip reads as a cutscene, not a paused fight - weapon rack, power rack and tip hidden while it runs; header (#bName), hull bar and canvas (#bcv) stay, per the plan */
 .wp{flex:1;position:relative;overflow:hidden;border:1px solid var(--line);
   background:rgba(255,255,255,.04);color:var(--mut);border-radius:10px;padding:9px 5px 8px;
-  font:700 10px/1.25 system-ui;letter-spacing:.04em;cursor:pointer;min-width:0;
+  font:700 11px/1.25 system-ui;letter-spacing:.02em;cursor:pointer;min-width:0;
   display:flex;flex-direction:column;align-items:center;gap:3px}
 .wp i.fill{position:absolute;left:0;bottom:0;width:100%;background:rgba(120,160,255,.20);
   transition:height .08s linear;pointer-events:none}
-.wp b{position:relative;z-index:1;font:800 9.5px/1 ui-monospace,monospace;color:var(--dim)}
+.wp b{position:relative;z-index:1;font:800 11px/1 ui-monospace,monospace;color:var(--dim2);white-space:nowrap}
 .wp span{position:relative;z-index:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   max-width:100%}
 .wp.rdy{border-color:var(--gd);color:#ffeec2;box-shadow:0 0 12px -3px var(--gd)}
@@ -866,45 +930,46 @@ button.ghost{background:transparent;border-color:var(--line);color:var(--mut)}
 .wp.off .wtog:after{background:transparent;border-color:var(--mut);box-shadow:none}
 .wtog:active:after{transform:scale(.85)}
 /* the armoury */
-.armr{display:flex;align-items:center;gap:9px;border-top:1px solid rgba(255,143,208,.14);
+.armr{display:flex;align-items:center;gap:9px;border-top:1px solid var(--line);
   padding:9px 0 3px}
 .armr .ai{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;flex:none;
   border:1px solid var(--line);font:800 11px/1 ui-monospace,monospace;color:var(--a)}
 .armr .an{font:700 12px/1.2 system-ui}
-.armr .ad{font-size:10px;color:var(--mut)}
+.armr .ad{font-size:11px;line-height:1.35;color:var(--mut)}
 .armr .aa{margin-left:auto;display:flex;gap:5px;align-items:center;flex:none}
-.armr button{border:1px solid var(--line2);background:rgba(255,255,255,.05);color:var(--txt);
-  border-radius:8px;padding:6px 9px;font:700 10px/1 system-ui;cursor:pointer}
-.armr button:disabled{opacity:.4;cursor:not-allowed}
-.armr button.fit{border-color:rgba(92,230,165,.5);background:rgba(92,230,165,.12);color:var(--gr)}
+.armr .svslab{width:auto;min-width:92px}
+/* FIT is the next thing to do with an owned gun, so its outline is cyan (act);
+   UNFIT stays the plain quiet outline */
+.armr .rdghost.fit{border-color:rgba(72,226,255,.55);color:var(--cy)}
+/* rockets are bought with ore, so the bar is neutral and its button is the ore slab
+   (.gb) - the old orange tint was the ore-kind system colour, not ammo's */
 #ammoBar{display:flex;align-items:center;gap:9px;margin:9px 0 2px;padding:9px 11px;
-  border:1px solid rgba(255,180,92,.35);border-radius:10px;background:rgba(255,180,92,.07)}
-#ammoBar .amn{font:700 12px/1.2 system-ui;color:#ffb45c}
-#ammoBar .amd{font-size:10px;color:var(--mut)}
-#ammoBar button{margin-left:auto;flex:none;border:1px solid rgba(255,180,92,.5);
-  background:rgba(255,180,92,.13);color:#ffd7a8;border-radius:8px;padding:7px 11px;
-  font:700 10px/1 system-ui;cursor:pointer}
-#ammoBar button:disabled{opacity:.4;cursor:not-allowed}
+  border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+#ammoBar .amn{font:700 12px/1.2 system-ui;color:var(--txt)}
+#ammoBar .amd{font-size:11px;color:var(--mut)}
+#ammoBar .gb{margin-left:auto;flex:none}
 .slotbar{display:flex;gap:6px;margin:8px 0 2px}
-.slotbar .sl{flex:1;border:1px dashed var(--line2);border-radius:9px;padding:7px 4px;
-  font:700 9.5px/1.2 system-ui;color:var(--mut);text-align:center;cursor:pointer;min-width:0;
+.slotbar .sl{flex:1;border:1px dashed var(--line2);border-radius:9px;padding:4px;min-height:44px;
+  display:flex;align-items:center;justify-content:center;
+  font:700 11px/1.2 system-ui;color:var(--mut);text-align:center;cursor:pointer;min-width:0;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.slotbar .sl.on{border-style:solid;border-color:var(--gd);color:#ffeec2}
+/* equipped: cyan (the player's own kit), not reward gold */
+.slotbar .sl.on{border-style:solid;border-color:rgba(72,226,255,.6);color:var(--txt);background:rgba(72,226,255,.07)}
 #bTurn{display:none;flex-direction:column;gap:7px}
 #battle.turn #bTurn{display:flex}
 #battle.turn .bab,#battle.turn #bTip,#battle.turn #bCombo{display:none}
 .tr-h{display:flex;align-items:center;gap:8px}
-.tr-r{font:700 9.5px/1 system-ui;letter-spacing:.14em;color:var(--mut);white-space:nowrap}
+.tr-r{font:700 11px/1 system-ui;letter-spacing:.06em;color:var(--mut);white-space:nowrap}
 .tr-cp{margin-left:auto;font:800 12px/1 ui-monospace,monospace;color:var(--gd)}
-.tr-inc{font:700 10px/1 ui-monospace,monospace;color:#ff9a6b}
+.tr-inc{font:700 11px/1.2 ui-monospace,monospace;color:#ff9a6b}
 .tr-pips{display:flex;gap:3px;margin-left:6px}
 .tr-pips i{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.16)}
 .tr-pips i.on{background:var(--gd);box-shadow:0 0 6px -1px var(--gd)}
 .tr-g{display:flex;gap:6px}
 .tr-b{flex:1;border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--txt);
-  border-radius:9px;padding:8px 6px;font:700 10px/1.3 system-ui;letter-spacing:.06em;cursor:pointer;
+  border-radius:9px;padding:8px 6px;font:700 11px/1.3 system-ui;letter-spacing:.04em;cursor:pointer;
   display:flex;flex-direction:column;align-items:center;gap:3px}
-.tr-b small{font:600 9px/1 ui-monospace,monospace;color:var(--mut)}
+.tr-b small{font:600 11px/1 ui-monospace,monospace;color:var(--mut)}
 .tr-b b{font:800 12px/1 ui-monospace,monospace;color:var(--gd)}
 .tr-b.scr{border-color:rgba(72,226,255,.45)} .tr-b.scr b{color:var(--cy)}
 .tr-b.useless{opacity:.45;border-color:rgba(255,255,255,.12)}
@@ -915,14 +980,14 @@ button.ghost{background:transparent;border-color:var(--line);color:var(--mut)}
 #bResolve{flex:1;border:1px solid rgba(255,209,102,.6);background:rgba(255,209,102,.16);
   color:#ffeec2;border-radius:9px;padding:11px;font:800 12px/1 system-ui;letter-spacing:.2em;cursor:pointer}
 #bClear{border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--mut);
-  border-radius:9px;padding:11px 13px;font:700 10px/1 system-ui;letter-spacing:.1em;cursor:pointer}
+  border-radius:9px;padding:11px 13px;font:700 11px/1 system-ui;letter-spacing:.06em;cursor:pointer}
 .bh-top{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;gap:10px;
   padding-top:calc(12px + env(safe-area-inset-top, 0px));
   padding-bottom:12px; padding-left:14px; padding-right:14px;
   background:linear-gradient(180deg,rgba(4,6,16,.9),transparent)}
 .bh-n{font:700 15px/1.2 system-ui;letter-spacing:.04em}
-.bh-m{font:600 10px/1.5 ui-monospace,monospace;color:var(--mut);letter-spacing:.08em}
-.bh-esc{display:none;font:700 10px/1.5 ui-monospace,monospace;letter-spacing:.06em;
+.bh-m{font:600 11px/1.5 ui-monospace,monospace;color:var(--mut);letter-spacing:.04em}
+.bh-esc{display:none;font:700 11px/1.5 ui-monospace,monospace;letter-spacing:.04em;
   color:#ff9a6b;margin-top:1px}
 .bh-esc.on{display:block}
 .bh-esc.hit{color:#ff5f6d}
@@ -943,19 +1008,22 @@ button.ghost{background:transparent;border-color:var(--line);color:var(--mut)}
 .bhp.hurt i{background:linear-gradient(90deg,#ffb45c,#ffd166)}
 .bhp.crit i{background:linear-gradient(90deg,#ff6b8a,#ff9a6b);animation:critp .7s infinite}
 @keyframes critp{50%{opacity:.6}}
-.bhp span{position:absolute;inset:0;display:grid;place-items:center;
-  font:700 10px/1 ui-monospace,monospace;letter-spacing:.12em;color:#04050d}
+/* the hull readout on its own dark pill - reads over any fill level, and over the
+   empty track at low hull, where dark text straight on the bar did not */
+.bhp span{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);white-space:pre;
+  padding:2px 8px;border-radius:4px;background:rgba(4,6,16,.82);
+  font:700 11px/1 ui-monospace,monospace;letter-spacing:.06em;color:var(--txt)}
 .bab{display:flex;gap:9px;margin-top:9px}
 .bab button{flex:1;position:relative;overflow:hidden;border:1px solid var(--line2);
   background:rgba(72,226,255,.09);color:var(--txt);border-radius:10px;padding:9px 6px;cursor:pointer}
-.bab button b{display:block;font:700 11px/1.2 system-ui;letter-spacing:.1em}
-.bab button i{display:block;font:400 9px/1.4 ui-monospace,monospace;font-style:normal;color:var(--dim)}
+.bab button b{display:block;font:700 11px/1.2 system-ui;letter-spacing:.06em}
+.bab button i{display:block;font:400 11px/1.4 ui-monospace,monospace;font-style:normal;color:var(--dim2)}
 .bab button u{position:absolute;inset:0;background:rgba(4,6,16,.72);text-decoration:none;
   display:grid;place-items:center;font:700 15px/1 ui-monospace,monospace;color:var(--mut)}
 .bab button.rdy{border-color:var(--cy);box-shadow:0 0 14px rgba(72,226,255,.16) inset}
 .bab button.act{border-color:var(--gd);background:rgba(255,209,102,.16)}
-.btip{text-align:center;font:600 9.5px/1.6 ui-monospace,monospace;color:var(--dim);
-  letter-spacing:.1em;margin-top:8px}
+.btip{text-align:center;font:600 11px/1.5 ui-monospace,monospace;color:var(--dim2);
+  letter-spacing:.02em;margin-top:8px}
 #bRes{position:absolute;inset:0;display:grid;place-items:center;padding:20px;
   background:rgba(2,3,10,.82);backdrop-filter:blur(6px);
   opacity:0;pointer-events:none;transition:opacity .4s}
@@ -973,7 +1041,7 @@ button.ghost{background:transparent;border-color:var(--line);color:var(--mut)}
   .shp{grid-template-columns:32px 1fr auto;gap:8px}
   .shp .si{width:32px;height:32px}
   .bh-n{font-size:13px}
-  .bab button b{font-size:10px}
+  .bab button b{font-size:11px}
 }
 /* ---------- research ----------
    One branch at a time as a vertical track: a branch picker, a single line for the
@@ -1001,10 +1069,13 @@ button.ghost{background:transparent;border-color:var(--line);color:var(--mut)}
 .rbr.lk span{color:var(--mut)}
 .rlock{width:12px;height:12px;vertical-align:-1px;margin-right:4px}
 .rmode{display:flex;gap:6px;margin-bottom:10px}
-.rmbtn{flex:1;cursor:pointer;border:1px solid var(--line);border-radius:10px;padding:8px 6px;
+/* 44px: a thumb target (shared with Research TECH/PROGRAMMES and Map MAP/LIST) */
+.rmbtn{flex:1;cursor:pointer;border:1px solid var(--line);border-radius:10px;padding:8px 6px;min-height:44px;
   background:rgba(10,14,32,.7);color:var(--mut);font:700 11px/1 system-ui;letter-spacing:.06em;
   text-align:center}
 .rmbtn.on{border-color:var(--cy);color:var(--txt);background:rgba(72,226,255,.10)}
+/* only the sub-tab row is sticky now - the fleet selector and strip scroll away with
+   the content (they took ~178px of a 667px phone when they were pinned too) */
 #raidTop{position:sticky;top:-12px;z-index:5;background:var(--bg);padding-top:12px;margin:0 0 8px}
 #raidMode.rmode{margin-bottom:6px}
 .rmbtn{position:relative}
@@ -1114,7 +1185,7 @@ button.rtr{cursor:pointer}
 /* polish batch A #8: the stats page's KPI tiles/measure chips/history chart CSS
    (#kpis/.kpi/#mchips/.mchip/#chartBox and friends) is gone with the "Graphs" half
    of "Records & Graphs" - see renderAch()'s own header note in 09-render.js. */
-.sechead2{font:700 10px/1 system-ui;letter-spacing:.2em;color:var(--dim);margin:16px 0 8px}
+.sechead2{font:700 11px/1 system-ui;letter-spacing:.12em;color:var(--dim);margin:16px 0 8px}
 /* ---------- map ---------- */
 #mapWrap{position:relative;width:100%;aspect-ratio:1/1;max-height:52vh;margin:0 auto 10px;
   border:1px solid rgba(120,150,255,.22);border-radius:14px;overflow:hidden;
@@ -1773,19 +1844,21 @@ body.syspage #toasts{bottom:calc(var(--sysbarh) + 8px + env(safe-area-inset-bott
             <button class="rmbtn" data-rd="loadout">LOADOUT<i class="dot"></i></button>
             <button class="rmbtn" data-rd="crew">CREW<i class="dot"></i></button>
           </div>
-          <div id="flTabs" class="buybar"></div>
-          <div id="flStrip">
-            <div class="fl-h"><span class="fl-t">FLEET</span>
-              <span class="fl-st" id="flStat"></span>
-              <button class="svchip" id="svChip" title="Salvage — tap for detail"></button></div>
-            <!-- PLAN-fleets run 3 (BRIEF commit 2): where the selected tab's own fleet is -->
-            <div class="fl-loc" id="flLoc"></div>
-            <div class="fl-hp"><i id="flHp"></i><span id="flHpT"></span></div>
-            <!-- polish batch A #9: TRANSFER removed from the Raids tab's own fleet
-                 strip - it stays on the fleet card modal (#fcTransfer, 09-render.js). -->
-            <div class="flbtns">
-              <button id="flFix">REPAIR</button>
-            </div>
+        </div>
+        <!-- the fleet selector + strip sit below #raidTop, not inside it: only the
+             sub-tab row stays pinned, these scroll away with the content -->
+        <div id="flTabs" class="buybar"></div>
+        <div id="flStrip">
+          <div class="fl-h"><span class="fl-t">FLEET</span>
+            <span class="fl-st" id="flStat"></span>
+            <button class="svchip" id="svChip" title="Salvage — tap for detail"></button></div>
+          <!-- PLAN-fleets run 3 (BRIEF commit 2): where the selected tab's own fleet is -->
+          <div class="fl-loc" id="flLoc"></div>
+          <div class="fl-hp"><i id="flHp"></i><span id="flHpT"></span></div>
+          <!-- polish batch A #9: TRANSFER removed from the Raids tab's own fleet
+               strip - it stays on the fleet card modal (#fcTransfer, 09-render.js). -->
+          <div class="flbtns">
+            <button id="flFix" class="gb">REPAIR</button>
           </div>
         </div>
         <div id="rpTargets">
@@ -3225,9 +3298,11 @@ function fightOdds(t,f){
 }
 function riskOf(t){
   const o=fightOdds(t);
-  if(o>=2.2)return ["LOW","var(--gr)"];
-  if(o>=1.45)return ["MODERATE","var(--gd)"];
-  if(o>=1.05)return ["HIGH","#ffb45c"];
+  /* a neutral -> rose ramp: gold means reward and orange is the ore kind, so neither
+     may say "risk". The word always carries the level; the colour only backs it up. */
+  if(o>=2.2)return ["LOW","var(--mut)"];
+  if(o>=1.45)return ["MODERATE","#ffb3c2"];
+  if(o>=1.05)return ["HIGH","var(--rd)"];
   return ["SEVERE","var(--rd)"];
 }
 /* STAGE 1 auto-resolve (2026-09-05). AUTO_MULT TUNING-PENDING - "the fight is not
@@ -6669,7 +6744,8 @@ function render(){
      that is now these same ladderTierRow()s inline in the sheet. The function
      stays defined (dead) until patch612 deletes it with the rest of the widget. */
   if(dirty){ dirty=false; renderRes(); renderProg(); renderNex(); renderMis(); renderAch(); renderRaids(); renderArmoury(); }
-  else { softButtons(); if($("#p-res").classList.contains("on"))resInfo() }
+  else { softButtons(); if($("#p-res").classList.contains("on"))resInfo();
+    if($("#p-raid").classList.contains("on"))raidLive() }   /* salvage/ore slabs follow the balance in place */
   if(nmLive&&$("#mask").classList.contains("on"))nmTick();
   if(rmLive&&$("#mask").classList.contains("on"))rmTick();
   if(lfPromptLive&&$("#mask").classList.contains("on"))lfPromptTick();   /* FIX 1 (2026-09-06) */
@@ -8513,12 +8589,12 @@ function nmTick(){
 function renderArmoury(){
   const ab=$("#ammoBar");
   if(ab){
-    const c=ammoCost(AMMO_LOT);
+    /* paid in ore, so the ore slab (.gb); its cost/"need X" caption is written (and
+       kept live) by raidLive() at the end of this function */
     ab.innerHTML=`<div><div class="amn">${fmt(S.ammo||0)} rockets</div>
       <div class="amd">Spent one per Rocket Pod shot</div></div>
-      <button id="buyAmmo">+${AMMO_LOT} \u00b7 ${fmt(c)} ORE</button>`;
+      <button class="gb" id="buyAmmo"></button>`;
     const bb=$("#buyAmmo");
-    bb.disabled=S.ore<c;
     bb.onclick=()=>{ if(buyAmmo(AMMO_LOT)){ renderAll(); save() } };
   }
   const sb=$("#wepSlots"), host=$("#armoury");
@@ -8533,18 +8609,20 @@ function renderArmoury(){
     const per=w.shots?`${w.shots}\u00d7 `:(w.all?"all \u00b7 ":"");
     const meta=`${per}${Math.round(w.mul*100)}% dmg \u00b7 ${w.chg}s \u00b7 ${
       Math.round(w.acc*100)}% acc${w.pierce?" \u00b7 pierces":""}`;
+    /* BUY is the bronze salvage slab (svSlab(), 11-combat.js - live "NEED X");
+       FIT/UNFIT are plain outlines. One steel accent for every gun: kind is named in
+       the stat line, the bright hues stay for state. */
     let act;
-    if(!own) act=`<button data-buy="${w.id}">${fmt(w.cost)} ${RI('sv')}</button>`;
-    else if(fitted) act=`<button data-unfit="${w.id}">UNFIT</button>`;
-    else act=`<button class="fit" data-fit="${w.id}">FIT</button>`;
-    return `<div class="armr" style="--a:${w.pierce?"#48e2ff":w.all?"#ff8fd0":"#ffd166"}">
+    if(!own) act=svSlab("BUY",w.cost).replace("<button ",`<button data-buy="${w.id}" `);
+    else if(fitted) act=`<button class="rdghost" data-unfit="${w.id}">UNFIT</button>`;
+    else act=`<button class="rdghost fit" data-fit="${w.id}">FIT</button>`;
+    return `<div class="armr" style="--a:var(--sv)">
       <div class="ai">${w.chg}s</div>
       <div style="min-width:0"><div class="an">${w.n}</div><div class="ad">${meta}</div></div>
       <div class="aa">${act}</div></div>`;
   }).join("");
   host.querySelectorAll("[data-buy]").forEach(b=>{
     const w=WEPMAP[b.dataset.buy];
-    b.disabled=S.sv<w.cost;
     b.onclick=()=>{ if(buyWeapon(w)){ renderAll(); save() } };
   });
   host.querySelectorAll("[data-fit]").forEach(b=>{
@@ -8560,6 +8638,7 @@ function renderArmoury(){
     d.onclick=()=>{ const i=+d.dataset.slot;
       if(wepSlots()[i]&&equipWeapon(null,i)){ renderAll(); save() } };
   });
+  raidLive();
 }
 function renderNex(){
   const host=$("#nex"); host.innerHTML="";
@@ -11058,7 +11137,7 @@ function bDraw(){
   // mender tethers, drawn under everything so they read as support beams
   for(const e of BT.en){ if(!e.alive||!(EK[e.k]&&EK[e.k].heal))continue;
     for(const o of BT.en){ if(o===e||!o.alive)continue;
-      bx.globalAlpha=.20+.12*Math.sin(BT.el*4); bx.strokeStyle="#5ce6a5"; bx.lineWidth=1.6*D;
+      bx.globalAlpha=.20+.12*Math.sin(BT.el*4); bx.strokeStyle="#ffa3b5"; bx.lineWidth=1.6*D;   /* a hostile's beam: rose, not the player's green */
       bx.beginPath(); bx.moveTo(e.x*BW,e.y*BH); bx.lineTo(o.x*BW,o.y*BH); bx.stroke(); }
   }
   bx.globalAlpha=1;
@@ -11074,8 +11153,11 @@ function bDraw(){
        true via e.rr); only the colour was still leaking the ordinary per-kind EK
        palette (green/yellow/red), which read as "the usual enemy glyphs" instead of
        a mirror of your own fleet. */
-    const col=(BT.t&&BT.t.final)?"#ff4d5e":K.boss?"#ff5f6d":e.k==="swift"?"#ffd166":e.k==="heal"?"#5ce6a5":
-              e.k==="bomber"?"#ff9a6b":e.k==="split"?"#b07cff":BT.T.col;
+    /* every hostile reads as the enemy: one rose/red family (var(--rd) #ff6b8a and
+       its shades), never the player's cyan/green or the reward gold. The kinds stay
+       told apart by their silhouettes below, the shade only nudges it. */
+    const col=(BT.t&&BT.t.final)?"#ff4d5e":K.boss?"#ff4d5e":e.k==="swift"?"#ff8fa3":e.k==="heal"?"#ffa3b5":
+              e.k==="bomber"?"#ff7a6b":e.k==="split"?"#e85a8a":"#ff6b8a";
     bx.save(); bx.translate(x,y); bx.rotate(Math.sin(e.px)*0.18);
     bx.shadowColor=col; bx.shadowBlur=12*D;
     bx.fillStyle=col;
@@ -11117,7 +11199,9 @@ function bDraw(){
     const p=Math.max(0,e.hp/e.max), RR=ER*1.5;
     bx.strokeStyle="rgba(255,255,255,.13)"; bx.lineWidth=3.2*D;
     bx.beginPath(); bx.arc(x,y,RR,0,6.2832); bx.stroke();
-    bx.strokeStyle=p>.5?"#5ce6a5":p>.22?"#ffd166":"#ff6b8a"; bx.lineWidth=3.2*D;
+    /* their health ring is theirs too - rose, fading paler as they weaken (never the
+       green/gold the player's own bars use) */
+    bx.strokeStyle=p>.5?"#ff6b8a":p>.22?"#ff9aae":"#ffcdd7"; bx.lineWidth=3.2*D;
     bx.beginPath(); bx.arc(x,y,RR,-1.5708,-1.5708+6.2832*p); bx.stroke();
 
     // weak point: the seam worth aiming at
@@ -11238,7 +11322,7 @@ function bDraw(){
   for(const f of BT.fx){
     bx.globalAlpha=Math.max(0,f.a);
     if(f.t==="boom"){
-      bx.strokeStyle=BT.T.col; bx.lineWidth=3.5*D;
+      bx.strokeStyle="#ff6b8a"; bx.lineWidth=3.5*D;   /* a hostile going down: its own rose */
       bx.beginPath(); bx.arc(f.x,f.y,f.r,0,6.2832); bx.stroke();
       bx.strokeStyle="#fff"; bx.lineWidth=1.6*D;
       bx.beginPath(); bx.arc(f.x,f.y,f.r*.55,0,6.2832); bx.stroke();
@@ -11563,7 +11647,11 @@ function renderFleetTabs(){
   const key=fls.map(f=>f.id).join(",")+"|"+S.flSel;
   if(host.dataset.h===key)return;
   host.dataset.h=key;
-  host.innerHTML=fls.map(f=>
+  /* one fleet: no selector at all - a lone full-width glowing chip read as a choice
+     with nothing to choose between, and the strip right under it already names the
+     fleet. display, not [hidden]: .buybar's own display:flex outranks [hidden]. */
+  host.style.display = fls.length>1 ? "" : "none";
+  host.innerHTML=fls.length<2 ? "" : fls.map(f=>
     `<button type="button" class="chip${f.id===S.flSel?" on":""}" data-fl="${f.id}">${f.n}</button>`
   ).join("");
   host.querySelectorAll("[data-fl]").forEach(b=>{
@@ -11578,9 +11666,10 @@ function renderRaids(){
      the empire-wide total - fleetCap() applies per fleet, so "112/60" is cf's own
      onboard+attributed-hangar power against the one cap every fleet gets. */
   const pw=fleetTotalPower(cf), cp=fleetCap(), over=pw>cp;
-  const thinCap=cp>0&&pw<cp*0.7;
+  /* cyan while there is room, gold exactly full, rose over (the thin-fleet warning
+     is #flWarn's job below, not this number's colour) */
   st.innerHTML=fmt(fleetDPS(cf))+" dps · "+fmt(fleetHPMax(cf))+" hull"
-    +` <b class="flcap${over?" over":thinCap?" thin":""}">⚡${pw}/${cp}</b>`;
+    +` <b class="flcap${over?" over":(cp>0&&pw===cp)?" full":""}">⚡\ufe0e${pw}/${cp}</b>`;   /* U+FE0E (text presentation): the bolt, takes .flcap's colour instead of rendering as an orange emoji */
   /* PLAN-fleets run 3 (BRIEF commit 2): where the selected tab's own fleet actually
      is - independent of the ENGAGE/AUTO fleet a target card uses (that is always
      fleetAtSys(t.sys), never this tab). Plain textContent, same idiom the fleet
@@ -11591,7 +11680,8 @@ function renderRaids(){
     : "AT "+((SYSMAP[cf.at]||{}).n||cf.at).toUpperCase();
   const hp=cf.hp, bar=$(".fl-hp");
   bar.classList.toggle("hurt",hp<=.6&&hp>.3); bar.classList.toggle("crit",hp<=.3);
-  $("#flHp").style.width=(hp*100)+"%";
+  /* no ships = nothing to have integrity: an empty bar, not cf.hp's full one */
+  $("#flHp").style.width=(fleetCount(cf)?hp*100:0)+"%";
   $("#flHpT").textContent=fleetCount(cf)?("FLEET INTEGRITY "+Math.round(hp*100)+"%"+(hp<1?" · repairing":"")):"NO SHIPS";
   /* the single most useful thing the page can say to someone losing every fight */
   const wn=$("#flWarn");
@@ -11602,10 +11692,8 @@ function renderRaids(){
       Hostiles are sized against a full one, so raids will go badly until you build more
       \u2014 heavier hulls give far more per point of capacity.`;
   }
-  const fx=$("#flFix"), rc=repairCost(cf);
-  fx.classList.toggle("hide", !fleetCount(cf) || hp>=1);
-  fx.disabled = S.ore<rc || hp>=1;
-  fx.textContent = "REPAIR \u00b7 "+fmt(rc)+" ORE";
+  const fx=$("#flFix");
+  fx.classList.toggle("hide", !fleetCount(cf) || hp>=1);   /* its label/cost: raidLive() */
   const host=$("#flShips"); host.innerHTML="";
   /* run 3 (decision 6): no idle fleet at a yard (home, or batch C's Shipyard) right
      now - a BUY still queues (see buyShip()'s own comment), it just doesn't land in
@@ -11649,8 +11737,15 @@ function renderRaids(){
     const dps=fleetDPS(cf), hpm=fleetHPMax(cf);
     const eHP=dps*t.secs*t.dif, eDPS=(hpm*t.dmg)/t.secs;
     const risk=riskOf(t);
-    const rews=[rw.o?fmt(rw.o)+" "+RI('ore'):null,rw.c?fmt(rw.c)+" "+RI('cry'):null,rw.m?fmt(rw.m)+" "+RI('dm'):null,
-      "~"+SVBASE[t.ti]*Math.round(t.dif)+" "+RI('sv')].filter(Boolean).join(" · ");
+    /* each amount in its own currency colour (.rw-o/c/m/s, 03-combat.css), not the
+       whole line in reward gold */
+    const svEst=SVBASE[t.ti]*Math.round(t.dif);
+    const rews=[rw.o?`<b class="rw-o">${fmt(rw.o)}</b> ${RI('ore')}`:null,rw.c?`<b class="rw-c">${fmt(rw.c)}</b> ${RI('cry')}`:null,
+      rw.m?`<b class="rw-m">${fmt(rw.m)}</b> ${RI('dm')}`:null,
+      `<b class="rw-s">~${svEst}</b> ${RI('sv')}`].filter(Boolean).join(" · ");
+    /* the stake ENGAGE plays for, straight from the reward line above - ore if the
+       target pays ore, else its salvage estimate. Nothing new computed. */
+    const stake = rw.o ? `+${fmt(rw.o)} ${RI('ore')}` : `~${svEst} ${RI('sv')}`;
     const d=document.createElement("div"); d.className="tcard"; d.style.setProperty("--a",T.col);
     /* PLAN-fleets run 2 (decision 3): a raid is somewhere, and engaging it needs a
        fleet actually there - hereFleet, not curFleet(). None there yet: offer to
@@ -11661,17 +11756,19 @@ function renderRaids(){
     let actHtml, auto=false;
     if(hereFleet){
       auto=canAutoResolve(t,hereFleet);
+      /* ENGAGE / SEND is the bright cyan slab (.raidgo); AUTO-RESOLVE the plain outline
+         secondary, FIGHT IT ANYWAY the quiet ghost - button order is unchanged */
       actHtml = auto
-        ? '<button>AUTO-RESOLVE</button><button class="ghost" style="margin-top:6px">FIGHT IT ANYWAY</button>'
-        : "<button>ENGAGE</button>";
+        ? '<button>AUTO-RESOLVE</button><button class="ghost">FIGHT IT ANYWAY</button>'
+        : `<button class="raidgo">ENGAGE<b>· ${stake}</b></button>`;
     } else {
       const enRoute=fleetTravelingTo(t.sys);
-      if(enRoute) actHtml=`<button disabled>ARRIVING · ${Math.max(0,Math.ceil(enRoute.eta))}s</button>`;
+      if(enRoute) actHtml=`<button class="raidgo" disabled>ARRIVING<b>· ${Math.max(0,Math.ceil(enRoute.eta))}s</b></button>`;
       else {
         const nf=nearestIdleFleetTo(t.sys);
         actHtml = nf
-          ? `<button>SEND ${nf.n.toUpperCase()} · ${Math.round(travelSecs(nf.at,t.sys))}s</button>`
-          : `<button disabled>ALL FLEETS BUSY</button>`;
+          ? `<button class="raidgo">SEND ${nf.n.toUpperCase()}<b>· ${Math.round(travelSecs(nf.at,t.sys))}s</b></button>`
+          : `<button class="raidgo" disabled>ALL FLEETS BUSY</button>`;
       }
     }
     d.innerHTML=`<h5>${t.name} <span class="risk" style="color:${risk[1]}">${risk[0]}</span></h5>
@@ -11705,12 +11802,13 @@ function renderRaids(){
   REFIT.forEach(r=>{
     const l=rfl(r.id), max=l>=r.max, c=refitCost(r);
     const d=document.createElement("div");
-    d.className="rfc"+(max?" done":""); d.style.setProperty("--a",r.col);
+    /* steel identity accent for every refit (r.col is left in the data, unused here):
+       the signal hues are for state, not for telling one refit from another */
+    d.className="rfc"+(max?" done":""); d.style.setProperty("--a","var(--sv)");
     d.innerHTML=`<h5>${r.n}<span class="lv">Lv ${l}/${r.max}</span></h5>
       <p>${r.t}</p>
       <div class="eff">${r.d(l)}${max?"":" \u2192 "+r.d(l+1)}</div>
-      ${max?'<button disabled>MAXED</button>':
-        `<button ${S.sv>=c?"":"disabled"}>${fmt(c)} ${RI('sv')}</button>`}`;
+      ${max?'<button class="svslab" disabled>MAXED</button>':svSlab("UPGRADE",c)}`;
     if(!max)d.querySelector("button").onclick=()=>buyRefit(r);
     rh.appendChild(d);
   });
@@ -11728,9 +11826,10 @@ function renderRaids(){
       const R=c?ROLES.find(r=>r.id===c.role):null;
       const d=document.createElement("div");
       d.className="bslot"+(c?" full":"")+(open?"":" lock");
-      d.style.setProperty("--a",R?R.col:"var(--dim)");
-      d.style.setProperty("--a2",R?rgba(R.col,.14):"rgba(255,255,255,.03)");
-      d.innerHTML = !open ? `<span class="bempty">LOCKED \u00b7 ${i===1?40:150} WINS</span>`
+      /* steel identity, same as the roster rows below - the role is named in text */
+      d.style.setProperty("--a",R?"var(--sv)":"var(--dim)");
+      d.style.setProperty("--a2",R?"rgba(169,188,212,.13)":"rgba(255,255,255,.03)");
+      d.innerHTML = !open ? `<span class="bempty">${R_LOCK}LOCKED \u00b7 ${i===1?40:150} WINS</span>`
         : c ? `<div class="bi">${R.n.slice(0,3).toUpperCase()}</div>
                <div style="min-width:0"><div class="bn">${c.n}</div>
                  <div class="be">${RAR[c.r].n} ${R.n} \u00b7 ${R.d(c.deck?1:RAR[c.r].m)}</div></div>`
@@ -11742,15 +11841,15 @@ function renderRaids(){
     (S.crew||[]).forEach(c=>{
       const R=ROLES.find(r=>r.id===c.role), on=S.bridge.indexOf(c.id)>=0;
       const d=document.createElement("div");
-      d.className="crw"+(on?" on":""); d.style.setProperty("--a",R.col);
-      d.style.setProperty("--a2",rgba(R.col,.13));
+      /* steel identity accent; on the bridge (a state) is what turns the row cyan */
+      d.className="crw"+(on?" on":""); d.style.setProperty("--a","var(--sv)");
       d.innerHTML=`<div style="min-width:0">
           <div class="cn">${c.n}</div>
           <div class="cr" style="color:${RAR[c.r].col}">${RAR[c.r].n.toUpperCase()} \u00b7 ${R.n.toUpperCase()}</div>
           <div class="ce">${R.d(c.deck?1:RAR[c.r].m)}</div></div>
         <div class="cb">
-          <button data-a>${on?"STAND DOWN":"ASSIGN"}</button>
-          ${c.deck?"":`<button data-d>SELL ${dismissValue(c)}</button>`}</div>`;
+          <button class="rdghost" data-a>${on?"STAND DOWN":"ASSIGN"}</button>
+          ${c.deck?"":`<button class="rdghost quiet" data-d>SELL<b>+${dismissValue(c)} ${RI('sv')}</b></button>`}</div>`;
       d.querySelector("[data-a]").onclick=()=>assignCrew(c.id);
       const dd=d.querySelector("[data-d]"); if(dd)dd.onclick=()=>dismissCrew(c.id);
       ro.appendChild(d);
@@ -11764,29 +11863,68 @@ function renderRaids(){
       ensureCrewPool();
       pool.innerHTML="";
       (S.crewPool||[]).forEach(cand=>{
-        const R=ROLES.find(r=>r.id===cand.role), hc=hireCost(), can=S.sv>=hc;
+        const R=ROLES.find(r=>r.id===cand.role), hc=hireCost();
         const d=document.createElement("div");
-        d.className="crw cand"; d.style.setProperty("--a",R.col);
-        d.style.setProperty("--a2",rgba(R.col,.13));
+        d.className="crw cand"; d.style.setProperty("--a","var(--sv)");
         d.innerHTML=`<div style="min-width:0">
             <div class="cn">${cand.n}</div>
             <div class="cr" style="color:${RAR[cand.r].col}">${RAR[cand.r].n.toUpperCase()} \u00b7 ${R.n.toUpperCase()}</div>
             <div class="ce">${R.d(RAR[cand.r].m)}</div></div>
-          <div class="cb"><button ${can?"":"disabled"}>HIRE ${fmt(hc)}</button></div>`;
+          <div class="cb">${svSlab("HIRE",hc)}</div>`;
         d.querySelector("button").onclick=()=>{ if(!hireCandidate(cand.id))blip(140,.08,"sine",.03) };
         pool.appendChild(d);
       });
       rb.style.display="";
-      const rc=crewRefreshCost();
-      rb.disabled=S.sv<rc;
-      rb.innerHTML="REFRESH \u00b7 "+fmt(rc)+" salvage";
+      /* the static #btnRefreshCrew node becomes a salvage slab in place (never
+         replaced); raidLive() writes its label/disabled from data-svc */
+      rb.className="svslab"; rb.dataset.svc=crewRefreshCost(); rb.dataset.verb="REFRESH";
       $("#hireNote").textContent="Roster "+(S.crew||[]).filter(c=>!c.deck).length+" \u00b7 each hire costs more";
     }
   }
 
   $("#raidHint").textContent = fleetCount(cf)? "Tap the glowing seam on a hostile for a critical. Chain hits without missing to build a damage multiplier."
     : "Build warships below, then engage a target.";
+  raidLive();
   raidSubFlags();
+}
+/* The Raids tab's priced buttons, following the balance in place - same split as
+   gbCaption()/updateEmpBars() and resInfo(): renderRaids()/renderArmoury() build the
+   buttons on a real change only, this runs on every render() pass (dirty or not) and
+   only ever rewrites a button's contents/disabled, never the node (tchurn2). A
+   salvage slab says what a tap does ("HIRE <b>49</b>") or, short, what is missing
+   ("NEED <b>12</b>"). */
+function svSlabHTML(verb,cost){
+  const have=S.sv||0;
+  return have>=cost ? `${verb}<b>${fmt(cost)} ${RI('sv')}</b>` : `NEED<b>${fmt(cost-have)} ${RI('sv')}</b>`;
+}
+function svSlab(verb,cost){
+  return `<button class="svslab" data-svc="${cost}" data-verb="${verb}" ${(S.sv||0)>=cost?"":"disabled"}>${svSlabHTML(verb,cost)}</button>`;
+}
+/* an ore-priced .gb: cost on top, caption under it - the verb when it can be paid,
+   "need X" when it cannot, exactly as gbCaption() words it on the Map's buy rows */
+function oreGbHTML(verb,cost){
+  return `<b>${fmt(cost)} ${RI('ore')}</b><i>${S.ore>=cost?verb:"need "+fmt(cost-S.ore)}</i>`;
+}
+function raidSet(b,html,dis){
+  if(b.disabled!==dis)b.disabled=dis;
+  if(b.dataset.h!==html){ b.dataset.h=html; b.innerHTML=html; }
+}
+function raidLive(){
+  const pane=$("#p-raid"); if(!pane)return;
+  pane.querySelectorAll("button.svslab[data-svc]").forEach(b=>{
+    const c=+b.dataset.svc;
+    raidSet(b, svSlabHTML(b.dataset.verb||"BUY",c), (S.sv||0)<c);
+  });
+  /* REPAIR: its cost moves every frame (hull mends while you watch), so the whole
+     label lives here rather than in renderRaids() */
+  const fx=$("#flFix");
+  if(fx&&!fx.classList.contains("hide")){
+    const cf=curFleet(), rc=repairCost(cf);
+    raidSet(fx, oreGbHTML("REPAIR",rc), S.ore<rc||cf.hp>=1);
+  }
+  /* rockets: priced off rate(), which moves as income does */
+  const am=$("#buyAmmo");
+  if(am){ const c=ammoCost(AMMO_LOT); raidSet(am, oreGbHTML("BUY +"+AMMO_LOT,c), S.ore<c); }
 }
 /* Sub-tab alert dots for the Raids tab: cheap affordability/attention checks, same shape
    as the checks renderRaids() already does per-row above — nothing new is computed, just

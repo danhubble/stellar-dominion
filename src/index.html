@@ -135,19 +135,21 @@
             <button class="rmbtn" data-rd="loadout">LOADOUT<i class="dot"></i></button>
             <button class="rmbtn" data-rd="crew">CREW<i class="dot"></i></button>
           </div>
-          <div id="flTabs" class="buybar"></div>
-          <div id="flStrip">
-            <div class="fl-h"><span class="fl-t">FLEET</span>
-              <span class="fl-st" id="flStat"></span>
-              <button class="svchip" id="svChip" title="Salvage — tap for detail"></button></div>
-            <!-- PLAN-fleets run 3 (BRIEF commit 2): where the selected tab's own fleet is -->
-            <div class="fl-loc" id="flLoc"></div>
-            <div class="fl-hp"><i id="flHp"></i><span id="flHpT"></span></div>
-            <!-- polish batch A #9: TRANSFER removed from the Raids tab's own fleet
-                 strip - it stays on the fleet card modal (#fcTransfer, 09-render.js). -->
-            <div class="flbtns">
-              <button id="flFix">REPAIR</button>
-            </div>
+        </div>
+        <!-- the fleet selector + strip sit below #raidTop, not inside it: only the
+             sub-tab row stays pinned, these scroll away with the content -->
+        <div id="flTabs" class="buybar"></div>
+        <div id="flStrip">
+          <div class="fl-h"><span class="fl-t">FLEET</span>
+            <span class="fl-st" id="flStat"></span>
+            <button class="svchip" id="svChip" title="Salvage — tap for detail"></button></div>
+          <!-- PLAN-fleets run 3 (BRIEF commit 2): where the selected tab's own fleet is -->
+          <div class="fl-loc" id="flLoc"></div>
+          <div class="fl-hp"><i id="flHp"></i><span id="flHpT"></span></div>
+          <!-- polish batch A #9: TRANSFER removed from the Raids tab's own fleet
+               strip - it stays on the fleet card modal (#fcTransfer, 09-render.js). -->
+          <div class="flbtns">
+            <button id="flFix" class="gb">REPAIR</button>
           </div>
         </div>
         <div id="rpTargets">

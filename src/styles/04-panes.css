@@ -24,10 +24,13 @@
 .rbr.lk span{color:var(--mut)}
 .rlock{width:12px;height:12px;vertical-align:-1px;margin-right:4px}
 .rmode{display:flex;gap:6px;margin-bottom:10px}
-.rmbtn{flex:1;cursor:pointer;border:1px solid var(--line);border-radius:10px;padding:8px 6px;
+/* 44px: a thumb target (shared with Research TECH/PROGRAMMES and Map MAP/LIST) */
+.rmbtn{flex:1;cursor:pointer;border:1px solid var(--line);border-radius:10px;padding:8px 6px;min-height:44px;
   background:rgba(10,14,32,.7);color:var(--mut);font:700 11px/1 system-ui;letter-spacing:.06em;
   text-align:center}
 .rmbtn.on{border-color:var(--cy);color:var(--txt);background:rgba(72,226,255,.10)}
+/* only the sub-tab row is sticky now - the fleet selector and strip scroll away with
+   the content (they took ~178px of a 667px phone when they were pinned too) */
 #raidTop{position:sticky;top:-12px;z-index:5;background:var(--bg);padding-top:12px;margin:0 0 8px}
 #raidMode.rmode{margin-bottom:6px}
 .rmbtn{position:relative}
@@ -137,4 +140,4 @@ button.rtr{cursor:pointer}
 /* polish batch A #8: the stats page's KPI tiles/measure chips/history chart CSS
    (#kpis/.kpi/#mchips/.mchip/#chartBox and friends) is gone with the "Graphs" half
    of "Records & Graphs" - see renderAch()'s own header note in 09-render.js. */
-.sechead2{font:700 10px/1 system-ui;letter-spacing:.2em;color:var(--dim);margin:16px 0 8px}
+.sechead2{font:700 11px/1 system-ui;letter-spacing:.12em;color:var(--dim);margin:16px 0 8px}

@@ -4,74 +4,116 @@
   font:700 11px/1 ui-monospace,monospace;display:flex;align-items:center;gap:4px}
 .svchip:hover{border-color:var(--sv)}
 .svchip svg{width:13px;height:13px}
-.shsub{font:400 9.5px/1 system-ui;letter-spacing:.08em;color:var(--dim);text-transform:none;margin-left:7px}
+/* the chip keeps its compact look; an invisible hit area takes it out to 44px tall,
+   same trick the header's small controls use (06-overlays.css) */
+.svchip{position:relative}
+.svchip::before{content:"";position:absolute;left:-4px;right:-4px;top:50%;height:44px;transform:translateY(-50%)}
+.shsub{font:400 11px/1 system-ui;letter-spacing:.02em;color:var(--dim);text-transform:none;margin-left:7px}
+/* Bronze salvage slab. Salvage is scrap, so what it buys is priced on scrap-metal
+   bronze - one look for every salvage purchase on the Raids tab (weapons, refits,
+   HIRE, REFRESH). Same construction as .misslab (gold) and .resslab (violet): gradient
+   fill, lighter 1px border, a dark lip that collapses on press. Unaffordable stays
+   fully legible (no opacity) and reads "NEED <b>X</b>", updated in place per frame by
+   raidLive() (11-combat.js) so the button node itself is never rebuilt for it. */
+.svslab{position:relative;overflow:hidden;width:100%;min-height:44px;border-radius:9px;cursor:pointer;
+  border:1px solid #f0c49a;background:linear-gradient(180deg,#e0a672,#b97a45);color:#1e0f04;
+  font:800 12px/1 system-ui;letter-spacing:.1em;padding:0 12px 3px;white-space:nowrap;
+  box-shadow:0 1px 0 rgba(255,255,255,.35) inset;transition:transform .06s}
+.svslab::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;background:#7a4a22;pointer-events:none}
+.svslab:active:not(:disabled){transform:translateY(2px)}
+.svslab:active:not(:disabled)::after{height:1px}
+.svslab:focus-visible{outline:2px solid #ffe6cc;outline-offset:2px}
+.svslab b{font:800 13px/1 ui-monospace,monospace;letter-spacing:0;margin-left:6px}
+.svslab .ci{width:1.2em;height:1.2em;vertical-align:-.25em;color:#1e0f04}
+.svslab:disabled{cursor:not-allowed;border-color:var(--line);background:rgba(255,255,255,.035);color:var(--mut);box-shadow:none}
+.svslab:disabled::after{background:rgba(255,255,255,.06)}
+.svslab:disabled b{color:var(--txt)}
+.svslab:disabled .ci{color:var(--sv)}
+/* quiet outline buttons for the Raids tab's secondary actions (ASSIGN, STAND DOWN,
+   SELL, FIT, UNFIT, AUTO-RESOLVE): full 44px thumb target, no fill, never louder than
+   the slab beside them. */
+.rdghost{min-height:44px;border:1px solid var(--line2);background:transparent;color:var(--txt);
+  border-radius:9px;padding:0 12px;cursor:pointer;font:700 11px/1 system-ui;letter-spacing:.06em;white-space:nowrap}
+.rdghost:hover{border-color:var(--sv)}
+.rdghost:focus-visible{outline:2px solid #eafcff;outline-offset:2px}
+.rdghost:disabled{cursor:not-allowed;color:var(--dim2);border-color:var(--line)}
+.rdghost.quiet{border-color:var(--line);color:var(--mut)}   /* SELL - destructive, kept quiet */
+.rdghost b{font:700 11px/1 ui-monospace,monospace;letter-spacing:0;margin-left:5px}
+@media(prefers-reduced-motion:reduce){.svslab,.tcard button.raidgo{transition:none}}
+/* refit cards and crew rows: one calm steel accent for identity (set as --a by
+   renderRaids()) - the bright hues stay reserved for state. */
 .rfc{border:1px solid var(--line);border-radius:11px;padding:9px 10px;background:var(--panel);
   border-left:3px solid var(--a)}
 .rfc h5{margin:0 0 2px;font:600 12.5px/1.2 system-ui}
-.rfc .lv{font:600 9.5px/1 ui-monospace,monospace;color:var(--dim);letter-spacing:.1em;margin-left:6px}
-.rfc p{font-size:10.5px;color:var(--mut);margin:0 0 6px;line-height:1.4}
-.rfc .eff{font:600 11px/1.3 ui-monospace,monospace;color:var(--a);margin-bottom:7px}
-.rfc button{width:100%;border:1px solid var(--line2);background:rgba(169,188,212,.10);color:var(--txt);
-  border-radius:8px;padding:6px;cursor:pointer;font:600 11px/1 ui-monospace,monospace;
-  display:flex;align-items:center;justify-content:center;gap:5px}
-.rfc button:disabled{cursor:not-allowed;color:var(--dim2);border-color:var(--line);background:rgba(255,255,255,.03)}
-.rfc.done{opacity:.55}
+.rfc .lv{font:600 11px/1 ui-monospace,monospace;color:var(--dim2);letter-spacing:.02em;margin-left:6px}
+.rfc p{font-size:11.5px;color:var(--mut);margin:0 0 6px;line-height:1.4}
+.rfc .eff{font:600 11.5px/1.3 ui-monospace,monospace;color:var(--txt);margin-bottom:7px}
+.rfc.done{opacity:.7}
 #bridge{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:7px;margin-bottom:9px}
 .bslot{border:1px dashed var(--line2);border-radius:10px;padding:8px 9px;min-height:52px;
   display:flex;align-items:center;gap:8px;background:rgba(10,14,32,.5)}
 .bslot.full{border-style:solid;border-color:var(--a);background:linear-gradient(180deg,var(--a2),rgba(10,14,32,.5))}
-.bslot.lock{opacity:.45}
-.bslot .bi{width:26px;height:26px;border-radius:8px;flex:none;display:grid;place-items:center;
-  background:var(--a2);color:var(--a);font:700 10px/1 system-ui}
-.bslot .bn{font:600 11.5px/1.25 system-ui;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.bslot .be{font:600 9.5px/1 ui-monospace,monospace;color:var(--a)}
-.bslot .bempty{font:600 9.5px/1 system-ui;letter-spacing:.14em;color:var(--dim)}
+/* locked berth: reads as locked (dashed faint edge, lock glyph, no fill) without
+   dropping the text below AA - the old opacity:.45 put it at ~1.9:1 */
+.bslot.lock{border-color:var(--line);background:transparent}
+.bslot.lock .bempty{color:var(--mut)}
+.bslot .rlock{width:12px;height:12px;margin-right:5px;vertical-align:-1px}
+.bslot .bi{width:30px;height:30px;border-radius:8px;flex:none;display:grid;place-items:center;
+  background:var(--a2);color:var(--txt);font:700 11px/1 system-ui}
+.bslot .bn{font:600 12px/1.25 system-ui;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bslot .be{font:600 11px/1.2 ui-monospace,monospace;color:var(--mut)}
+.bslot .bempty{font:600 11px/1.2 system-ui;letter-spacing:.06em;color:var(--dim2)}
 #roster{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:7px}
+/* name block left, the row's 44px buttons stacked on the right (one for a Deckhand
+   or a candidate, two for a hired hand) */
 .crw{border:1px solid var(--line);border-left:3px solid var(--a);border-radius:10px;padding:8px 9px;
-  background:var(--panel);display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center}
-.crw.on{background:linear-gradient(180deg,var(--a2),var(--panel))}
-.crw .cn{font:600 12px/1.2 system-ui}
-.crw .cr{font:600 9.5px/1 system-ui;letter-spacing:.12em;color:var(--a);margin-top:3px}
-.crw .ce{font:600 10px/1 ui-monospace,monospace;color:var(--mut);margin-top:4px}
-.crw .cb{display:flex;flex-direction:column;gap:4px}
-.crw .cb button{border:1px solid var(--line2);background:rgba(255,255,255,.04);color:var(--mut);
-  border-radius:7px;padding:4px 7px;cursor:pointer;font:600 9.5px/1 system-ui;letter-spacing:.08em}
-.crw .cb button:hover{color:var(--txt);border-color:var(--a)}
+  background:var(--panel);display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center}
+.crw.on{border-left-color:var(--cy);background:linear-gradient(180deg,rgba(72,226,255,.08),var(--panel))}
+.crw .cn{font:600 12.5px/1.2 system-ui}
+.crw .cr{font:600 11px/1.2 system-ui;letter-spacing:.04em;color:var(--a);margin-top:3px}
+.crw .ce{font:600 11px/1.2 ui-monospace,monospace;color:var(--mut);margin-top:4px}
+.crw .cb{display:flex;flex-direction:column;gap:6px}
+.crw .cb button{min-width:108px}
 .hirebar{display:flex;align-items:center;gap:10px;margin-top:9px;flex-wrap:wrap}
-.hirebar button{border:1px solid rgba(169,188,212,.45);background:rgba(169,188,212,.12);color:var(--txt);
-  border-radius:9px;padding:8px 14px;cursor:pointer;font:700 11px/1 ui-monospace,monospace;letter-spacing:.1em}
-.hirebar button:disabled{opacity:.4;cursor:not-allowed}
-.hirenote{font-size:10.5px;color:var(--dim)}
+.hirebar .svslab{width:auto;flex:none}
+.hirenote{font-size:11px;color:var(--dim2)}
 #bCombo{position:absolute;left:0;right:0;top:14%;text-align:center;pointer-events:none;z-index:3;
   font:800 26px/1 ui-monospace,monospace;color:var(--gd);opacity:0;transition:opacity .12s;
   text-shadow:0 0 14px rgba(255,209,102,.55)}
 #bCombo.on{opacity:1}
-#bCombo small{display:block;font:700 9px/1 system-ui;letter-spacing:.24em;color:var(--mut);margin-top:3px}
-#flStrip{border:1px solid rgba(255,143,208,.26);border-radius:12px;padding:7px 10px;margin-bottom:0;
-  background:linear-gradient(180deg,rgba(255,143,208,.06),rgba(10,14,32,.5))}
+#bCombo small{display:block;font:700 11px/1 system-ui;letter-spacing:.14em;color:var(--mut);margin-top:3px}
+/* neutral steel/starlight: the strip is the player's own fleet, not a signal */
+#flStrip{border:1px solid var(--line);border-radius:12px;padding:7px 10px;margin:0 0 8px;
+  background:linear-gradient(180deg,rgba(169,188,212,.05),rgba(10,14,32,.5))}
 .fl-h{display:flex;align-items:baseline;gap:10px}
-.fl-t{font:700 10px/1 system-ui;letter-spacing:.2em;color:#ff8fd0}
+.fl-t{font:700 11px/1 system-ui;letter-spacing:.12em;color:var(--sv)}
 .fl-st{margin-left:auto;font:600 11px/1 ui-monospace,monospace;color:var(--mut)}
 /* PLAN-fleets run 3: the selected tab's own "AT X"/"-> X . Ns" line - same idiom
    the fleet bar's .fstat span uses, one size down since this sits under a header. */
-.fl-loc{font:600 10px/1 ui-monospace,monospace;color:var(--mut);margin:3px 0 0}
-.flcap{color:#ffb45c;font-weight:700}
-.flcap.thin{color:#ffb45c}
+.fl-loc{font:600 11px/1.2 ui-monospace,monospace;color:var(--mut);margin:3px 0 0}
+/* command capacity: cyan while there is room, gold exactly full, rose over. Not the
+   ore-kind orange it used to borrow. */
+.flcap{color:var(--cy);font-weight:700}
+.flcap.full{color:var(--gd)}
 .flcap.over{color:var(--rd)}
-.fl-hp{position:relative;height:12px;border-radius:5px;background:rgba(255,255,255,.06);margin:9px 0 4px;overflow:hidden}
-.fl-hp i{display:block;height:100%;width:100%;transition:width .3s;
+/* the empty track is the default (an empty fleet shows an empty bar); renderRaids()
+   sets the real width. The label sits on its own dark pill so it reads over any fill
+   and over the empty track alike - dark text straight on the bar fell to ~1.1:1. */
+.fl-hp{position:relative;height:17px;border-radius:5px;background:rgba(255,255,255,.06);margin:8px 0 4px;overflow:hidden}
+.fl-hp i{display:block;height:100%;width:0;transition:width .3s;
   background:linear-gradient(90deg,#5ce6a5,#48e2ff)}
 .fl-hp.hurt i{background:linear-gradient(90deg,#ffb45c,#ffd166)}
 .fl-hp.crit i{background:linear-gradient(90deg,#ff6b8a,#ff9a6b)}
-.fl-hp span{position:absolute;inset:0;display:grid;place-items:center;
-  font:700 9.5px/1 ui-monospace,monospace;letter-spacing:.1em;color:#04050d}
+.fl-hp span{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);white-space:nowrap;
+  padding:2px 7px;border-radius:4px;background:rgba(4,6,16,.82);
+  font:700 11px/1 ui-monospace,monospace;letter-spacing:.04em;color:var(--txt)}
+@media(prefers-reduced-motion:reduce){.fl-hp i{transition:none}}
 /* polish batch A #9: TRANSFER's own button here is gone (still flex, in case a
-   future button joins REPAIR again) - REPAIR (flex:1) fills the row alone now. */
+   future button joins REPAIR again) - REPAIR (flex:1) fills the row alone now.
+   REPAIR is paid in ore, so it is the ore slab (.gb): verb, then cost, one line. */
 .flbtns{display:flex;gap:8px;margin-top:6px}
-#flFix{flex:1;border:1px solid rgba(92,230,165,.5);
-  background:rgba(92,230,165,.11);color:var(--gr);border-radius:9px;padding:8px;
-  font:700 10.5px/1 system-ui;letter-spacing:.08em;cursor:pointer}
-#flFix:disabled{opacity:.35;cursor:not-allowed}
+#flFix.gb{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;text-align:center;padding:0 10px 3px}
+#flFix.gb i{margin-top:0;font-weight:700;order:-1}   /* one line: the verb, then the cost */
 #flFix.hide{display:none}
 /* TRANSFER - violet, same family as the fleet card modal's own #fcTransfer below */
 .transfer{flex:1;border:1px solid rgba(168,120,255,.5);
@@ -92,23 +134,45 @@
 #flWarn.on{display:block}
 #flWarn b{color:#ffb45c}
 .shp{display:grid;grid-template-columns:38px 1fr auto;gap:10px;align-items:center;
-  border-top:1px solid rgba(255,143,208,.14);padding:9px 0 3px}
+  border-top:1px solid var(--line);padding:9px 0 3px}
 .shp .si{width:38px;height:38px;color:var(--a)}
 .shp .si svg{width:100%;height:100%;display:block}
 .shp .sn{font:600 12.5px/1.2 system-ui}
-.shp .sd{font:10.5px/1.4 ui-monospace,monospace;color:var(--mut)}
+.shp .sd{font:11px/1.4 ui-monospace,monospace;color:var(--mut)}
 .shp .sc{font:700 15px/1 ui-monospace,monospace;min-width:34px;text-align:right}
 .tcard{border:1px solid var(--line);border-radius:11px;padding:10px;background:var(--panel);
   display:flex;flex-direction:column;gap:6px;border-left:3px solid var(--a)}
 .tcard h5{margin:0;font:600 12.5px/1.25 system-ui;color:var(--a)}
-.tcard .tloc{font:10.5px/1.4 ui-monospace,monospace;color:var(--dim2)}
-.tcard .tm{font:10.5px/1.5 ui-monospace,monospace;color:var(--mut)}
-.tcard .tr{font:11px/1.5 ui-monospace,monospace;color:var(--gd)}
-.tcard button{border:1px solid var(--a);background:rgba(255,255,255,.05);color:var(--txt);
-  border-radius:8px;padding:8px;cursor:pointer;font:700 11px/1 system-ui;letter-spacing:.14em}
-.tcard button:disabled{opacity:.35;cursor:not-allowed}
-.risk{display:inline-block;padding:1px 6px;border-radius:4px;font:700 8.5px/1.5 system-ui;
-  letter-spacing:.12em;border:1px solid currentColor}
+.tcard .tloc{font:11px/1.4 ui-monospace,monospace;color:var(--dim2)}
+.tcard .tm{font:11px/1.5 ui-monospace,monospace;color:var(--mut)}
+/* each amount in its own currency colour (ore cyan, crystal violet, DM gold, salvage
+   steel) rather than the whole line in reward gold */
+.tcard .tr{font:11.5px/1.5 ui-monospace,monospace;color:var(--mut)}
+.tcard .tr b{font-weight:700}
+.tcard .tr .rw-o{color:var(--cy)} .tcard .tr .rw-c{color:var(--vi)}
+.tcard .tr .rw-m{color:var(--gd)} .tcard .tr .rw-s{color:var(--sv)}
+/* AUTO-RESOLVE: secondary, plain outline. FIGHT IT ANYWAY: the quiet ghost. */
+.tcard button{min-height:44px;border:1px solid var(--line2);background:transparent;color:var(--txt);
+  border-radius:9px;padding:0 10px;cursor:pointer;font:700 11.5px/1 system-ui;letter-spacing:.1em}
+.tcard button:hover{border-color:var(--cy)}
+.tcard button:focus-visible{outline:2px solid #eafcff;outline-offset:2px}
+.tcard button.ghost{border-color:var(--line);color:var(--mut);letter-spacing:.06em}
+.tcard button:disabled{cursor:not-allowed;color:var(--dim2);border-color:var(--line)}
+/* ENGAGE / SEND: the card's one "act" key - the Scan key's bright cyan slab at card
+   scale (.scanbtn, 00-base.css), the stake it plays for in mono after the verb */
+.tcard button.raidgo{position:relative;overflow:hidden;border:1px solid #7deeff;
+  background:linear-gradient(180deg,#5be8ff,#38c9e6);color:#04121a;font:800 12.5px/1 system-ui;
+  letter-spacing:.14em;padding:0 10px 3px;box-shadow:0 1px 0 rgba(255,255,255,.35) inset;transition:transform .06s}
+.tcard button.raidgo::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;background:#1c8fa8;pointer-events:none}
+.tcard button.raidgo:active:not(:disabled){transform:translateY(2px)}
+.tcard button.raidgo:active:not(:disabled)::after{height:1px}
+.tcard button.raidgo b{font:700 12px/1 ui-monospace,monospace;letter-spacing:0;margin-left:6px;color:#06303c}
+.tcard button.raidgo .ci{color:#06303c}
+.tcard button.raidgo:disabled{border-color:var(--line);background:rgba(255,255,255,.035);color:var(--mut);box-shadow:none}
+.tcard button.raidgo:disabled::after{background:rgba(255,255,255,.06)}
+.tcard button.raidgo:disabled b{color:var(--mut)}
+.risk{display:inline-block;padding:1px 6px;border-radius:4px;font:700 11px/1.4 system-ui;
+  letter-spacing:.06em;border:1px solid currentColor}
 /* battle overlay */
 #defence{position:fixed;inset:0;z-index:41;display:none;background:#03040c}
 #defence.on{display:block}
@@ -149,16 +213,16 @@
 .thrc p{margin:0;font-size:11.5px;color:var(--mut)}
 .thrc .who{font:700 11px/1.3 ui-monospace,monospace}
 .thrc button{border:1px solid rgba(255,107,138,.7);background:rgba(255,107,138,.18);
-  color:#ffe4ea;border-radius:9px;padding:11px;cursor:pointer;
+  color:#ffe4ea;border-radius:9px;padding:11px;cursor:pointer;min-height:44px;
   font:800 12px/1 system-ui;letter-spacing:.18em}
 .thrc button:hover{background:rgba(255,107,138,.28)}
 /* the quiet option: available, never the loud one */
 .thrc button.thrhold{border-color:var(--line2);background:rgba(255,255,255,.05);
   color:var(--mut);font:700 11px/1 system-ui;letter-spacing:.12em;padding:10px}
 .thrc button.thrhold:hover{background:rgba(255,255,255,.10);color:var(--txt)}
-.thrc .thrnote{font-size:10.5px;line-height:1.45;color:var(--dim)}
+.thrc .thrnote{font-size:11px;line-height:1.45;color:var(--dim2)}
 .thrc h5{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
-.thrc .thrt{font:700 10px/1 ui-monospace,monospace;color:var(--mut);letter-spacing:.06em}
+.thrc .thrt{font:700 11px/1 ui-monospace,monospace;color:var(--mut);letter-spacing:.04em}
 /* the last hour looks like the last hour */
 .awrep{margin:12px 0 0;padding:10px;border:1px solid var(--line);border-radius:10px;
   background:rgba(255,255,255,.03);text-align:left}
@@ -176,7 +240,7 @@
 .thrc.sab{border-color:rgba(90,255,194,.55);background:rgba(90,255,194,.09)}  /* STAGE C */
 .thrc.sab h5{color:#8dffda}
 .thrc.sab .thrt{color:#8dffda}
-.thrc .rec{margin-top:2px;font:600 10.5px/1.4 system-ui;color:#ffe9b8}
+.thrc .rec{margin-top:2px;font:600 11px/1.4 system-ui;color:#ffe9b8}
 /* FIX 2 (2026-09-06): the compact Empire-tab live-fleet banner - one line, tappable,
    navigates to the Map tab. See renderLiveFleet(). */
 .lfmini{display:flex;align-items:center;gap:8px;width:100%;text-align:left;
@@ -190,10 +254,10 @@
 .lfmini-cd{font:700 10px/1 ui-monospace,monospace;color:#ffe9b8;flex:0 0 auto}
 /* the pressure read-out, so escalation is legible rather than mysterious */
 .rvrow{display:flex;align-items:center;gap:8px;margin:5px 0}
-.rvrow .rvn{flex:0 0 108px;font:700 10px/1.2 ui-monospace,monospace}
+.rvrow .rvn{flex:0 0 120px;font:700 11px/1.2 ui-monospace,monospace}
 .rvrow .rvb{flex:1;height:7px;border-radius:4px;background:rgba(255,255,255,.07);overflow:hidden}
 .rvrow .rvb i{display:block;height:100%;width:0}
-.rvrow .rvp{flex:0 0 34px;text-align:right;font:700 9.5px/1 ui-monospace,monospace;color:var(--dim)}
+.rvrow .rvp{flex:0 0 36px;text-align:right;font:700 11px/1 ui-monospace,monospace;color:var(--dim2)}
 #battle{position:fixed;inset:0;z-index:40;display:none;background:#03040c}
 #battle.on{display:block}
 #bcv{position:absolute;inset:0;width:100%;height:100%;touch-action:manipulation}
@@ -209,19 +273,19 @@
   cursor:pointer;padding:0}
 .phalf.pdn{left:0} .phalf.pup{right:0}
 .phalf:active{background:rgba(255,255,255,.10)}
-.pw .pn{font:800 8px/1 system-ui;letter-spacing:.1em;color:var(--mut)}
+.pw .pn{font:800 11px/1 system-ui;letter-spacing:.04em;color:var(--mut)}
 .pw .pp{display:flex;gap:2px}
 .pw .pp i{width:5px;height:9px;border-radius:1.5px;background:rgba(255,255,255,.14)}
 .pw .pp i.on{background:var(--a)}
 .pw.hot{border-color:var(--a)}
 .pw.hot .pn{color:var(--a)}
-.pw .mn{position:absolute;right:3px;top:2px;font:800 10px/1 system-ui;color:var(--mut)}
-#bPwrFree{flex:0 0 auto;display:grid;place-items:center;min-width:38px;
-  border:1px dashed var(--line2);border-radius:9px;font:800 9px/1.25 ui-monospace,monospace;
+.pw .mn{position:absolute;right:3px;top:2px;font:800 11px/1 system-ui;color:var(--mut)}
+#bPwrFree{flex:0 0 auto;display:grid;place-items:center;min-width:44px;
+  border:1px dashed var(--line2);border-radius:9px;font:800 11px/1.25 ui-monospace,monospace;
   color:var(--gd);text-align:center;padding:4px}
 #bPause{display:none;width:100%;margin-bottom:6px;border:1px solid var(--line2);
   background:rgba(255,255,255,.05);color:var(--mut);border-radius:9px;padding:7px;
-  font:700 10px/1 system-ui;letter-spacing:.18em;cursor:pointer}
+  font:700 11px/1 system-ui;letter-spacing:.12em;cursor:pointer}
 #battle.wep #bPause{display:block}
 #battle.cine #bPause{display:none}   /* patch634: found during this patch's own screenshot verification - see docstring */
 #bPause.on{border-color:var(--gd);background:rgba(255,209,102,.14);color:#ffeec2}
@@ -231,11 +295,11 @@
 #battle.cine #bWep,#battle.cine #bPwr,#battle.cine #bTip{display:none}   /* patch633: the clip reads as a cutscene, not a paused fight - weapon rack, power rack and tip hidden while it runs; header (#bName), hull bar and canvas (#bcv) stay, per the plan */
 .wp{flex:1;position:relative;overflow:hidden;border:1px solid var(--line);
   background:rgba(255,255,255,.04);color:var(--mut);border-radius:10px;padding:9px 5px 8px;
-  font:700 10px/1.25 system-ui;letter-spacing:.04em;cursor:pointer;min-width:0;
+  font:700 11px/1.25 system-ui;letter-spacing:.02em;cursor:pointer;min-width:0;
   display:flex;flex-direction:column;align-items:center;gap:3px}
 .wp i.fill{position:absolute;left:0;bottom:0;width:100%;background:rgba(120,160,255,.20);
   transition:height .08s linear;pointer-events:none}
-.wp b{position:relative;z-index:1;font:800 9.5px/1 ui-monospace,monospace;color:var(--dim)}
+.wp b{position:relative;z-index:1;font:800 11px/1 ui-monospace,monospace;color:var(--dim2);white-space:nowrap}
 .wp span{position:relative;z-index:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   max-width:100%}
 .wp.rdy{border-color:var(--gd);color:#ffeec2;box-shadow:0 0 12px -3px var(--gd)}
@@ -256,45 +320,46 @@
 .wp.off .wtog:after{background:transparent;border-color:var(--mut);box-shadow:none}
 .wtog:active:after{transform:scale(.85)}
 /* the armoury */
-.armr{display:flex;align-items:center;gap:9px;border-top:1px solid rgba(255,143,208,.14);
+.armr{display:flex;align-items:center;gap:9px;border-top:1px solid var(--line);
   padding:9px 0 3px}
 .armr .ai{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;flex:none;
   border:1px solid var(--line);font:800 11px/1 ui-monospace,monospace;color:var(--a)}
 .armr .an{font:700 12px/1.2 system-ui}
-.armr .ad{font-size:10px;color:var(--mut)}
+.armr .ad{font-size:11px;line-height:1.35;color:var(--mut)}
 .armr .aa{margin-left:auto;display:flex;gap:5px;align-items:center;flex:none}
-.armr button{border:1px solid var(--line2);background:rgba(255,255,255,.05);color:var(--txt);
-  border-radius:8px;padding:6px 9px;font:700 10px/1 system-ui;cursor:pointer}
-.armr button:disabled{opacity:.4;cursor:not-allowed}
-.armr button.fit{border-color:rgba(92,230,165,.5);background:rgba(92,230,165,.12);color:var(--gr)}
+.armr .svslab{width:auto;min-width:92px}
+/* FIT is the next thing to do with an owned gun, so its outline is cyan (act);
+   UNFIT stays the plain quiet outline */
+.armr .rdghost.fit{border-color:rgba(72,226,255,.55);color:var(--cy)}
+/* rockets are bought with ore, so the bar is neutral and its button is the ore slab
+   (.gb) - the old orange tint was the ore-kind system colour, not ammo's */
 #ammoBar{display:flex;align-items:center;gap:9px;margin:9px 0 2px;padding:9px 11px;
-  border:1px solid rgba(255,180,92,.35);border-radius:10px;background:rgba(255,180,92,.07)}
-#ammoBar .amn{font:700 12px/1.2 system-ui;color:#ffb45c}
-#ammoBar .amd{font-size:10px;color:var(--mut)}
-#ammoBar button{margin-left:auto;flex:none;border:1px solid rgba(255,180,92,.5);
-  background:rgba(255,180,92,.13);color:#ffd7a8;border-radius:8px;padding:7px 11px;
-  font:700 10px/1 system-ui;cursor:pointer}
-#ammoBar button:disabled{opacity:.4;cursor:not-allowed}
+  border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+#ammoBar .amn{font:700 12px/1.2 system-ui;color:var(--txt)}
+#ammoBar .amd{font-size:11px;color:var(--mut)}
+#ammoBar .gb{margin-left:auto;flex:none}
 .slotbar{display:flex;gap:6px;margin:8px 0 2px}
-.slotbar .sl{flex:1;border:1px dashed var(--line2);border-radius:9px;padding:7px 4px;
-  font:700 9.5px/1.2 system-ui;color:var(--mut);text-align:center;cursor:pointer;min-width:0;
+.slotbar .sl{flex:1;border:1px dashed var(--line2);border-radius:9px;padding:4px;min-height:44px;
+  display:flex;align-items:center;justify-content:center;
+  font:700 11px/1.2 system-ui;color:var(--mut);text-align:center;cursor:pointer;min-width:0;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.slotbar .sl.on{border-style:solid;border-color:var(--gd);color:#ffeec2}
+/* equipped: cyan (the player's own kit), not reward gold */
+.slotbar .sl.on{border-style:solid;border-color:rgba(72,226,255,.6);color:var(--txt);background:rgba(72,226,255,.07)}
 #bTurn{display:none;flex-direction:column;gap:7px}
 #battle.turn #bTurn{display:flex}
 #battle.turn .bab,#battle.turn #bTip,#battle.turn #bCombo{display:none}
 .tr-h{display:flex;align-items:center;gap:8px}
-.tr-r{font:700 9.5px/1 system-ui;letter-spacing:.14em;color:var(--mut);white-space:nowrap}
+.tr-r{font:700 11px/1 system-ui;letter-spacing:.06em;color:var(--mut);white-space:nowrap}
 .tr-cp{margin-left:auto;font:800 12px/1 ui-monospace,monospace;color:var(--gd)}
-.tr-inc{font:700 10px/1 ui-monospace,monospace;color:#ff9a6b}
+.tr-inc{font:700 11px/1.2 ui-monospace,monospace;color:#ff9a6b}
 .tr-pips{display:flex;gap:3px;margin-left:6px}
 .tr-pips i{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.16)}
 .tr-pips i.on{background:var(--gd);box-shadow:0 0 6px -1px var(--gd)}
 .tr-g{display:flex;gap:6px}
 .tr-b{flex:1;border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--txt);
-  border-radius:9px;padding:8px 6px;font:700 10px/1.3 system-ui;letter-spacing:.06em;cursor:pointer;
+  border-radius:9px;padding:8px 6px;font:700 11px/1.3 system-ui;letter-spacing:.04em;cursor:pointer;
   display:flex;flex-direction:column;align-items:center;gap:3px}
-.tr-b small{font:600 9px/1 ui-monospace,monospace;color:var(--mut)}
+.tr-b small{font:600 11px/1 ui-monospace,monospace;color:var(--mut)}
 .tr-b b{font:800 12px/1 ui-monospace,monospace;color:var(--gd)}
 .tr-b.scr{border-color:rgba(72,226,255,.45)} .tr-b.scr b{color:var(--cy)}
 .tr-b.useless{opacity:.45;border-color:rgba(255,255,255,.12)}
@@ -305,14 +370,14 @@
 #bResolve{flex:1;border:1px solid rgba(255,209,102,.6);background:rgba(255,209,102,.16);
   color:#ffeec2;border-radius:9px;padding:11px;font:800 12px/1 system-ui;letter-spacing:.2em;cursor:pointer}
 #bClear{border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--mut);
-  border-radius:9px;padding:11px 13px;font:700 10px/1 system-ui;letter-spacing:.1em;cursor:pointer}
+  border-radius:9px;padding:11px 13px;font:700 11px/1 system-ui;letter-spacing:.06em;cursor:pointer}
 .bh-top{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;gap:10px;
   padding-top:calc(12px + env(safe-area-inset-top, 0px));
   padding-bottom:12px; padding-left:14px; padding-right:14px;
   background:linear-gradient(180deg,rgba(4,6,16,.9),transparent)}
 .bh-n{font:700 15px/1.2 system-ui;letter-spacing:.04em}
-.bh-m{font:600 10px/1.5 ui-monospace,monospace;color:var(--mut);letter-spacing:.08em}
-.bh-esc{display:none;font:700 10px/1.5 ui-monospace,monospace;letter-spacing:.06em;
+.bh-m{font:600 11px/1.5 ui-monospace,monospace;color:var(--mut);letter-spacing:.04em}
+.bh-esc{display:none;font:700 11px/1.5 ui-monospace,monospace;letter-spacing:.04em;
   color:#ff9a6b;margin-top:1px}
 .bh-esc.on{display:block}
 .bh-esc.hit{color:#ff5f6d}
@@ -333,19 +398,22 @@
 .bhp.hurt i{background:linear-gradient(90deg,#ffb45c,#ffd166)}
 .bhp.crit i{background:linear-gradient(90deg,#ff6b8a,#ff9a6b);animation:critp .7s infinite}
 @keyframes critp{50%{opacity:.6}}
-.bhp span{position:absolute;inset:0;display:grid;place-items:center;
-  font:700 10px/1 ui-monospace,monospace;letter-spacing:.12em;color:#04050d}
+/* the hull readout on its own dark pill - reads over any fill level, and over the
+   empty track at low hull, where dark text straight on the bar did not */
+.bhp span{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);white-space:pre;
+  padding:2px 8px;border-radius:4px;background:rgba(4,6,16,.82);
+  font:700 11px/1 ui-monospace,monospace;letter-spacing:.06em;color:var(--txt)}
 .bab{display:flex;gap:9px;margin-top:9px}
 .bab button{flex:1;position:relative;overflow:hidden;border:1px solid var(--line2);
   background:rgba(72,226,255,.09);color:var(--txt);border-radius:10px;padding:9px 6px;cursor:pointer}
-.bab button b{display:block;font:700 11px/1.2 system-ui;letter-spacing:.1em}
-.bab button i{display:block;font:400 9px/1.4 ui-monospace,monospace;font-style:normal;color:var(--dim)}
+.bab button b{display:block;font:700 11px/1.2 system-ui;letter-spacing:.06em}
+.bab button i{display:block;font:400 11px/1.4 ui-monospace,monospace;font-style:normal;color:var(--dim2)}
 .bab button u{position:absolute;inset:0;background:rgba(4,6,16,.72);text-decoration:none;
   display:grid;place-items:center;font:700 15px/1 ui-monospace,monospace;color:var(--mut)}
 .bab button.rdy{border-color:var(--cy);box-shadow:0 0 14px rgba(72,226,255,.16) inset}
 .bab button.act{border-color:var(--gd);background:rgba(255,209,102,.16)}
-.btip{text-align:center;font:600 9.5px/1.6 ui-monospace,monospace;color:var(--dim);
-  letter-spacing:.1em;margin-top:8px}
+.btip{text-align:center;font:600 11px/1.5 ui-monospace,monospace;color:var(--dim2);
+  letter-spacing:.02em;margin-top:8px}
 #bRes{position:absolute;inset:0;display:grid;place-items:center;padding:20px;
   background:rgba(2,3,10,.82);backdrop-filter:blur(6px);
   opacity:0;pointer-events:none;transition:opacity .4s}
@@ -363,5 +431,5 @@
   .shp{grid-template-columns:32px 1fr auto;gap:8px}
   .shp .si{width:32px;height:32px}
   .bh-n{font-size:13px}
-  .bab button b{font-size:10px}
+  .bab button b{font-size:11px}
 }

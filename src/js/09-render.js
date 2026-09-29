@@ -285,7 +285,8 @@ function render(){
      that is now these same ladderTierRow()s inline in the sheet. The function
      stays defined (dead) until patch612 deletes it with the rest of the widget. */
   if(dirty){ dirty=false; renderRes(); renderProg(); renderNex(); renderMis(); renderAch(); renderRaids(); renderArmoury(); }
-  else { softButtons(); if($("#p-res").classList.contains("on"))resInfo() }
+  else { softButtons(); if($("#p-res").classList.contains("on"))resInfo();
+    if($("#p-raid").classList.contains("on"))raidLive() }   /* salvage/ore slabs follow the balance in place */
   if(nmLive&&$("#mask").classList.contains("on"))nmTick();
   if(rmLive&&$("#mask").classList.contains("on"))rmTick();
   if(lfPromptLive&&$("#mask").classList.contains("on"))lfPromptTick();   /* FIX 1 (2026-09-06) */
@@ -2129,12 +2130,12 @@ function nmTick(){
 function renderArmoury(){
   const ab=$("#ammoBar");
   if(ab){
-    const c=ammoCost(AMMO_LOT);
+    /* paid in ore, so the ore slab (.gb); its cost/"need X" caption is written (and
+       kept live) by raidLive() at the end of this function */
     ab.innerHTML=`<div><div class="amn">${fmt(S.ammo||0)} rockets</div>
       <div class="amd">Spent one per Rocket Pod shot</div></div>
-      <button id="buyAmmo">+${AMMO_LOT} \u00b7 ${fmt(c)} ORE</button>`;
+      <button class="gb" id="buyAmmo"></button>`;
     const bb=$("#buyAmmo");
-    bb.disabled=S.ore<c;
     bb.onclick=()=>{ if(buyAmmo(AMMO_LOT)){ renderAll(); save() } };
   }
   const sb=$("#wepSlots"), host=$("#armoury");
@@ -2149,18 +2150,20 @@ function renderArmoury(){
     const per=w.shots?`${w.shots}\u00d7 `:(w.all?"all \u00b7 ":"");
     const meta=`${per}${Math.round(w.mul*100)}% dmg \u00b7 ${w.chg}s \u00b7 ${
       Math.round(w.acc*100)}% acc${w.pierce?" \u00b7 pierces":""}`;
+    /* BUY is the bronze salvage slab (svSlab(), 11-combat.js - live "NEED X");
+       FIT/UNFIT are plain outlines. One steel accent for every gun: kind is named in
+       the stat line, the bright hues stay for state. */
     let act;
-    if(!own) act=`<button data-buy="${w.id}">${fmt(w.cost)} ${RI('sv')}</button>`;
-    else if(fitted) act=`<button data-unfit="${w.id}">UNFIT</button>`;
-    else act=`<button class="fit" data-fit="${w.id}">FIT</button>`;
-    return `<div class="armr" style="--a:${w.pierce?"#48e2ff":w.all?"#ff8fd0":"#ffd166"}">
+    if(!own) act=svSlab("BUY",w.cost).replace("<button ",`<button data-buy="${w.id}" `);
+    else if(fitted) act=`<button class="rdghost" data-unfit="${w.id}">UNFIT</button>`;
+    else act=`<button class="rdghost fit" data-fit="${w.id}">FIT</button>`;
+    return `<div class="armr" style="--a:var(--sv)">
       <div class="ai">${w.chg}s</div>
       <div style="min-width:0"><div class="an">${w.n}</div><div class="ad">${meta}</div></div>
       <div class="aa">${act}</div></div>`;
   }).join("");
   host.querySelectorAll("[data-buy]").forEach(b=>{
     const w=WEPMAP[b.dataset.buy];
-    b.disabled=S.sv<w.cost;
     b.onclick=()=>{ if(buyWeapon(w)){ renderAll(); save() } };
   });
   host.querySelectorAll("[data-fit]").forEach(b=>{
@@ -2176,6 +2179,7 @@ function renderArmoury(){
     d.onclick=()=>{ const i=+d.dataset.slot;
       if(wepSlots()[i]&&equipWeapon(null,i)){ renderAll(); save() } };
   });
+  raidLive();
 }
 function renderNex(){
   const host=$("#nex"); host.innerHTML="";
