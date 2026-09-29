@@ -120,6 +120,10 @@ body.syspage #mapZoomBar{opacity:1;pointer-events:auto}
   padding:2px 4px;border-radius:4px;white-space:nowrap;box-shadow:0 0 8px rgba(255,107,138,.7);
   pointer-events:none}
 #mapLinks .terr{pointer-events:none}
+/* the coloured reach areas are hidden: enemy systems are red dots now (renderMap), and
+   the faction name label is what says whose space it is. The circles stay in the DOM
+   because refreshTerritory() counts them to decide which labels to show. */
+#mapLinks .terr circle{display:none}
 #mapLinks .terrlab{font:700 2.6px/1 system-ui;letter-spacing:.28px;text-anchor:middle;
   opacity:.62;pointer-events:none;
   paint-order:stroke;stroke:rgba(3,4,12,.85);stroke-width:.9px;stroke-linejoin:round}

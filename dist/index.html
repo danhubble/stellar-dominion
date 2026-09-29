@@ -1234,6 +1234,10 @@ body.syspage #mapZoomBar{opacity:1;pointer-events:auto}
   padding:2px 4px;border-radius:4px;white-space:nowrap;box-shadow:0 0 8px rgba(255,107,138,.7);
   pointer-events:none}
 #mapLinks .terr{pointer-events:none}
+/* the coloured reach areas are hidden: enemy systems are red dots now (renderMap), and
+   the faction name label is what says whose space it is. The circles stay in the DOM
+   because refreshTerritory() counts them to decide which labels to show. */
+#mapLinks .terr circle{display:none}
 #mapLinks .terrlab{font:700 2.6px/1 system-ui;letter-spacing:.28px;text-anchor:middle;
   opacity:.62;pointer-events:none;
   paint-order:stroke;stroke:rgba(3,4,12,.85);stroke-width:.9px;stroke-linejoin:round}
@@ -7908,8 +7912,13 @@ function renderMap(){
        same check) structurally never targets home, so dropping the guard cannot light
        this up for anything else. */
     el.classList.toggle("incoming",held&&(!!thqAtSys(s.id)||(LF&&LF.sysId===s.id)||(!!s.home&&S.end===1)));  /* STAGE 2 (2C) + STAGE 3 live fleet + STAGE C sab + patch589 the turn */
-    if(foe)el.style.setProperty("--a",RIVALMAP[sysOwner(s)].col);
+    /* enemy systems are red (the danger colour) whoever holds them - faction colours
+       clashed with the game's own signals (Vasht's green is home's green). The faction
+       itself is named by drawTerritory()'s label. The last branch puts a retaken,
+       non-exotic system back to buildMap()'s default, so it does not stay red. */
+    if(foe)el.style.setProperty("--a","#ff6b8a");
     else if(s.res)el.style.setProperty("--a",exoDef(s.res).col);
+    else el.style.setProperty("--a","#5ce6a5");
     el.classList.toggle("sel",S.msel===s.id);
     const wantBadge = held&&!s.home&&LF&&LF.sysId===s.id;
     let badge=el.querySelector(".fleetbadge");

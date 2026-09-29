@@ -1531,8 +1531,13 @@ function renderMap(){
        same check) structurally never targets home, so dropping the guard cannot light
        this up for anything else. */
     el.classList.toggle("incoming",held&&(!!thqAtSys(s.id)||(LF&&LF.sysId===s.id)||(!!s.home&&S.end===1)));  /* STAGE 2 (2C) + STAGE 3 live fleet + STAGE C sab + patch589 the turn */
-    if(foe)el.style.setProperty("--a",RIVALMAP[sysOwner(s)].col);
+    /* enemy systems are red (the danger colour) whoever holds them - faction colours
+       clashed with the game's own signals (Vasht's green is home's green). The faction
+       itself is named by drawTerritory()'s label. The last branch puts a retaken,
+       non-exotic system back to buildMap()'s default, so it does not stay red. */
+    if(foe)el.style.setProperty("--a","#ff6b8a");
     else if(s.res)el.style.setProperty("--a",exoDef(s.res).col);
+    else el.style.setProperty("--a","#5ce6a5");
     el.classList.toggle("sel",S.msel===s.id);
     const wantBadge = held&&!s.home&&LF&&LF.sysId===s.id;
     let badge=el.querySelector(".fleetbadge");
