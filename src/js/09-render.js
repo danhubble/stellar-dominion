@@ -1139,7 +1139,7 @@ function renderSysBuild(s,held){
     let shownNext=false, nextRowEl=null;
     for(const gi of ladder){
       if(sysTierCount(s.id,gi)>0){ rowsHost.appendChild(ladderTierRow(s.id,gi,false)); }
-      else if(!shownNext){ nextRowEl=ladderTierRow(s.id,gi,true); rowsHost.appendChild(nextRowEl); shownNext=true; }
+      else if(!shownNext){ rowsHost.appendChild(ladderTierRow(s.id,gi,true)); nextRowEl=rowsHost.querySelector(".g.next"); shownNext=true; }
       else break;
     }
     /* polish batch A #2: the very first time a second tier row (Smelter Pod, right
@@ -1150,7 +1150,11 @@ function renderSysBuild(s,held){
     if(!S.seen)S.seen={};
     if(owned===1 && nextRowEl && !S.seen.tierReveal1){
       S.seen.tierReveal1=true;
-      if(viewEl)nextRowEl.scrollIntoView({block:"nearest"});
+      /* ladderTierRow() can hand back a fragment (row + mission strip) that is empty
+         once appended, so the row is looked up in the DOM above, and the strip under
+         it is scrolled to when there is one so both land in view. */
+      const tailEl=nextRowEl.nextElementSibling;
+      if(viewEl)(tailEl&&tailEl.classList.contains("mstrip")?tailEl:nextRowEl).scrollIntoView({block:"nearest"});
     } else if(viewEl)viewEl.scrollTop=prevTop;
   }
 }
