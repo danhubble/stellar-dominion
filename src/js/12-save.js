@@ -55,17 +55,33 @@ function adopt(o){
     sh=sh.map(x=>Math.max(0,Math.floor(x||0)));
     const hpRaw=(fl&&fl.hp!==undefined)?fl.hp:1;
     const hp=Math.max(0,Math.min(1,hpRaw));
-    const at=(fl&&typeof fl.at==="string"&&(fl.at==="home"||SYSMAP[fl.at]))?fl.at:"home";
+    /* PLAN-raidmap: a fleet may be holding in open space - at===null with a valid
+       pos ({sec,x,y}). Anything else unknown falls back to home, as before. */
+    const okPos=q=>q&&typeof q==="object"&&SECTORS[q.sec]&&isFinite(q.x)&&isFinite(q.y);
+    const pos=(fl&&okPos(fl.pos))?{sec:fl.pos.sec,x:+fl.pos.x,y:+fl.pos.y}:null;
+    const at=(fl&&typeof fl.at==="string"&&(fl.at==="home"||SYSMAP[fl.at]))?fl.at:(pos?null:"home");
     /* PLAN-fleets run 2: `to`/`eta`/`from`/`tot` now survive a reload (a save mid-
        flight resumes exactly where it was - offlineReport()'s fleetTravelTick()
        call is what actually catches the eta up for the time away). An unknown
        `to` (a removed system id, or just garbage) clears the whole travel - there
        is nowhere to arrive, so the fleet is simplest left standing at `at`. */
     const to=(fl&&typeof fl.to==="string"&&SYSMAP[fl.to])?fl.to:null;
-    const eta=to?Math.max(0,+((fl&&fl.eta))||0):0;
+    /* tg (flying at a contact) and hold (sitting beside one) are target ids - checked
+       against the contact list itself just below, once that has been sanitised */
+    const tg=(!to&&fl&&Number.isFinite(fl.tg))?fl.tg:null;
+    const hold=(!to&&tg==null&&fl&&Number.isFinite(fl.hold))?fl.hold:null;
+    const moving=!!to||tg!=null;
+    const eta=moving?Math.max(0,+((fl&&fl.eta))||0):0;
     const from=to?((fl&&typeof fl.from==="string"&&(fl.from==="home"||SYSMAP[fl.from]))?fl.from:at):null;
-    const tot=to?Math.max(eta,+((fl&&fl.tot))||0):0;
-    return {id,n,sh,hp,at,to,eta,from,tot};
+    const tot=moving?Math.max(eta,+((fl&&fl.tot))||0):0;
+    /* where the flight started: the saved origin, else (a save from before origins
+       were recorded) the system it left */
+    let o=null;
+    if(moving){
+      if(fl&&okPos(fl.o))o={sec:fl.o.sec,x:+fl.o.x,y:+fl.o.y,sys:(typeof fl.o.sys==="string"&&SYSMAP[fl.o.sys])?fl.o.sys:null};
+      else { const s=SYSMAP[from||at||"home"]||SYSMAP.home; o={sec:s.sec,x:s.sx,y:s.sy,sys:s.id}; }
+    }
+    return {id,n,sh,hp,at,to,eta,from,tot,pos,tg,hold,o};
   });
   if(f.flSel==null || !f.fl.some(fl=>fl.id===f.flSel))f.flSel=f.fl[0].id;
   /* run 3: the delivery queue (S.flQ, decision 6) - three non-negative counts,
@@ -74,11 +90,31 @@ function adopt(o){
   if(!Array.isArray(f.tg))f.tg=[];
   /* PLAN-fleets run 2: a target from before t.sys existed becomes "home" - the one
      system every save always has, so ENGAGE never has to invent a location for it. */
-  f.tg=f.tg.map(t=>{
-    if(!t||typeof t!=="object")return t;
-    if(typeof t.sys!=="string"||!SYSMAP[t.sys])t.sys="home";
-    return t;
-  });
+  /* PLAN-raidmap: every contact carries an id, a sector and a path seed now. One from
+     before that (it had a system, t.sys, or nothing) keeps its sector and gets the
+     rest made up; the runtime skirmish clock never survives a load. */
+  f.tg=f.tg.filter(t=>t&&typeof t==="object"&&RAIDS[t.ti]);
+  f.tgN=Math.max(0,Math.floor(f.tgN||0));
+  { const seen={};
+    f.tg.forEach((t,i)=>{
+      if(!Number.isFinite(t.id)||seen[t.id]){ f.tgN++; t.id=f.tgN; }
+      seen[t.id]=1; if(t.id>f.tgN)f.tgN=t.id;
+      if(!SECTORS[t.sec])t.sec=(typeof t.sys==="string"&&SYSMAP[t.sys])?SYSMAP[t.sys].sec:0;
+      delete t.sys; delete t.fx;
+      if(!Number.isFinite(t.sd))t.sd=((t.id*2654435761)^Math.floor((t.dif||1)*1e6))|0;
+      if(!Number.isFinite(t.off))t.off=Date.now()/1000-i*40;
+      if(!Number.isFinite(t.fz))t.fz=null;
+      t.auto=t.auto?1:0;
+    });
+    /* a fleet pointing at a contact that is not there any more just stops where it is;
+       a contact nobody is sitting on is never left frozen */
+    for(const fl of f.fl){
+      if(fl.tg!=null&&!seen[fl.tg]){ fl.tg=null; fl.eta=0; fl.tot=0; fl.o=null; if(!fl.at&&!fl.pos)fl.at="home"; }
+      if(fl.tg!=null&&!fl.pos){ const s=fl.o||{sec:0,x:50,y:54}; fl.pos={sec:s.sec,x:s.x,y:s.y}; fl.at=null; }
+      if(fl.hold!=null&&(!seen[fl.hold]||!fl.pos)){ fl.hold=null; if(!fl.pos&&!fl.at)fl.at="home"; }
+    }
+    for(const t of f.tg){ if(t.fz!=null&&!f.fl.some(fl=>fl.hold===t.id)){ t.off=(t.off||0)+(Date.now()/1000-t.fz); t.fz=null; t.auto=0; } }
+  }
   f.sv=Math.max(0,Math.floor(f.sv||0)); f.svAll=Math.max(0,Math.floor(f.svAll||0));
   if(!f.rf||typeof f.rf!=="object")f.rf={};
   if(!Array.isArray(f.crew))f.crew=[];

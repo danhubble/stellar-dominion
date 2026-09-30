@@ -335,41 +335,116 @@ body.syspage #sysSheet{display:block}
 #sysInfo button.dev{border-color:rgba(72,226,255,.5);background:rgba(72,226,255,.11);color:var(--cy)}
 .gexo{font:600 10px/1 ui-monospace,monospace;color:var(--a)}
 
-/* ---------- PLAN-fleets run 2: the fleet bar, map markers, FLEETS block ---------- */
+/* ---------- PLAN-fleets run 2 / PLAN-raidmap: the fleet bar, map markers, FLEETS block ---------- */
+/* three slab buttons under the map: number + the ship picture (the buy row's own icon
+   for the fleet's heaviest hull), where it is, and a hull bar along the bottom. Hidden
+   on a system page - that page is about the system, not the fleets. */
 #fleetBar{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:8px 0 10px}
-#fleetBar[hidden]{display:none}
-.fbtn{min-width:0;cursor:pointer;border:1px solid var(--line);border-radius:10px;padding:6px 4px;
-  background:rgba(10,14,32,.7);color:var(--mut);font:700 9px/1.3 system-ui;letter-spacing:0;
-  text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}
-.fbtn .fnum{font-weight:800;font-size:12px;line-height:1}
+#fleetBar[hidden],body.syspage #fleetBar{display:none}
+.fbtn{position:relative;overflow:hidden;min-width:0;min-height:64px;cursor:pointer;border:1px solid var(--line2);
+  border-radius:10px;padding:6px 4px 13px;background:linear-gradient(180deg,#141b38,#0c1126);color:var(--mut);
+  font:700 11px/1 system-ui;letter-spacing:.02em;text-align:center;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:4px;transition:transform .06s}
+.fbtn::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;background:#060914;pointer-events:none}
+.fbtn:active:not(:disabled){transform:translateY(2px)}
+.fbtn:focus-visible{outline:2px solid #eafcff;outline-offset:2px}
+.fbtn .ftop{display:flex;align-items:center;gap:6px}
+.fbtn .fnum{font:800 15px/1 ui-monospace,monospace;color:var(--fc,var(--mut))}
+.fbtn .fship{width:26px;height:26px;display:block;color:var(--fc)}
+.fbtn.empty .fship{opacity:.35}
 .fbtn .fstat{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
-.fbtn.sel{border-color:var(--cy);background:rgba(72,226,255,.12);color:var(--txt);
-  box-shadow:0 0 10px -2px rgba(72,226,255,.6)}
-.fbtn.locked{opacity:.42;cursor:not-allowed;color:var(--dim2)}
-.fbtn.locked .fnum{color:var(--dim2)!important}
+.fbtn .fhp{position:absolute;left:8px;right:8px;bottom:6px;height:4px;border-radius:2px;background:rgba(255,255,255,.1);overflow:hidden}
+.fbtn .fhp i{display:block;height:100%;width:100%;border-radius:2px;background:var(--gr)}
+.fbtn .fhp i.hurt{background:var(--gd)}
+.fbtn .fhp i.crit{background:var(--rd)}
+.fbtn.sel{border-color:var(--cy);background:linear-gradient(180deg,#123a52,#0c2438);color:var(--txt);
+  box-shadow:0 0 12px -2px rgba(72,226,255,.7)}
+.fbtn.sel::after{background:var(--cy)}
+.fbtn.locked{cursor:not-allowed;color:var(--dim2)}
+.fbtn.locked .fnum{color:var(--dim2)}
+@media(prefers-reduced-motion:reduce){.fbtn{transition:none}}
 /* fleet lines/markers sit in their own layer, separate from #mapLinks/#mapNodes so
    renderFleetMarkers() never has to coordinate its own rebuilds with buildMap()'s -
    faded out with the rest of the sector view while zoomed into a system's own scene
    (#mapWrap.zoomed), same rule #mapBg/#mapLinks/#mapNodes/#mapEdge already follow. */
 #fleetLines{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;transition:opacity .28s ease}
-#fleetLines line{stroke-width:1;stroke-dasharray:2 2}
+#fleetLines line{stroke-width:1.1;stroke-dasharray:2 2.4;vector-effect:non-scaling-stroke}
+#fleetLines line.bolt{stroke-width:1.6;stroke-dasharray:none}
 #fleetMarkers{position:absolute;inset:0;pointer-events:none;z-index:5;transition:opacity .28s ease}
-#mapWrap.zoomed #fleetLines,#mapWrap.zoomed #fleetMarkers{opacity:0;pointer-events:none}
-.flmark{position:absolute;transform:translate(-50%,-50%);width:16px;height:16px;border-radius:50%;
-  display:flex;align-items:center;justify-content:center;font:800 9px/1 ui-monospace,monospace;
-  color:#04050d;box-shadow:0 0 0 2px rgba(4,5,13,.75),0 0 9px 1px rgba(0,0,0,.5);pointer-events:none}
-.flmark.trav{width:14px;height:14px;font-size:8px}
-.flmark.sel{animation:flPulse 1s ease-in-out infinite}
-@keyframes flPulse{
-  0%,100%{box-shadow:0 0 0 2px rgba(4,5,13,.75),0 0 0 0 rgba(255,255,255,.5)}
-  50%{box-shadow:0 0 0 2px rgba(4,5,13,.75),0 0 13px 5px rgba(255,255,255,.6)}
-}
-.fleta{position:absolute;transform:translate(-50%,7px);font:800 8px/1 ui-monospace,monospace;
-  color:#fff;text-shadow:0 1px 3px #000;white-space:nowrap;pointer-events:none}
-.sendchip{position:absolute;transform:translate(-50%,14px);pointer-events:auto;cursor:pointer;
-  border:1px solid var(--cy);background:rgba(4,10,24,.92);color:var(--txt);border-radius:7px;
-  padding:5px 8px;font:800 9.5px/1 ui-monospace,monospace;letter-spacing:.04em;white-space:nowrap;
-  box-shadow:0 0 12px -1px rgba(72,226,255,.7);z-index:7}
+#mapWrap.zoomed #fleetLines,#mapWrap.zoomed #fleetMarkers,#mapWrap.zoomed #flHint,#mapWrap.zoomed #flBanner{opacity:0;pointer-events:none}
+#mapWrap.zoomed #fleetMarkers *{pointer-events:none}
+/* a marker is a zero-size anchor moved by transform (mapFleetFrame) - sub-pixel, so
+   a slow drift glides instead of stepping a whole pixel at a time */
+.flmark,.enmark,.enflash,.enboom{position:absolute;left:0;top:0;width:0;height:0;will-change:transform}
+.flmark svg,.enmark svg{position:absolute;left:-17px;top:-17px;width:34px;height:34px;overflow:visible;
+  filter:drop-shadow(0 0 3px rgba(0,0,0,.9))}
+.flmark .fltag{position:absolute;left:14px;top:-22px;white-space:nowrap;font:800 11px/1 ui-monospace,monospace;
+  color:var(--fc);text-shadow:0 1px 2px #000,0 0 5px #000}
+.flmark .fleta{font-style:normal;color:#fff}
+.flmark.sel::before,.enmark.pinned::before{content:"";position:absolute;left:-20px;top:-20px;width:40px;height:40px;
+  border-radius:50%;border:1.5px solid var(--fc,var(--rd));animation:flRing 1.1s ease-in-out infinite}
+@keyframes flRing{0%,100%{transform:scale(.8);opacity:.9}50%{transform:scale(1.12);opacity:.35}}
+.enmark{pointer-events:auto}
+.enmark button{position:absolute;left:-22px;top:-22px;width:44px;height:44px;border:0;background:none;padding:0;
+  cursor:pointer;border-radius:50%}
+.enmark button:focus-visible{outline:2px solid var(--rd)}
+.enmark .pips{position:absolute;left:0;top:18px;transform:translateX(-50%);display:flex;gap:2px;pointer-events:none}
+.enmark .pips i{width:4px;height:4px;border-radius:50%;background:var(--rd);box-shadow:0 0 0 1px rgba(4,5,13,.9)}
+.enflash::before{content:"";position:absolute;left:-4px;top:-4px;width:8px;height:8px;border-radius:50%;background:#fff;
+  box-shadow:0 0 8px 3px rgba(255,255,255,.7)}
+.enboom::before{content:"";position:absolute;left:-16px;top:-16px;width:32px;height:32px;border-radius:50%;
+  border:2px solid #fff;background:rgba(255,107,138,.5);animation:enBoom .6s ease-out forwards}
+@keyframes enBoom{0%{transform:scale(.3);opacity:1}100%{transform:scale(1.9);opacity:0}}
+@media(prefers-reduced-motion:reduce){.flmark.sel::before,.enmark.pinned::before{animation:none}}
+.sendchip{position:absolute;transform:translate(-50%,16px);pointer-events:auto;cursor:pointer;
+  border:1px solid #7deeff;background:linear-gradient(180deg,#5be8ff,#38c9e6);color:#04121a;border-radius:7px;
+  padding:8px 10px;font:800 11px/1 ui-monospace,monospace;letter-spacing:.04em;white-space:nowrap;
+  box-shadow:0 3px 0 #1c8fa8,0 0 12px -1px rgba(72,226,255,.7);z-index:7}
+/* sector chips: how many raid contacts are in that sector */
+#mapChips{overflow:visible}
+#mapChips .chip{position:relative;overflow:visible}
+#mapChips .chip .ecnt{position:absolute;top:-5px;right:-3px;min-width:16px;padding:2px 3px;border-radius:8px;
+  background:var(--rd);color:#1a0409;font:800 11px/1 ui-monospace,monospace;letter-spacing:0;box-shadow:0 0 0 2px var(--bg,#04050d)}
+/* the selected-fleet strip across the top of the map, and the "in position" banner
+   along the bottom - both over the map, so neither moves the page */
+#mapWrap.flsel{box-shadow:inset 0 0 0 1px var(--cy)}
+#flHint{position:absolute;left:6px;right:6px;top:5px;z-index:8;display:flex;align-items:center;gap:8px;
+  min-height:30px;padding:3px 3px 3px 10px;border-radius:8px;text-align:center;
+  font:700 11px/1.2 ui-monospace,monospace;letter-spacing:.04em;color:#eafcff;
+  background:rgba(4,10,24,.9);border:1px solid var(--cy);box-shadow:0 0 12px -2px rgba(72,226,255,.6)}
+#flHint[hidden],#flBanner[hidden]{display:none}
+#flHint span{flex:1;min-width:0}
+#flHint b{color:var(--fc)}
+#flRecall{position:relative;flex:none;min-height:30px;padding:0 10px;border-radius:7px;border:1px solid var(--sv);
+  cursor:pointer;background:rgba(169,188,212,.14);color:#eafcff;font:800 11px/1 system-ui;letter-spacing:.08em}
+#flRecall::before{content:"";position:absolute;inset:-7px -4px}     /* 44px tap target */
+#flRecall:focus-visible{outline:2px solid #eafcff;outline-offset:2px}
+#flBanner{position:absolute;left:8px;right:8px;bottom:8px;z-index:9;display:flex;align-items:center;gap:10px;
+  padding:7px 7px 7px 12px;border-radius:10px;border:1px solid rgba(255,107,138,.6);background:rgba(30,8,16,.93);
+  box-shadow:0 0 14px -3px rgba(255,107,138,.6)}
+#flBanner .fbtxt{flex:1;min-width:0;font:700 12px/1.3 system-ui;color:var(--txt)}
+#flBanner .fbtxt small{display:block;font:600 11px/1.3 ui-monospace,monospace;color:#ffb3c2;letter-spacing:.04em}
+#flBanner .raidgo{flex:none;min-height:44px;border-radius:9px;cursor:pointer}
+/* the raid prompt (raidPrompt()) - the old target card's content, as a modal */
+.rprompt h3{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:4px}
+.rprompt .risk{text-transform:none}
+.rprompt .rploc{font:600 11px/1.4 ui-monospace,monospace;color:var(--dim2);letter-spacing:.04em;margin-bottom:8px}
+.rprompt .rptm{font:11px/1.5 ui-monospace,monospace;color:var(--mut);margin-bottom:8px}
+.rprompt .rptr{font:700 12px/1.5 ui-monospace,monospace;color:var(--mut);margin-bottom:12px}
+.rprompt .rptr .rw-o{color:var(--cy)} .rprompt .rptr .rw-c{color:var(--vi)}
+.rprompt .rptr .rw-m{color:var(--gd)} .rprompt .rptr .rw-s{color:var(--sv)}
+.rprompt .raidgo{width:100%;min-height:48px;border-radius:10px;cursor:pointer}
+.rprompt .rppick{display:flex;gap:6px;margin-bottom:8px}
+.rprompt .rppick button{flex:1;min-height:44px;border:1px solid var(--line2);background:transparent;color:var(--mut);
+  border-radius:9px;font:700 11px/1 ui-monospace,monospace;cursor:pointer}
+.rprompt .rppick button b{font:800 14px/1 ui-monospace,monospace;color:var(--fc);margin-right:6px}
+.rprompt .rppick button.on{border-color:var(--cy);background:rgba(72,226,255,.12);color:var(--txt)}
+.rprompt .rpalt{display:flex;gap:6px;margin-top:8px}
+.rprompt .rpalt button{flex:1;min-height:44px;border:1px solid var(--line2);background:transparent;color:var(--txt);
+  border-radius:9px;font:700 11px/1.2 system-ui;letter-spacing:.06em;cursor:pointer}
+.rprompt .rpalt button b{display:block;font:600 11px/1.3 ui-monospace,monospace;color:var(--mut);letter-spacing:0}
+.rprompt .rpwarn{margin-top:8px;font:600 12px/1.4 system-ui;color:#ffb3c2}
+.rprompt button:focus-visible{outline:2px solid #eafcff;outline-offset:2px}
 /* system page FLEETS block (decision 5) - a plain list, no buttons; sending is the
    fleet bar's job. Same .sechead the DEFENCES/BUILDINGS headers use. */
 #sysFleets .sechead{margin:0 0 8px}

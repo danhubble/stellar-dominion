@@ -39,7 +39,7 @@
 .rdghost:disabled{cursor:not-allowed;color:var(--dim2);border-color:var(--line)}
 .rdghost.quiet{border-color:var(--line);color:var(--mut)}   /* SELL - destructive, kept quiet */
 .rdghost b{font:700 11px/1 ui-monospace,monospace;letter-spacing:0;margin-left:5px}
-@media(prefers-reduced-motion:reduce){.svslab,.tcard button.raidgo{transition:none}}
+@media(prefers-reduced-motion:reduce){.svslab,button.raidgo{transition:none}}
 /* refit cards and crew rows: one calm steel accent for identity (set as --a by
    renderRaids()) - the bright hues stay reserved for state. */
 .rfc{border:1px solid var(--line);border-radius:11px;padding:9px 10px;background:var(--panel);
@@ -160,17 +160,17 @@
 .tcard button:disabled{cursor:not-allowed;color:var(--dim2);border-color:var(--line)}
 /* ENGAGE / SEND: the card's one "act" key - the Scan key's bright cyan slab at card
    scale (.scanbtn, 00-base.css), the stake it plays for in mono after the verb */
-.tcard button.raidgo{position:relative;overflow:hidden;border:1px solid #7deeff;
+button.raidgo{position:relative;overflow:hidden;border:1px solid #7deeff;
   background:linear-gradient(180deg,#5be8ff,#38c9e6);color:#04121a;font:800 12.5px/1 system-ui;
   letter-spacing:.14em;padding:0 10px 3px;box-shadow:0 1px 0 rgba(255,255,255,.35) inset;transition:transform .06s}
-.tcard button.raidgo::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;background:#1c8fa8;pointer-events:none}
-.tcard button.raidgo:active:not(:disabled){transform:translateY(2px)}
-.tcard button.raidgo:active:not(:disabled)::after{height:1px}
-.tcard button.raidgo b{font:700 12px/1 ui-monospace,monospace;letter-spacing:0;margin-left:6px;color:#06303c}
-.tcard button.raidgo .ci{color:#06303c}
-.tcard button.raidgo:disabled{border-color:var(--line);background:rgba(255,255,255,.035);color:var(--mut);box-shadow:none}
-.tcard button.raidgo:disabled::after{background:rgba(255,255,255,.06)}
-.tcard button.raidgo:disabled b{color:var(--mut)}
+button.raidgo::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;background:#1c8fa8;pointer-events:none}
+button.raidgo:active:not(:disabled){transform:translateY(2px)}
+button.raidgo:active:not(:disabled)::after{height:1px}
+button.raidgo b{font:700 12px/1 ui-monospace,monospace;letter-spacing:0;margin-left:6px;color:#06303c}
+button.raidgo .ci{color:#06303c}
+button.raidgo:disabled{border-color:var(--line);background:rgba(255,255,255,.035);color:var(--mut);box-shadow:none}
+button.raidgo:disabled::after{background:rgba(255,255,255,.06)}
+button.raidgo:disabled b{color:var(--mut)}
 .risk{display:inline-block;padding:1px 6px;border-radius:4px;font:700 11px/1.4 system-ui;
   letter-spacing:.06em;border:1px solid currentColor}
 /* battle overlay */

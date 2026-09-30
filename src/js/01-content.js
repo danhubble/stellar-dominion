@@ -857,8 +857,8 @@ function fightOdds(t,f){
   const wf=Math.min(1, waveTFor(t)*0.85/(ttk/0.7));
   return (ttd/Math.max(0.001,ttk))*wf;
 }
-function riskOf(t){
-  const o=fightOdds(t);
+function riskOf(t,f){
+  const o=fightOdds(t,f);
   /* a neutral -> rose ramp: gold means reward and orange is the ore kind, so neither
      may say "risk". The word always carries the level; the colour only backs it up. */
   if(o>=2.2)return ["LOW","var(--mut)"];
@@ -878,14 +878,14 @@ const AUTO_MULT=3, AUTO_YIELD=0.92, AUTO_FHP_COST=0.03;
    final battle's t.final - see engageTarget()'s own comment) is unaffected and
    keeps defaulting to curFleet(), exactly as run 1 left it. */
 function canAutoResolve(t,f){
-  f=f||(t&&t.sys?fleetAtSys(t.sys):curFleet());
+  f=f||curFleet();
   return !!t && !!f && fleetDPS(f)>0 && f.hp>=0.15 && fightOdds(t,f)>=AUTO_MULT;
 }
 /* engageTarget() does all the real setup (spawn, mode, DOM); this just fast-forwards
    the result before the first frame draws, and tags BT.auto so endBattle() knows to
    apply the small time-cost above instead of a full manual-win payout. */
 function autoResolveTarget(t, idx, f){
-  f=f||(t&&t.sys?fleetAtSys(t.sys):curFleet());
+  f=f||curFleet();
   if(!f)return false;
   if(!canAutoResolve(t,f))return false;
   engageTarget(t, idx, f);
@@ -1347,7 +1347,7 @@ const FLEET_UNLOCK=[unlockLv("p-raid"),16,22];
    line, the commissioning toast and mkFleet() itself never drift from each other. */
 function ordFleet(id){ return FLEET_NAMES[id-1]||("Fleet "+id) }
 function mkFleet(id){
-  return { id, n:ordFleet(id), sh:[0,0,0], hp:1, at:"home", to:null, eta:0 };
+  return { id, n:ordFleet(id), sh:[0,0,0], hp:1, at:"home", to:null, eta:0, pos:null, tg:null, hold:null, o:null };
 }
 /* run 3: how many fleet slots the player's level has opened - Fleet 1 always exists
    (fleets() self-heals to it) regardless of this count; it only gates slots 2/3. */
@@ -1394,29 +1394,32 @@ function curFleet(){
   const f=fleet(S.flSel); if(f)return f;
   const f0=fleets()[0]; S.flSel=f0.id; return f0;
 }
-/* run 2: the first idle (not travelling) fleet sitting at sysId - every fleet is
-   idle at home in run 1, so this is unused until travel exists. */
-function fleetAtSys(sysId){ return fleets().find(f=>!f.to&&f.at===sysId)||null }
+/* PLAN-raidmap: a fleet is either standing at a system (f.at), holding in open space
+   (f.at===null, f.pos), flying to a system (f.to) or flying at a raid contact (f.tg,
+   a target id). "Busy" is either kind of flight - every "is this fleet free" check
+   goes through here rather than reading f.to alone. */
+function fleetBusy(f){ return !!(f&&(f.to||f.tg!=null)) }
+/* run 2: the first idle (not travelling) fleet sitting at sysId. */
+function fleetAtSys(sysId){ return fleets().find(f=>!fleetBusy(f)&&f.at===sysId)||null }
 /* run 3: every OTHER idle fleet sitting at f's own system - what TRANSFER needs to
-   offer (the fleet card, and the Raids pane strip). Empty for a travelling f (there
-   is nowhere for it to transfer right now) or when f is the only one there. */
+   offer (the fleet card). Empty for a travelling f, for one holding in open space
+   (there is no shared system to transfer at), or when f is the only one there. */
 function otherIdleFleetsAt(f){
-  if(!f||f.to)return [];
-  return fleets().filter(x=>x.id!==f.id&&!x.to&&x.at===f.at);
+  if(!f||fleetBusy(f)||!f.at)return [];
+  return fleets().filter(x=>x.id!==f.id&&!fleetBusy(x)&&x.at===f.at);
 }
-/* a fleet already en route to sysId, if any - so a raid card (or the fleet bar)
-   can show "ARRIVING" instead of offering to send a second fleet on top of it. */
+/* a fleet already en route to sysId, if any - so the system page can show
+   "ARRIVING" instead of offering to send a second fleet on top of it. */
 function fleetTravelingTo(sysId){ return fleets().find(f=>f.to===sysId)||null }
 /* the idle fleet that would take the least time to reach sysId - "nearest" by
-   travel time, not map distance, so a cross-sector detour never wins over a fleet
-   already in the neighbourhood. null when every fleet is either travelling or
-   locked out entirely (run 3's slots 2/3 before they unlock never reach fleets()
-   at all - mkFleet() is only ever called for an unlocked slot). */
+   travel time, not map distance. null when every fleet is busy. */
 function nearestIdleFleetTo(sysId){
-  const idle=fleets().filter(f=>!f.to);
+  const s=SYSMAP[sysId]; if(!s)return null;
+  const d={sec:s.sec,x:s.sx,y:s.sy,sys:sysId};
+  const idle=fleets().filter(f=>!fleetBusy(f));
   if(!idle.length)return null;
   return idle.reduce((best,f)=>
-    travelSecs(f.at,sysId)<travelSecs(best.at,sysId) ? f : best);
+    travelSecsPos(fleetPos(f),d)<travelSecsPos(fleetPos(best),d) ? f : best);
 }
 /* ---------------- PLAN-fleets run 2: position and travel ----------------
    TUNING-PENDING, all three (PLAN-fleets.md decision 4): same-sector travel is
@@ -1431,39 +1434,144 @@ function travelSecs(fromId,toId){
   if(A.sec===B.sec)return TRAVEL_BASE+TRAVEL_PER_UNIT*Math.hypot(A.sx-B.sx,A.sy-B.sy);
   return TRAVEL_BASE+TRAVEL_PER_RING*Math.abs(A.ring-B.ring);
 }
+/* PLAN-raidmap: the same rule between two map positions ({sec,x,y}, plus `sys` when
+   the position IS a system). System to system is travelSecs() exactly, so nothing
+   about the old lane timings moves; a leg that starts or ends in open space has no
+   ring to count, so crossing sectors charges per sector boundary instead. */
+function travelSecsPos(a,b){
+  if(!a||!b)return Infinity;
+  if(a.sys&&b.sys)return travelSecs(a.sys,b.sys);
+  if(a.sec===b.sec)return TRAVEL_BASE+TRAVEL_PER_UNIT*Math.hypot(a.x-b.x,a.y-b.y);
+  return TRAVEL_BASE+TRAVEL_PER_RING*Math.abs(a.sec-b.sec);
+}
+function sysPos(id){ const s=SYSMAP[id]; return s?{sec:s.sec,x:s.sx,y:s.sy,sys:id}:null }
+/* where a fleet that is NOT flying is standing */
+function fleetPos(f){
+  if(f.at&&SYSMAP[f.at])return sysPos(f.at);
+  if(f.pos)return {sec:f.pos.sec,x:f.pos.x,y:f.pos.y};
+  return sysPos("home");
+}
+function fleetDestPos(f,now){
+  if(f.tg!=null){ const t=tgById(f.tg); return t?tgPos(t,now):null }
+  if(f.to)return sysPos(f.to);
+  return null;
+}
+/* where a fleet is on the map right now, flying or not: {sec,x,y,hd}. A flight is a
+   straight line from where it set off (f.o) to wherever its destination is NOW - a
+   contact keeps drifting, so the line bends toward it and the fleet still arrives
+   exactly when the clock says. Crossing sectors: the first half of the clock flies
+   out to the sector's edge, the second half flies in from the other side. */
+function fleetMapPos(f,now){
+  const d=fleetBusy(f)?fleetDestPos(f,now):null;
+  if(!d){ const p=fleetPos(f); return {sec:p.sec,x:p.x,y:p.y,hd:null} }
+  const o=f.o||fleetPos(f);
+  const prog=f.tot>0 ? Math.min(1,Math.max(0,1-f.eta/f.tot)) : 1;
+  let ax=o.x, ay=o.y, bx=d.x, by=d.y, q=prog, sec=o.sec;
+  if(o.sec!==d.sec){
+    const out=d.sec>o.sec;
+    if(prog<0.5){ bx=out?104:-4; by=50; q=prog*2 }
+    else { ax=out?-4:104; ay=50; q=(prog-0.5)*2; sec=d.sec }
+  }
+  return {sec, x:ax+(bx-ax)*q, y:ay+(by-ay)*q, hd:Math.atan2(bx-ax,-(by-ay))};
+}
+/* a fleet that leaves (or is pulled off) a contact it was holding lets it drift again */
+function fleetRelease(f){
+  if(f.hold==null)return;
+  const t=tgById(f.hold);
+  if(t){ tgUnfreeze(t); t.auto=0; delete t.fx }
+  f.hold=null;
+}
 /* refuses: already travelling, already there, an unknown system, or mid-fight (a
    battle/defence in progress is not a moment to be reassigning the fleet that is,
-   or might be, in it). f.at is left alone while travelling - it is still where the
-   fleet department (and is used, unlike `to`/`eta`, as its last-known position by
-   the map/FLEETS block; fleetAtSys()'s own !f.to guard already excludes it from
-   anything that cares "is a fleet actually here right now"). */
+   or might be, in it). f.at is left alone while travelling from a system - it is
+   still where the fleet departed; fleetAtSys()'s own fleetBusy() guard already
+   excludes it from anything that cares "is a fleet actually here right now". */
 function fleetSend(f,toId){
   if(!f)return false;
   /* b646: say why, instead of a silent no-op the player reads as "stuck" */
-  if(f.to){ toast(f.n+" is already en route","y"); return false }
+  if(fleetBusy(f)){ toast(f.n+" is already en route","y"); return false }
   if(toId===f.at)return false;
   if(!SYSMAP[toId])return false;
   if(BT||DT){ toast("Not mid-fight","y"); return false }
-  const eta=travelSecs(f.at,toId);
+  const o=fleetPos(f), eta=travelSecsPos(o,sysPos(toId));
+  fleetRelease(f);
+  f.o={sec:o.sec,x:o.x,y:o.y,sys:o.sys||null};
   f.to=toId; f.from=f.at; f.eta=eta; f.tot=eta;
   toast(f.n+" departing for "+SYSMAP[toId].n+" · "+Math.round(eta)+"s","y");
   dirty=true; return true;
 }
+/* PLAN-raidmap: send a fleet at a contact. `auto` is the player's choice in the
+   prompt - settle it on arrival without the battle screen (only honoured if the
+   fleet still outclasses the contact when it gets there) - otherwise the fleet
+   holds beside it and waits for ENGAGE. One fleet per contact. */
+function fleetAttack(f,t,auto){
+  if(!f||!t)return false;
+  if(BT||DT){ toast("Not mid-fight","y"); return false }
+  if(fleetBusy(f)){ toast(f.n+" is already en route","y"); return false }
+  if(fleetDPS(f)<=0){ toast("Build warships before you engage."); return false }
+  if(f.hp<0.15){ toast("Fleet too damaged \u2014 recall it to repair."); return false }
+  if(fleets().some(x=>x!==f&&(x.tg===t.id||x.hold===t.id))){ toast("Another fleet is already on it","y"); return false }
+  if(f.hold===t.id){ t.auto=auto?1:0; dirty=true; return true }   /* already beside it */
+  const o=fleetPos(f), eta=travelSecsPos(o,tgPos(t));
+  fleetRelease(f);
+  f.o={sec:o.sec,x:o.x,y:o.y,sys:o.sys||null};
+  f.pos={sec:o.sec,x:o.x,y:o.y};
+  f.at=null; f.to=null; f.from=null; f.tg=t.id; f.eta=eta; f.tot=eta;
+  t.auto=auto?1:0;
+  toast(f.n+" moving to intercept · "+Math.round(eta)+"s","y");
+  dirty=true; return true;
+}
+/* pull a fleet back to Sol Reach from wherever it is - mid-flight included, which
+   fleetSend() itself refuses: the flight is cut where the fleet currently is and a
+   fresh one home starts from that point. */
+function fleetRecall(f){
+  if(!f)return false;
+  if(BT||DT){ toast("Not mid-fight","y"); return false }
+  if(f.to==="home")return false;
+  if(!fleetBusy(f)&&f.at==="home")return false;
+  if(fleetBusy(f)){
+    const p=fleetMapPos(f);
+    f.pos={sec:p.sec,x:Math.max(2,Math.min(98,p.x)),y:Math.max(2,Math.min(98,p.y))};
+    f.at=null; f.to=null; f.tg=null; f.from=null; f.eta=0; f.tot=0; f.o=null;
+  }
+  return fleetSend(f,"home");
+}
 /* run on the SAME clock thqTick(dt) already runs on (rvTick, called from tick()) -
-   never csim's economy path, since csim never calls fleetSend() and so never has a
-   fleet with `to` set to decrement in the first place. `quiet` (offlineReport()'s
-   catch-up pass) skips the arrival toast and instead returns each arrival's line
-   for the away-report to fold in IF that report is already showing something else -
-   a fleet quietly arriving is not, on its own, worth waking the player's phone or
-   popping a modal (see offlineReport()'s own comment). */
+   never csim's economy path, since csim never sends a fleet anywhere and so never
+   has one with `to`/`tg` set to decrement in the first place. `quiet`
+   (offlineReport()'s catch-up pass) skips the arrival toast and instead returns
+   each arrival's line for the away-report to fold in IF that report is already
+   showing something else - a fleet quietly arriving is not, on its own, worth
+   waking the player's phone or popping a modal (see offlineReport()'s own comment). */
+const TG_FX_SECS=2.4;       /* how long the on-map skirmish of an auto-resolved raid runs */
 function fleetTravelTick(dt, quiet){
-  const arrived=[];
+  const arrived=[], now=Date.now()/1000;
   for(const f of fleets()){
+    if(f.hold!=null&&!tgById(f.hold))f.hold=null;      /* fought, or gone with an old save */
+    if(f.tg!=null){
+      const t=tgById(f.tg);
+      if(!t){ f.tg=null; f.eta=0; f.tot=0; f.o=null; dirty=true; continue }
+      f.eta-=dt;
+      if(f.eta<=0){
+        const p=tgPos(t,now);
+        t.fz=now;                                        /* it holds still while a fleet is on it */
+        f.pos={sec:t.sec,x:Math.max(4,Math.min(96,p.x-6)),y:Math.max(6,Math.min(94,p.y+5))};
+        f.tg=null; f.hold=t.id; f.eta=0; f.tot=0; f.o=null;
+        if(!(t.auto&&canAutoResolve(t,f))){
+          t.auto=0;
+          if(!quiet)toast(f.n+" in position \u2014 "+t.name,"g");
+          arrived.push(f.n+" is in position at "+t.name);
+          flag("p-map");
+        }
+        dirty=true;
+      }
+      continue;
+    }
     if(!f.to)continue;
     f.eta-=dt;
     if(f.eta<=0){
       const dest=SYSMAP[f.to];
-      f.at=f.to; f.to=null; f.eta=0; f.from=null; f.tot=0;
+      f.at=f.to; f.to=null; f.eta=0; f.from=null; f.tot=0; f.pos=null; f.o=null;
       if(dest){
         if(!quiet)toast(f.n+" arrived at "+dest.n,"g");
         arrived.push(f.n+" arrived at "+dest.n);
@@ -1471,8 +1579,43 @@ function fleetTravelTick(dt, quiet){
       flag("p-map"); dirty=true;
     }
   }
+  /* auto-resolved raids: a short exchange on the map, then the result - never during
+     an offline catch-up (the fleet simply waits beside the contact until the game is
+     live again) and never underneath an open battle */
+  if(!quiet&&!BT&&!DT){
+    for(const t of S.tg.slice()){
+      if(!t||!t.auto)continue;
+      const f=fleets().find(x=>x.hold===t.id); if(!f)continue;
+      if(!canAutoResolve(t,f)){ t.auto=0; delete t.fx; toast(f.n+" in position \u2014 "+t.name,"g"); flag("p-map"); dirty=true; continue }
+      t.fx=(t.fx||0)+dt;
+      if(t.fx>=TG_FX_SECS)raidAutoResolve(t,f);
+    }
+  }
   tryDrainFleetQueue(quiet);
   return arrived;
+}
+/* the auto-resolved raid's result, applied without ever opening the battle screen:
+   the same numbers endBattle("win") gives a BT.auto fight (AUTO_YIELD off the payout,
+   AUTO_FHP_COST off the hull), said in one toast instead of a result card. */
+let tgBooms=[];              /* runtime only: where a contact just died, for the map to flash */
+function raidAutoResolve(t,f){
+  const T=RAIDS[t.ti], full=raidReward(t);
+  const o=full.o*AUTO_YIELD, c=full.c*AUTO_YIELD, m=full.m*AUTO_YIELD, sv=Math.floor(svReward(t)*AUTO_YIELD);
+  S.wins=(S.wins||0)+1; xpOnWins();
+  if(S.wins===1){ queueNotice("vega:firstWin"); svPulse=true; }
+  if(T.boss)S.flags=(S.flags||0)+1;
+  f.hp=Math.max(0.05,f.hp-AUTO_FHP_COST);
+  S.ore+=o; S.all+=o; S.cry+=c; if(m){ S.dm+=m; S.dmAll+=m }
+  if(sv>0){ S.sv=(S.sv||0)+sv; S.svAll=(S.svAll||0)+sv }
+  S.plunder=(S.plunder||0)+o;
+  const p=tgPos(t);
+  tgBooms.push({sec:t.sec,x:p.x,y:p.y,t0:Date.now()});
+  const i=S.tg.indexOf(t); if(i>=0)S.tg.splice(i,1);
+  f.hold=null;
+  const got=[o?"+"+fmt(o)+" ore":null, c?"+"+fmt(c)+" crystal":null, m?"+"+fmt(m)+" Dark Matter":null, sv?"+"+fmt(sv)+" salvage":null].filter(Boolean).join(" \u00b7 ");
+  toast(t.name+" destroyed \u00b7 "+got,"g");
+  sfx("win");
+  dirty=true;
 }
 /* run 3 (decision 6): lands a purchase that had to queue (buyShip(), no fleet was
    idle at home at the time) the moment any fleet next sits idle at home - called
@@ -1483,7 +1626,7 @@ function fleetTravelTick(dt, quiet){
    same reasoning as a quiet arrival. */
 function tryDrainFleetQueue(quiet){
   if(!Array.isArray(S.flQ)||!(S.flQ[0]||S.flQ[1]||S.flQ[2]))return false;
-  const f=fleets().find(fl=>!fl.to&&fl.at==="home"); if(!f)return false;
+  const f=fleets().find(fl=>!fleetBusy(fl)&&fl.at==="home"); if(!f)return false;
   for(let i=0;i<3;i++){ if(S.flQ[i]){ f.sh[i]+=S.flQ[i]; S.flQ[i]=0; } }
   if(!quiet)toast("Delivery arrived — "+f.n,"g");
   dirty=true; return true;
@@ -1657,7 +1800,7 @@ function shipMax(i,f){ const S1=SHIPS[i];
    03-defence.js) counts too. idleAtYard() is the one predicate both the routing
    below and the buy button's own label (11-combat.js) read, so they can never
    disagree about which fleet a purchase would land on. */
-function idleAtYard(fl){ return !fl.to && (fl.at==="home" || sysHasShipyard(fl.at)); }
+function idleAtYard(fl){ return !fleetBusy(fl) && !!fl.at && (fl.at==="home" || sysHasShipyard(fl.at)); }
 function buyShip(i,k){ if(k<1)return false;
   const cf=curFleet();
   const tgt = idleAtYard(cf) ? cf : fleets().find(idleAtYard);
@@ -1674,40 +1817,74 @@ function buyShip(i,k){ if(k<1)return false;
 /* the fleet is away or mid-fight is fine to buy into (it queues), but not to sell
    from: a hull already travelling can't be un-sold out from under an in-flight
    fleet, so a travelling curFleet() simply can't sell until it lands. */
-function sellShip(i,k){ const f=curFleet(); if(f.to)return false;
+function sellShip(i,k){ const f=curFleet(); if(fleetBusy(f))return false;
   k=Math.min(k,f.sh[i]); if(k<1)return false; const S1=SHIPS[i];
   S.ore+=0.5*S1.b*Math.pow(S1.g,shipTotal(i)-k)*(Math.pow(S1.g,k)-1)/(S1.g-1);
   f.sh[i]-=k; blip(150,.09,"square",.04); dirty=true; return true }
 function pick(a){ return a[Math.floor(Math.random()*a.length)] }
-/* PLAN-fleets run 2 (decision 3): where a raid target actually is. Reuses `v` -
-   already drawn below for the difficulty roll - as this target's OWN position roll
-   rather than spending a fresh Math.random() call: newTarget() runs inside
-   raidTick(dt), on tick()'s own path, and csim4.js calls tick() hundreds of
-   thousands of times - a new draw here would shift every Math.random() call after
-   the very first target the run ever generates, breaking csim's seeded
-   byte-identical baseline for a field the sim never reads (it never fields a
-   fleet - see csim4.js's own top-of-file comment). v is already uniform on
-   [0.85,1.3), so its position within that range is exactly as random as a fresh
-   roll would have been - "the existing newTarget() RNG stream" per the plan. */
-function raidTargetSys(v){
-  if(level()<unlockLv("p-map"))return "home";
-  const held=heldSystems();
-  const maxRing=held.reduce((m,s)=>Math.max(m,s.ring),0);
-  const capSec=maxRing+1;
-  const pool=SYS.filter(s=>s.sec<=capSec).sort((a,b)=>a.ring-b.ring);
-  if(!pool.length)return "home";
-  /* weighted toward the frontier - the far end of the ring-sorted pool - by
-     skewing the reused [0,1) draw up (sqrt) before indexing into it */
-  const frac=Math.sqrt(Math.max(0,Math.min(1,(v-0.85)/0.45)));
-  return pool[Math.min(pool.length-1,Math.floor(frac*pool.length))].id;
+/* ---------------- PLAN-raidmap: contacts roam the sector map ----------------
+   A contact belongs to a sector (t.sec) and drifts around open space inside it. Its
+   position is NOT stored and never ticked: it is a pure function of the clock and
+   the contact's own seed (tgPos), so nothing here spends a Math.random() call or a
+   per-frame state write - the map can draw it at any frame rate, offline time
+   needs no catch-up, and csim (which never looks at a contact) is untouched.
+   TUNING-PENDING: TG_SEC_DIF is how much stronger (and richer - raidReward() pays
+   off t.dif) a contact is per sector out from the Core; TG_W is the raid-type mix
+   per sector, the Core row being the old one-size mix exactly. */
+const TG_SEC_DIF=0.2;
+const TG_W=[[40,25,22,9,4],[32,25,25,12,6],[24,23,28,16,9],[17,20,30,20,13],[10,16,30,25,19]];
+/* the furthest sector a contact can turn up in: one past the furthest the player holds */
+function tgMaxSec(){
+  if(level()<unlockLv("p-map"))return 0;
+  const m=heldSystems().reduce((a,s)=>Math.max(a,s.sec),0);
+  return Math.min(SECTORS.length-1,m+1);
 }
-function newTarget(){
-  let r=Math.random()*RAIDW.reduce((a,b)=>a+b,0), ti=0;
-  for(let i=0;i<RAIDW.length;i++){ if(r<RAIDW[i]){ti=i;break} r-=RAIDW[i] }
+function tgById(id){ return id==null?null:((S.tg||[]).find(t=>t&&t.id===id)||null) }
+const TGP={};
+function tgPath(t){
+  let p=TGP[t.id]; if(p&&p.sd===t.sd)return p;
+  const r=mulberry32(t.sd|0);
+  p={sd:t.sd, w1:.022+r()*.02, w2:.018+r()*.02, w3:.05+r()*.04, w4:.045+r()*.04,
+     p1:r()*6.283, p2:r()*6.283, p3:r()*6.283, p4:r()*6.283};
+  TGP[t.id]=p; return p;
+}
+/* {sec,x,y,hd} - hd is the heading (radians, 0 = up the screen) off the path's own
+   derivative, so a marker always points the way it is actually drifting. t.fz freezes
+   the clock while a fleet sits on it; t.off is the contact's own clock offset, moved
+   by exactly the frozen time on release so it carries on from where it stopped. */
+function tgPos(t,now){
+  const p=tgPath(t);
+  const T=(t.fz!=null?t.fz:(now!=null?now:Date.now()/1000))-(t.off||0);
+  const a1=p.w1*T+p.p1, a2=p.w2*T+p.p2, a3=p.w3*T+p.p3, a4=p.w4*T+p.p4;
+  const dx=30*p.w1*Math.cos(a1)+9*p.w3*Math.cos(a3);
+  const dy=27*p.w2*Math.cos(a2)-8*p.w4*Math.sin(a4);
+  return {sec:t.sec, x:50+30*Math.sin(a1)+9*Math.sin(a3), y:52+27*Math.sin(a2)+8*Math.cos(a4), hd:Math.atan2(dx,-dy)};
+}
+function tgUnfreeze(t){
+  if(t.fz==null)return;
+  t.off=(t.off||0)+(Date.now()/1000-t.fz); t.fz=null;
+}
+/* `rng` defaults to Math.random and is always drawn from exactly four times, in one
+   place, the same count the pre-map newTarget() spent - raidTick() runs on tick()'s
+   own path and csim4.js seeds Math.random, so a fifth draw here would shift every
+   random call after the first contact a run generates and break the byte-identical
+   pacing baseline for a field the sim never reads. The sector rides on the same roll
+   as the strength (r3): a stronger roll IS a contact from further out. */
+function newTarget(rng){
+  rng=rng||Math.random;
+  const r1=rng(), r2=rng(), r3=rng(), r4=rng();
+  const maxSec=tgMaxSec();
+  const sec=Math.min(maxSec,Math.floor(r3*(maxSec+1)));
+  const W=TG_W[sec]||TG_W[0];
+  let r=r1*W.reduce((a,b)=>a+b,0), ti=W.length-1;
+  for(let i=0;i<W.length;i++){ if(r<W[i]){ti=i;break} r-=W[i] }
   const T=RAIDS[ti];
-  const en=T.en[0]+Math.floor(Math.random()*(T.en[1]-T.en[0]+1));
-  const v=0.85+Math.random()*0.45;
-  return {ti, name:pick(T.names), en, dif:T.dif*v, secs:T.secs, dmg:T.dmg*v, sys:raidTargetSys(v)};
+  const en=T.en[0]+Math.floor(r2*(T.en[1]-T.en[0]+1));
+  const v=0.85+r3*0.45;
+  S.tgN=(S.tgN||0)+1;
+  return {id:S.tgN, ti, name:T.names[Math.min(T.names.length-1,Math.floor(r4*T.names.length))], en,
+    dif:T.dif*v*(1+TG_SEC_DIF*sec), secs:T.secs, dmg:T.dmg*v, sec,
+    sd:(Math.floor(r1*0x3fffffff)^Math.floor(r4*0xffff))|0, off:Date.now()/1000, fz:null};
 }
 const SVBASE=[4,7,11,24,80];
 function svReward(t){

@@ -2633,7 +2633,7 @@ function renderRaids(){
   const loc=$("#flLoc");
   if(loc)loc.textContent = cf.to
     ? "→ "+((SYSMAP[cf.to]||{}).n||cf.to).toUpperCase()+" · "+Math.max(0,Math.ceil(cf.eta))+"s"
-    : "AT "+((SYSMAP[cf.at]||{}).n||cf.at).toUpperCase();
+    : fleetWhere(cf);
   const hp=cf.hp, bar=$(".fl-hp");
   bar.classList.toggle("hurt",hp<=.6&&hp>.3); bar.classList.toggle("crit",hp<=.3);
   /* no ships = nothing to have integrity: an empty bar, not cf.hp's full one */
@@ -2667,7 +2667,7 @@ function renderRaids(){
     const k=S.sell?Math.min(S.buy==="max"?cf.sh[i]:S.buy,cf.sh[i]):(S.buy==="max"?Math.max(1,shipMax(i)):S.buy);
     const c=S.sell?(k>0?0.5*sp.b*Math.pow(sp.g,shipTotal(i)-k)*(Math.pow(sp.g,k)-1)/(sp.g-1):0):shipCost(i,k);
     const fits=k*sp.pw<=capLeft();
-    const can=S.sell?(k>0&&!cf.to):(S.ore>=c&&fits);
+    const can=S.sell?(k>0&&!fleetBusy(cf)):(S.ore>=c&&fits);
     /* polish batch A #10/#12: "DELIVERS AT SOL REACH" (nothing here has a shipyard
        yet, PLACEHOLDER copy either way) when nothing is home to take it, and now
        also says which fleet it actually lands on when that isn't the selected tab. */
@@ -2683,66 +2683,6 @@ function renderRaids(){
     const bt=d.querySelector("button"); bt.disabled=!can;
     bt.onclick=()=>{ if(S.sell)sellShip(i,k); else buyShip(i,k); render(); };
     host.appendChild(d);
-  });
-  const th=$("#tgts"); th.innerHTML="";
-  if(!S.tg.length){
-    th.innerHTML='<div class="card"><h5>No contacts</h5><p>Long-range scans are running. A new target appears every couple of minutes.</p></div>';
-  }
-  S.tg.forEach((t,i)=>{
-    const T=RAIDS[t.ti], rw=raidReward(t);
-    const dps=fleetDPS(cf), hpm=fleetHPMax(cf);
-    const eHP=dps*t.secs*t.dif, eDPS=(hpm*t.dmg)/t.secs;
-    const risk=riskOf(t);
-    /* each amount in its own currency colour (.rw-o/c/m/s, 03-combat.css), not the
-       whole line in reward gold */
-    const svEst=SVBASE[t.ti]*Math.round(t.dif);
-    const rews=[rw.o?`<b class="rw-o">${fmt(rw.o)}</b> ${RI('ore')}`:null,rw.c?`<b class="rw-c">${fmt(rw.c)}</b> ${RI('cry')}`:null,
-      rw.m?`<b class="rw-m">${fmt(rw.m)}</b> ${RI('dm')}`:null,
-      `<b class="rw-s">~${svEst}</b> ${RI('sv')}`].filter(Boolean).join(" · ");
-    /* the stake ENGAGE plays for, straight from the reward line above - ore if the
-       target pays ore, else its salvage estimate. Nothing new computed. */
-    const stake = rw.o ? `+${fmt(rw.o)} ${RI('ore')}` : `~${svEst} ${RI('sv')}`;
-    const d=document.createElement("div"); d.className="tcard"; d.style.setProperty("--a",T.col);
-    /* PLAN-fleets run 2 (decision 3): a raid is somewhere, and engaging it needs a
-       fleet actually there - hereFleet, not curFleet(). None there yet: offer to
-       SEND the nearest idle one, or say ARRIVING if one is already en route (never
-       a second SEND stacked on top of the first). */
-    const sysName=(SYSMAP[t.sys]||{}).n||t.sys;
-    const hereFleet=fleetAtSys(t.sys);
-    let actHtml, auto=false;
-    if(hereFleet){
-      auto=canAutoResolve(t,hereFleet);
-      /* ENGAGE / SEND is the bright cyan slab (.raidgo); AUTO-RESOLVE the plain outline
-         secondary, FIGHT IT ANYWAY the quiet ghost - button order is unchanged */
-      actHtml = auto
-        ? '<button>AUTO-RESOLVE</button><button class="ghost">FIGHT IT ANYWAY</button>'
-        : `<button class="raidgo">ENGAGE<b>· ${stake}</b></button>`;
-    } else {
-      const enRoute=fleetTravelingTo(t.sys);
-      if(enRoute) actHtml=`<button class="raidgo" disabled>ARRIVING<b>· ${Math.max(0,Math.ceil(enRoute.eta))}s</b></button>`;
-      else {
-        const nf=nearestIdleFleetTo(t.sys);
-        actHtml = nf
-          ? `<button class="raidgo">SEND ${nf.n.toUpperCase()}<b>· ${Math.round(travelSecs(nf.at,t.sys))}s</b></button>`
-          : `<button class="raidgo" disabled>ALL FLEETS BUSY</button>`;
-      }
-    }
-    d.innerHTML=`<h5>${t.name} <span class="risk" style="color:${risk[1]}">${risk[0]}</span></h5>
-      <div class="tloc">near ${sysName}</div>
-      <div class="tm">${T.boss?"FLAGSHIP · single heavy target":t.en+" hostiles"} · ~${Math.round(t.secs*t.dif)}s engagement<br>
-        they can strip ~${Math.round(t.dmg*100)}% of a full hull · reinforcements at ${waveTFor(t)}s</div>
-      <div class="tr">${rews||"—"}</div>
-      ${actHtml}`;
-    const btns=d.querySelectorAll("button");
-    if(hereFleet){
-      btns.forEach(bb=>bb.disabled=bb.disabled||dps<=0||cf.hp<0.15);
-      if(auto){ btns[0].onclick=()=>autoEngage(i); btns[1].onclick=()=>engage(i); }
-      else btns[0].onclick=()=>engage(i);
-    } else if(!btns[0].disabled){
-      const nf=nearestIdleFleetTo(t.sys);
-      btns[0].onclick=()=>{ if(nf)fleetSend(nf,t.sys); render(); };
-    }
-    th.appendChild(d);
   });
   // salvage chip
   $("#svChip").innerHTML=RI("sv","ci sv")+fmt(S.sv||0);
@@ -2838,8 +2778,8 @@ function renderRaids(){
     }
   }
 
-  $("#raidHint").textContent = fleetCount(cf)? "Tap the glowing seam on a hostile for a critical. Chain hits without missing to build a damage multiplier."
-    : "Build warships below, then engage a target.";
+  $("#raidHint").textContent = fleetCount(cf)? "Raid contacts are on the sector map: select a fleet there, then tap an enemy."
+    : "Build warships here, then find a raid contact on the sector map.";
   raidLive();
   raidSubFlags();
 }
@@ -2886,8 +2826,7 @@ function raidLive(){
    as the checks renderRaids() already does per-row above — nothing new is computed, just
    summarised into one bool per sub-tab. Runs every dirty frame, so kept O(rows). */
 function raidSubFlags(){
-  const f={targets:false,fleet:false,loadout:false,crew:false};
-  { const cf=curFleet(); f.targets = S.tg.length>0 && fleetCount(cf)>0 && cf.hp>=0.15; }
+  const f={fleet:false,loadout:false,crew:false};
   f.fleet   = SHIPS.some((sp,i)=> sp.pw<=capLeft() && S.ore>=shipCost(i,1));
   f.loadout = wepSlots().some(s=>!s) && WEAPONS.some(w=>wepOwned(w.id)&&wepSlots().indexOf(w.id)<0)
            || WEAPONS.some(w=>!wepOwned(w.id)&&S.sv>=w.cost)

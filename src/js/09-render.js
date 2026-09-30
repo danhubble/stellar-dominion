@@ -316,7 +316,18 @@ function renderMapChips(){
   const host=$("#mapChips");
   buildMapChips();
   if(host)host.hidden = level()<unlockLv("p-map");
-  $$("#mapChips .chip").forEach(c=>c.classList.toggle("on", +c.dataset.i===mapSec));
+  const raids=level()>=RAIDLV;
+  $$("#mapChips .chip").forEach(c=>{
+    c.classList.toggle("on", +c.dataset.i===mapSec);
+    /* PLAN-raidmap: a count of the raid contacts in that sector - written into a
+       span that is only created once per chip, never a rebuilt button (tchurn2) */
+    const n=raids?S.tg.filter(t=>t&&t.sec===+c.dataset.i).length:0;
+    let s=c.querySelector(".ecnt");
+    if(!s){ if(!n)return; s=document.createElement("span"); s.className="ecnt"; c.appendChild(s); }
+    const tx=n?String(n):"";
+    if(s.textContent!==tx)s.textContent=tx;
+    s.hidden=!n;
+  });
 }
 /* ---- per-sector canvas backdrop: seeded, cheap, drawn once per sector switch (not
    every render tick) - see /home/claude/sd/map-mock.html, same five looks. ---- */
@@ -499,35 +510,41 @@ function buildMap(){
   mapBuilt=true; mapSecBuilt=mapSec; mapRevealBuilt=level()>=unlockLv("p-map");
 }
 /* ==================== PLAN-fleets run 2: the fleet bar ====================
-   Interaction "A" (PLAN-fleets.md decision 5, revised after the owner played
-   mkfleetmock.py): flSel is a runtime-only var, never saved - a page reload
-   always comes up with nothing selected, same as any other transient UI pick
-   (defSel, mapSite, ...) in this file. sendChipSys is the node a selected
-   fleet's SEND chip is currently sitting on, cleared right along with flSel. */
+   flSel is a runtime-only var, never saved - a page reload always comes up with
+   nothing selected, same as any other transient UI pick (defSel, mapSite, ...) in
+   this file. sendChipSys is the node a selected fleet's SEND chip is currently
+   sitting on, cleared right along with flSel.
+   PLAN-raidmap: selecting a fleet no longer moves the map. The player picks the
+   fleet, then goes wherever they like and picks where it should go - a system
+   (SEND chip) or a raid contact (the prompt). A fleet in flight can be selected
+   too, which is what RECALL needs. */
 let flSel=null, sendChipSys=null;
 function fleetDeselect(){ flSel=null; sendChipSys=null; }
 function fleetBarTap(id){
   const f=fleet(id); if(!f)return;
-  if(f.to){ openFleetCard(id); return; }         /* travelling: nothing to select, just view */
   if(flSel===id){ openFleetCard(id); fleetDeselect(); }
-  else {
-    flSel=id; sendChipSys=null;
-    const fsec=secOf(f.to||f.at);
-    if(fsec!==mapSec)setMapSec(fsec);
-    /* LOCATE means "look at the sector the fleet is in" - a system page zoomed
-       into some OTHER system's own planet scene hides #mapNodes entirely
-       (#mapWrap.zoomed), so there would be nothing left to tap a node on. Back
-       out to the sector map itself; the fleet bar stays visible either way. */
-    if(S.msel)S.msel=null;
-  }
+  else { flSel=id; sendChipSys=null; }
   dirty=true; render();
+}
+/* one line saying where a fleet is or what it is doing - the fleet bar, the fleet
+   card and the Raids strip all read this */
+function fleetWhere(f){
+  if(f.to)return "\u2192 "+((SYSMAP[f.to]||{}).n||f.to).toUpperCase()+" "+Math.max(0,Math.ceil(f.eta))+"s";
+  if(f.tg!=null)return "INTERCEPT "+Math.max(0,Math.ceil(f.eta))+"s";
+  if(f.hold!=null){ const t=tgById(f.hold); if(t)return t.auto?"IN BATTLE":"IN POSITION"; }
+  if(f.at){
+    if(f.hp<1&&fleetCount(f)>0&&idleAtYard(f))return "REPAIRING "+Math.round(f.hp*100)+"%";
+    return "AT "+((SYSMAP[f.at]||{}).n||f.at).toUpperCase();
+  }
+  const sec=SECTORS[fleetPos(f).sec]||SECTORS[0];
+  return sec.chip||sec.tag;
 }
 function openFleetCard(id){
   const f=fleet(id); if(!f)return;
   const col=FLEET_COL[id-1]||FLEET_COL[0];
   const status = f.to
     ? "EN ROUTE TO "+((SYSMAP[f.to]||{}).n||f.to).toUpperCase()+" · "+Math.max(0,Math.ceil(f.eta))+"s"
-    : "AT "+((SYSMAP[f.at]||{}).n||f.at).toUpperCase();
+    : fleetWhere(f);
   const hulls=SHIPS.map((sp,i)=>f.sh[i]?f.sh[i]+" "+sp.n+(f.sh[i]===1?"":"s"):null).filter(Boolean).join(" · ")||"No ships";
   const rc=repairCost(f);
   const canRepair=fleetCount(f)>0 && f.hp<1 && S.ore>=rc;
@@ -556,7 +573,7 @@ function openFleetCard(id){
    underneath does not close this modal). Moving one hull per tap, same idiom every
    other +/- stepper in the game uses (hanModal's hanstep). */
 function transferModal(a,b){
-  const live=()=>!!(a&&b&&!a.to&&!b.to&&a.at===b.at);
+  const live=()=>!!(a&&b&&!fleetBusy(a)&&!fleetBusy(b)&&a.at&&a.at===b.at);
   const rowsHTML=()=>SHIPS.map((sp,i)=>`<div class="trow">
       <span class="trlab">${sp.n}</span>
       <button type="button" class="trbtn" data-i="${i}" data-d="-1" ${a.sh[i]>0?"":"disabled"}>−</button>
@@ -587,15 +604,14 @@ function transferModal(a,b){
     const done=$("#trDone"); if(done)done.onclick=()=>{ hideModal(); dirty=true; render(); save(); };
   });
 }
-/* run on the SAME 3-slot layout run 3 will fill in - a slot with no real fleet
-   object yet (2/3, this run) always renders LOCKED regardless of level; run 3
-   adds the fleet the moment the level gates it, which is exactly what makes it
-   stop being locked here without this file changing again. The button DOM is
-   only rebuilt when the structural key changes (id/travelling-vs-not/
-   destination/selected) - never on the eta countdown alone, which would hand
-   tchurn2 a fresh button object every second a fleet is en route; the live
-   "AT X" / "→ X 41s" text is written into a nested .fstat span every call
-   instead, the same idiom #sysTripCd's own countdown uses. */
+/* Three slots; one with no real fleet object yet (2/3 before their level) renders
+   LOCKED. The button DOM is only rebuilt when the structural key changes (which
+   slots are open, and each fleet's heaviest hull - the ship picture) - never on the
+   eta countdown, the selection or the hull bar, which are written into the same
+   nodes every call (tchurn2). PLAN-raidmap: each button carries the buy row's own
+   icon for the biggest hull the fleet fields, and a hull-integrity bar; the bar is
+   hidden on a system page by CSS (the page is about the system, not the fleets). */
+function fleetFlagship(f){ for(let i=SHIPS.length-1;i>=0;i--)if(f.sh[i]>0)return i; return -1 }
 function renderFleetBar(){
   const host=$("#fleetBar"); if(!host)return;
   if(level()<RAIDLV){
@@ -603,10 +619,11 @@ function renderFleetBar(){
     return;
   }
   host.hidden=false;
+  if(S.msel&&flSel!=null)fleetDeselect();      /* a system page is open: nothing to send from here */
   const structKey=[1,2,3].map(id=>{
     const f=fleet(id), lv=FLEET_UNLOCK[id-1];
     if(!f||level()<lv)return "L"+id+":"+lv;
-    return id+(f.to?"T"+f.to:"A"+f.at)+(flSel===id?"S":"");
+    return id+"h"+fleetFlagship(f);
   }).join(",");
   if(host.dataset.h!==structKey){
     host.dataset.h=structKey;
@@ -615,11 +632,12 @@ function renderFleetBar(){
       const f=fleet(id), lv=FLEET_UNLOCK[id-1];
       if(!f||level()<lv){
         html+=`<button type="button" class="fbtn locked" disabled>
-          <span class="fnum">${id}</span><span class="fstat">LOCKED LV ${lv}</span></button>`;
+          <span class="ftop"><span class="fnum">${id}</span></span><span class="fstat">LOCKED LV ${lv}</span></button>`;
       } else {
-        html+=`<button type="button" class="fbtn${flSel===id?" sel":""}" data-fl="${id}">
-          <span class="fnum" style="color:${FLEET_COL[id-1]||FLEET_COL[0]}">${id}</span>
-          <span class="fstat"></span></button>`;
+        const fs=fleetFlagship(f);
+        html+=`<button type="button" class="fbtn${fs<0?" empty":""}" data-fl="${id}" style="--fc:${FLEET_COL[id-1]||FLEET_COL[0]}">
+          <span class="ftop"><span class="fnum">${id}</span><svg class="fship" viewBox="0 0 48 48" aria-hidden="true">${SHIPS[Math.max(0,fs)].ic}</svg></span>
+          <span class="fstat"></span><span class="fhp"><i></i></span></button>`;
       }
     }
     host.innerHTML=html;
@@ -629,92 +647,180 @@ function renderFleetBar(){
     const f=fleet(id), lv=FLEET_UNLOCK[id-1];
     if(!f||level()<lv)continue;
     const btn=host.querySelector('[data-fl="'+id+'"]'); if(!btn)continue;
-    const stat=btn.querySelector(".fstat"); if(!stat)continue;
-    const label = f.to
-      ? "→ "+((SYSMAP[f.to]||{}).n||f.to).toUpperCase()+" "+Math.max(0,Math.ceil(f.eta))+"s"
-      : "AT "+((SYSMAP[f.at]||{}).n||f.at).toUpperCase();
-    if(stat.textContent!==label)stat.textContent=label;
+    btn.classList.toggle("sel",flSel===id);
+    const stat=btn.querySelector(".fstat");
+    const label=fleetCount(f)?fleetWhere(f):"NO SHIPS";
+    if(stat&&stat.textContent!==label)stat.textContent=label;
+    const hp=btn.querySelector(".fhp i");
+    if(hp){
+      const w=(fleetCount(f)?Math.round(f.hp*100):0)+"%", cls=f.hp<=.3?"crit":f.hp<=.6?"hurt":"";
+      if(hp.style.width!==w)hp.style.width=w;
+      if(hp.className!==cls)hp.className=cls;
+    }
   }
 }
-/* markers + the SEND confirm chip. Structure (lines, marker DOM) is rebuilt only
-   under a churn key that excludes eta - see renderFleetBar()'s own comment, same
-   reasoning; travelling markers then SLIDE via a plain transform/left/top write
-   every call, no rebuild, which is what makes this cheap to run every render()
-   pass (renderMap() already does, ~11Hz while the map tab is open). */
+/* ==================== PLAN-raidmap: fleets and raid contacts on the map ====================
+   Fleets draw as a three-ship formation in the fleet's colour, pointing the way they
+   fly; raid contacts as small red groups drifting through open space, shaped by raid
+   type, with 1-4 pips for how dangerous they are to the fleet you would send.
+   renderFleetMarkers() owns the DOM: rebuilt only when the sector, the fleet list or
+   the contacts in this sector change (tchurn2) - never for movement. mapFleetFrame()
+   then places everything with a sub-pixel transform; it runs from frame() on every
+   animation frame so motion is smooth, and once from here so a paused tab (or a
+   test) still gets correct positions. */
+const FL_DART="M0 -5.2L3.4 3.8 0 2 -3.4 3.8Z", EN_BOX="M0 -5.6L2.7 -2.6V4.6H-2.7V-2.6Z", EN_RED="#ff6b8a";
+function flFormationSVG(col){
+  return `<svg viewBox="-17 -17 34 34" aria-hidden="true"><g class="rot"><g transform="scale(1.45)" fill="${col}" stroke="#04050d" stroke-width=".9" stroke-linejoin="round">
+    <path d="${FL_DART}" transform="translate(-6.5 4.5) scale(.82)"/><path d="${FL_DART}" transform="translate(6.5 4.5) scale(.82)"/>
+    <path d="${FL_DART}" transform="translate(0 -3.5)"/></g></g></svg>`;
+}
+/* one silhouette per RAIDS entry: convoy, hauler, patrol, anomaly, flagship */
+const EN_SHAPE=[
+ `<path d="${EN_BOX}" transform="translate(-4.5 1)"/><path d="${EN_BOX}" transform="translate(4.5 1)"/><path d="${FL_DART}" transform="translate(0 -7) scale(.7)"/>`,
+ `<path d="M0 -8L3.3 -4.6V7H-3.3V-4.6Z" transform="translate(-3 1)"/><path d="${FL_DART}" transform="translate(6 -2) scale(.8)"/>`,
+ `<path d="${FL_DART}" transform="translate(-6.5 4.5) scale(.85)"/><path d="${FL_DART}" transform="translate(6.5 4.5) scale(.85)"/><path d="${FL_DART}" transform="translate(0 -3.5) scale(1.05)"/>`,
+ `<path d="M0 -7.5L6 0 0 7.5 -6 0Z"/><circle r="10" fill="none" stroke="${EN_RED}" stroke-width="1" stroke-dasharray="2 2.5"/>`,
+ `<path d="M0 -10L5 -3v9L0 10 -5 6v-9z"/><path d="${FL_DART}" transform="translate(-9.5 6) scale(.7)"/><path d="${FL_DART}" transform="translate(9.5 6) scale(.7)"/>`
+];
+function enMarkSVG(ti){
+  return `<svg viewBox="-17 -17 34 34" aria-hidden="true"><g class="rot"><g transform="scale(1.3)" fill="${EN_RED}" stroke="#04050d" stroke-width=".8" stroke-linejoin="round">${EN_SHAPE[ti]||EN_SHAPE[0]}</g></g></svg>`;
+}
+/* the fleet a contact's danger is judged against: the one selected on the bar, else
+   the first fleet that actually has ships */
+function tgJudge(){ return (flSel!=null&&fleet(flSel))||fleets().find(f=>fleetCount(f)>0)||fleets()[0] }
+function tgPips(t){ const r=riskOf(t,tgJudge())[0]; return r==="LOW"?1:r==="MODERATE"?2:r==="HIGH"?3:4 }
+let flEls=null;
 function renderFleetMarkers(){
   const svg=$("#fleetLines"), host=$("#fleetMarkers");
   if(!svg||!host)return;
-  const list=sysInSec(mapSec), byId={};
-  for(const s of list)byId[s.id]=s;
-  const fls=fleets();
-  const key=mapSec+"|"+fls.map(f=>f.id+":"+(f.to?"T"+f.from+">"+f.to:"A"+f.at)+(flSel===f.id?"S":"")).join(",");
-  if(host.dataset.h!==key){
+  const on=level()>=RAIDLV;
+  const fls=on?fleets():[], tgs=on?S.tg.filter(t=>t&&t.sec===mapSec):[];
+  const key=mapSec+"|"+fls.map(f=>f.id).join(",")+"|"+tgs.map(t=>t.id+":"+t.ti).join(",");
+  if(host.dataset.h!==key||!flEls){
     host.dataset.h=key;
     svg.innerHTML=""; host.innerHTML="";
-    /* run 3: with three fleets, two can idle at the same node at once (most often
-       home) - stacked exactly on top of each other they'd read as one marker. Each
-       additional one at a node already claimed steps 14px further right, added on
-       top of the badge offset below via calc() (a plain % offset can't express a
-       fixed pixel step independent of the map's own on-screen size). */
-    const stackAt={};
+    flEls={f:{},t:{}};
+    const NS="http://www.w3.org/2000/svg";
     fls.forEach(f=>{
       const col=FLEET_COL[f.id-1]||FLEET_COL[0];
-      if(f.to){
-        const A=byId[f.from], B=byId[f.to];
-        if(A&&B){
-          const ln=document.createElementNS("http://www.w3.org/2000/svg","line");
-          ln.setAttribute("x1",A.sx); ln.setAttribute("y1",A.sy);
-          ln.setAttribute("x2",B.sx); ln.setAttribute("y2",B.sy);
-          ln.setAttribute("stroke",col); ln.dataset.fl=f.id;
-          svg.appendChild(ln);
-        }
-        if(A||B){
-          const m=document.createElement("div");
-          m.className="flmark trav"; m.dataset.fl=f.id;
-          m.style.background=col; m.textContent=f.id;
-          host.appendChild(m);
-          const e=document.createElement("div");
-          e.className="fleta"; e.dataset.fle=f.id;
-          host.appendChild(e);
-        }
-      } else {
-        const s=byId[f.at];
-        if(s){
-          const stack=stackAt[f.at]=(stackAt[f.at]||0)+1;
-          const m=document.createElement("div");
-          m.className="flmark"+(flSel===f.id?" sel":""); m.dataset.fl=f.id;
-          m.style.background=col; m.textContent=f.id;
-          /* badge offset - see mkfleetmock.py's own note - plus a 14px step right
-             for every marker already stacked at this node. */
-          m.style.left="calc("+(s.sx+6)+"% + "+((stack-1)*14)+"px)"; m.style.top=(s.sy-6)+"%";
-          host.appendChild(m);
-        }
-      }
+      const ln=document.createElementNS(NS,"line"); ln.setAttribute("stroke",col); ln.dataset.fl=f.id; ln.style.display="none"; svg.appendChild(ln);
+      const m=document.createElement("div"); m.className="flmark"; m.dataset.fl=f.id; m.style.setProperty("--fc",col);
+      m.innerHTML=flFormationSVG(col)+`<span class="fltag">${f.id}<i class="fleta"></i></span>`;
+      host.appendChild(m);
+      flEls.f[f.id]={m, rot:m.querySelector(".rot"), eta:m.querySelector(".fleta"), ln, hd:null};
     });
+    tgs.forEach(t=>{
+      const m=document.createElement("div"); m.className="enmark"; m.dataset.tg=t.id;
+      m.innerHTML=enMarkSVG(t.ti)+`<span class="pips"></span><button type="button" aria-label="${t.name}"></button>`;
+      m.querySelector("button").onclick=e=>{ e.stopPropagation(); raidPrompt(t.id); };
+      host.appendChild(m);
+      flEls.t[t.id]={m, rot:m.querySelector(".rot"), pips:m.querySelector(".pips")};
+    });
+    const bolt=document.createElementNS(NS,"line"); bolt.setAttribute("class","bolt"); bolt.style.display="none"; svg.appendChild(bolt);
+    const flash=document.createElement("div"); flash.className="enflash"; flash.style.display="none"; host.appendChild(flash);
+    flEls.bolt=bolt; flEls.flash=flash;
   }
   fls.forEach(f=>{
-    if(!f.to)return;
-    const A=byId[f.from], B=byId[f.to]; if(!A||!B)return;
-    const prog=f.tot>0 ? Math.min(1,Math.max(0,1-f.eta/f.tot)) : 0;
-    const x=A.sx+(B.sx-A.sx)*prog, y=A.sy+(B.sy-A.sy)*prog;
-    const m=host.querySelector('.flmark[data-fl="'+f.id+'"]');
-    if(m){ m.style.left=x+"%"; m.style.top=y+"%"; }
-    const e=host.querySelector('[data-fle="'+f.id+'"]');
-    if(e){ e.style.left=x+"%"; e.style.top=y+"%"; e.textContent=Math.max(0,Math.ceil(f.eta))+"s"; }
+    const E=flEls.f[f.id]; if(!E)return;
+    E.m.classList.toggle("sel",flSel===f.id);
+    E.m.classList.toggle("trav",fleetBusy(f));
+    const eta=fleetBusy(f)?" \u00b7 "+Math.max(0,Math.ceil(f.eta))+"s":"";
+    if(E.eta.textContent!==eta)E.eta.textContent=eta;
   });
-  renderSendChip(byId);
+  tgs.forEach(t=>{
+    const E=flEls.t[t.id]; if(!E)return;
+    const n=String(tgPips(t));
+    if(E.pips.dataset.h!==n){ E.pips.dataset.h=n; E.pips.innerHTML="<i></i>".repeat(+n); }
+    E.m.classList.toggle("pinned",t.fz!=null);
+  });
+  renderSendChip();
+  renderFleetHint();
+  renderFleetBanner();
+  mapFleetFrame();
 }
-function renderSendChip(byId){
+function mapFleetFrame(){
+  if(!flEls||S.msel)return;
+  const host=$("#fleetMarkers"); if(!host||!host.offsetParent)return;
+  const W=host.clientWidth, H=host.clientHeight; if(!W||!H)return;
+  const now=Date.now()/1000;
+  const put=(el,x,y,dx)=>{ el.style.transform="translate3d("+(x*W/100+(dx||0)).toFixed(2)+"px,"+(y*H/100).toFixed(2)+"px,0)" };
+  const turn=(E,hd)=>{
+    /* ease toward the heading rather than snapping - a drifting contact bends the line */
+    if(E.hd==null)E.hd=hd;
+    else { let d=hd-E.hd; while(d>Math.PI)d-=6.2832; while(d<-Math.PI)d+=6.2832; E.hd+=d*0.18; }
+    E.rot.setAttribute("transform","rotate("+(E.hd*57.2958).toFixed(1)+")");
+  };
+  const stack={};
+  for(const f of fleets()){
+    const E=flEls.f[f.id]; if(!E)continue;
+    const p=fleetMapPos(f,now), vis=p.sec===mapSec;
+    E.m.style.display=vis?"":"none";
+    let lineOn=false;
+    if(vis){
+      if(fleetBusy(f)){
+        put(E.m,p.x,p.y); turn(E,p.hd);
+        const d=fleetDestPos(f,now);
+        if(d){
+          /* the dotted course: to the destination, or to the sector edge on the way out */
+          let tx=d.x, ty=d.y;
+          if(d.sec!==p.sec){ tx=d.sec>p.sec?104:-4; ty=50 }
+          E.ln.setAttribute("x1",p.x.toFixed(2)); E.ln.setAttribute("y1",p.y.toFixed(2));
+          E.ln.setAttribute("x2",tx.toFixed(2)); E.ln.setAttribute("y2",ty.toFixed(2));
+          lineOn=true;
+        }
+      } else if(f.at){
+        /* docked: up and to the right of the node, each further fleet a step along */
+        const n=stack[f.at]=(stack[f.at]||0)+1;
+        put(E.m,p.x+5,p.y-5,(n-1)*26); E.hd=0.61; E.rot.setAttribute("transform","rotate(35)");
+      } else {
+        put(E.m,p.x,p.y);
+        const t=tgById(f.hold);
+        if(t){ const q=tgPos(t,now); turn(E,Math.atan2(q.x-p.x,-(q.y-p.y))); }
+        else if(E.hd==null){ E.hd=0.61; E.rot.setAttribute("transform","rotate(35)"); }
+      }
+    }
+    E.ln.style.display=lineOn?"":"none";
+  }
+  let fx=null;
+  for(const t of S.tg){
+    if(!t)continue;
+    const E=flEls.t[t.id]; if(!E)continue;
+    const p=tgPos(t,now);
+    put(E.m,p.x,p.y);
+    E.rot.setAttribute("transform","rotate("+(p.hd*57.2958).toFixed(1)+")");
+    if(t.fx!=null&&t.auto){ const f=fleets().find(x=>x.hold===t.id); if(f)fx={t,p,f:fleetPos(f),col:FLEET_COL[f.id-1]||FLEET_COL[0]}; }
+  }
+  /* the auto-resolve skirmish: shots back and forth between the two groups */
+  if(fx){
+    const k=Math.floor(fx.t.fx*11), out=k%2===0, j=((k*37)%7-3)*.35, gap=k%3===2;
+    const a=out?fx.f:fx.p, b=out?fx.p:fx.f;
+    flEls.bolt.setAttribute("x1",a.x); flEls.bolt.setAttribute("y1",a.y);
+    flEls.bolt.setAttribute("x2",b.x+j); flEls.bolt.setAttribute("y2",b.y-j);
+    flEls.bolt.setAttribute("stroke",out?fx.col:EN_RED);
+    flEls.bolt.style.display=gap?"none":"";
+    put(flEls.flash,b.x+j,b.y-j); flEls.flash.style.display=gap?"none":"";
+  } else { flEls.bolt.style.display="none"; flEls.flash.style.display="none"; }
+  /* a contact that just died: one expanding ring where it was */
+  if(tgBooms.length){
+    const t0=Date.now();
+    tgBooms=tgBooms.filter(b=>{
+      if(t0-b.t0>650){ if(b.el)b.el.remove(); return false }
+      if(!b.el&&b.sec===mapSec){ b.el=document.createElement("div"); b.el.className="enboom"; host.appendChild(b.el); put(b.el,b.x,b.y); }
+      return true;
+    });
+  }
+}
+function renderSendChip(){
   const host=$("#fleetMarkers"); if(!host)return;
   let chip=host.querySelector(".sendchip");
-  const node=sendChipSys?byId[sendChipSys]:null;
+  const node=sendChipSys?SYSMAP[sendChipSys]:null;
   const f=flSel!=null?fleet(flSel):null;
-  if(flSel==null || !node || !f){
+  if(flSel==null || !node || node.sec!==mapSec || !f){
     if(chip)chip.remove();
     return;
   }
-  const here = !f.to && f.at===sendChipSys;
-  const text = f.to ? "EN ROUTE" : here ? "HERE" : "SEND \u00b7 "+Math.round(travelSecs(f.at,sendChipSys))+"s";
+  const here = !fleetBusy(f) && f.at===sendChipSys;
+  const text = fleetBusy(f) ? "EN ROUTE" : here ? "HERE" : "SEND \u00b7 "+Math.round(travelSecsPos(fleetPos(f),sysPos(sendChipSys)))+"s";
   if(!chip){
     chip=document.createElement("div"); chip.className="sendchip";
     /* b646: decide "already here" at tap time, not from the render that first
@@ -722,14 +828,112 @@ function renderSendChip(byId){
        make SEND a silent no-op (the "fleet won't move" bug). */
     chip.onclick=()=>{
       const ff=flSel!=null?fleet(flSel):null;
-      const hereNow=!!(ff&&!ff.to&&ff.at===sendChipSys);
+      const hereNow=!!(ff&&!fleetBusy(ff)&&ff.at===sendChipSys);
       if(ff && sendChipSys && !hereNow)fleetSend(ff, sendChipSys);
       fleetDeselect(); dirty=true; render();
     };
     host.appendChild(chip);
   }
   chip.style.left=node.sx+"%"; chip.style.top=node.sy+"%";
-  chip.textContent=text;
+  if(chip.textContent!==text)chip.textContent=text;
+}
+/* the strip across the top of the map while a fleet is selected: what to do next, and
+   RECALL (home to Sol Reach, where it mends fast). Rebuilt only when its text or
+   whether RECALL applies changes. */
+function renderFleetHint(){
+  const el=$("#flHint"); if(!el)return;
+  const f=flSel!=null?fleet(flSel):null;
+  const wrap=$("#mapWrap"); if(wrap)wrap.classList.toggle("flsel",!!f);
+  if(!f){ if(!el.hidden){ el.hidden=true; el.dataset.h=""; } return; }
+  const canRecall=!(f.to==="home")&&!(!fleetBusy(f)&&f.at==="home");
+  const key=f.id+"|"+canRecall;
+  if(el.dataset.h!==key){
+    el.dataset.h=key;
+    el.style.setProperty("--fc",FLEET_COL[f.id-1]||FLEET_COL[0]);
+    el.innerHTML=`<span><b>${f.n.toUpperCase()}</b> \u00b7 TAP A SYSTEM OR AN ENEMY</span>`
+      +(canRecall?`<button type="button" id="flRecall">RECALL</button>`:"");
+    const rb=el.querySelector("#flRecall");
+    if(rb)rb.onclick=e=>{ e.stopPropagation(); const ff=flSel!=null?fleet(flSel):null; if(ff)fleetRecall(ff); fleetDeselect(); dirty=true; render(); };
+  }
+  el.hidden=false;
+}
+/* a fleet waiting beside a contact for the player to fight it: one banner along the
+   bottom of the map, ENGAGE opens the battle. Auto-resolved raids never show this. */
+function renderFleetBanner(){
+  const el=$("#flBanner"); if(!el)return;
+  let f=null, t=null;
+  for(const x of fleets()){ const tt=tgById(x.hold); if(tt&&!tt.auto){ f=x; t=tt; break } }
+  if(!f||BT||DT){ if(!el.hidden){ el.hidden=true; el.dataset.h=""; } return; }
+  const risk=riskOf(t,f);
+  const key=f.id+":"+t.id+":"+risk[0];
+  if(el.dataset.h!==key){
+    el.dataset.h=key;
+    el.innerHTML=`<div class="fbtxt">${f.n} is in position<small>${t.name.toUpperCase()} \u00b7 ${risk[0]} \u00b7 ${(SECTORS[t.sec]||SECTORS[0]).tag}</small></div>
+      <button type="button" class="raidgo">ENGAGE</button>`;
+    el.querySelector("button").onclick=e=>{ e.stopPropagation(); raidEngage(t.id); };
+  }
+  el.hidden=false;
+}
+function raidEngage(tid){
+  const t=tgById(tid); if(!t)return;
+  const f=fleets().find(x=>x.hold===t.id); if(!f)return;
+  engageTarget(t,S.tg.indexOf(t),f);
+  render();
+}
+/* the prompt a tapped contact opens: what it is, how dangerous, what it pays, and the
+   one decision - which fleet goes, and whether it settles the fight on its own
+   (ATTACK, offered only when that fleet outclasses the contact) or waits there for
+   the player (FIGHT IT MYSELF - and the only choice against anything stronger). */
+function raidPrompt(tid){
+  const t=tgById(tid); if(!t)return;
+  const T=RAIDS[t.ti], rw=raidReward(t), svEst=SVBASE[t.ti]*Math.round(t.dif);
+  const rews=[rw.o?`<b class="rw-o">${fmt(rw.o)}</b> ${RI('ore')}`:null, rw.c?`<b class="rw-c">${fmt(rw.c)}</b> ${RI('cry')}`:null,
+    rw.m?`<b class="rw-m">${fmt(rw.m)}</b> ${RI('dm')}`:null, `<b class="rw-s">~${svEst}</b> ${RI('sv')}`].filter(Boolean).join(" \u00b7 ");
+  const holder=fleets().find(f=>f.hold===t.id), coming=fleets().find(f=>f.tg===t.id);
+  const here=tgPos(t);
+  const eta=f=>Math.round(travelSecsPos(fleetPos(f),here));
+  const idle=fleets().filter(f=>!fleetBusy(f)&&fleetCount(f)>0);
+  /* the fleet picked on the bar, else whichever free fleet gets there soonest */
+  let pick=(flSel!=null&&idle.find(f=>f.id===flSel))||idle.slice().sort((a,b)=>eta(a)-eta(b))[0]||null;
+  const judge=()=>holder||coming||pick||tgJudge();
+  const acts=()=>{
+    if(holder){
+      if(t.auto)return `<button class="raidgo" disabled>${holder.n.toUpperCase()} IN BATTLE</button>`;
+      return `<button class="raidgo" id="rpEng">ENGAGE<b>\u00b7 ${holder.n.toUpperCase()}</b></button>`
+        +(canAutoResolve(t,holder)?`<div class="rpalt"><button type="button" id="rpAuto">AUTO-RESOLVE<b>let the fleet settle it</b></button></div>`:"");
+    }
+    if(coming)return `<button class="raidgo" disabled>${coming.n.toUpperCase()} EN ROUTE<b>\u00b7 ${Math.max(0,Math.ceil(coming.eta))}s</b></button>`;
+    if(!pick)return `<button class="raidgo" disabled>${fleets().some(f=>fleetCount(f)>0)?"ALL FLEETS BUSY":"NO WARSHIPS"}</button>`
+      +(fleets().some(f=>fleetCount(f)>0)?"":`<div class="rpwarn">Build warships on the Raids tab first.</div>`);
+    const chips=idle.length>1?`<div class="rppick">${idle.map(f=>`<button type="button" data-fl="${f.id}" class="${f===pick?"on":""}" style="--fc:${FLEET_COL[f.id-1]||FLEET_COL[0]}"><b>${f.id}</b>${eta(f)}s</button>`).join("")}</div>`:"";
+    if(pick.hp<0.15)return chips+`<button class="raidgo" disabled>${pick.n.toUpperCase()} TOO DAMAGED</button>
+      <div class="rpwarn">Recall it to Sol Reach to repair.</div>`;
+    return chips+(canAutoResolve(t,pick)
+      ? `<button class="raidgo" id="rpAtk">ATTACK<b>\u00b7 ${pick.n.toUpperCase()} \u00b7 ${eta(pick)}s</b></button>
+         <div class="rpalt"><button type="button" id="rpMan">FIGHT IT MYSELF<b>the fleet waits for you there</b></button></div>`
+      : `<button class="raidgo" id="rpMan">ATTACK<b>\u00b7 ${pick.n.toUpperCase()} \u00b7 ${eta(pick)}s</b></button>
+         <div class="rpwarn">Too strong to win on its own. The fleet waits there for you to fight it.</div>`);
+  };
+  showModal(`<div class="rprompt"><h3>${t.name}<span class="risk" id="rpRisk"></span></h3>
+    <div class="rploc">${(SECTORS[t.sec]||SECTORS[0]).tag} \u00b7 OPEN SPACE</div>
+    <div class="rptm">${T.boss?"FLAGSHIP \u00b7 single heavy target":t.en+" hostiles"} \u00b7 ~${Math.round(t.secs*t.dif)}s engagement<br>
+      they can strip ~${Math.round(t.dmg*100)}% of a full hull \u00b7 reinforcements at ${waveTFor(t)}s</div>
+    <div class="rptr">${rews}</div><div id="rpActs"></div>
+    <div class="row" style="margin-top:8px"><button id="rpClose">CLOSE</button></div></div>`, ()=>{
+    $("#rpClose").onclick=hideModal;
+    const go=auto=>{ if(fleetAttack(pick,t,auto)){ hideModal(); fleetDeselect(); } dirty=true; render(); save(); };
+    const wire=()=>{
+      const risk=riskOf(t,judge()), rk=$("#rpRisk");
+      rk.textContent=risk[0]; rk.style.color=risk[1];
+      $("#rpActs").innerHTML=acts();
+      $$("#rpActs .rppick button").forEach(b=>b.onclick=()=>{ pick=fleet(+b.dataset.fl)||pick; wire(); });
+      const a=$("#rpAtk"); if(a)a.onclick=()=>go(true);
+      const m=$("#rpMan"); if(m)m.onclick=()=>go(false);
+      const en=$("#rpEng"); if(en)en.onclick=()=>{ hideModal(); raidEngage(t.id); };
+      const au=$("#rpAuto"); if(au)au.onclick=()=>{ hideModal(); t.auto=1; dirty=true; render(); };
+    };
+    wire();
+  });
 }
 /* system page FLEETS block (decision 5) - a plain list, above DEFENCES; sending is
    the fleet bar's job, so this never draws a button. Churn-guarded on which
@@ -738,7 +942,7 @@ function renderSendChip(byId){
 function renderSysFleets(s){
   const wrap=$("#sysFleets"); if(!wrap)return;
   if(!s){ if(wrap.dataset.h!==""){ wrap.dataset.h=""; wrap.innerHTML=""; } return; }
-  const here=fleets().filter(f=>!f.to&&f.at===s.id);
+  const here=fleets().filter(f=>!fleetBusy(f)&&f.at===s.id);
   const key=s.id+"|"+here.map(f=>f.id+":"+f.sh.join(",")).join("|");
   if(wrap.dataset.h===key)return;
   wrap.dataset.h=key;
@@ -1974,8 +2178,9 @@ function exoModal(){
 let resMode="tree";           /* which half of the Research tab is showing - "tree" or
                                   "prog". Not persisted: presentation-only, always opens
                                   on the tech tree, same as the tab itself always did. */
-let raidMode="targets";       /* which sub-tab of the Raids tab is showing. Session-only,
-                                  same reasoning as resMode above. */
+let raidMode="fleet";         /* which sub-tab of the Raids tab is showing. Session-only,
+                                  same reasoning as resMode above. PLAN-raidmap: there is
+                                  no "targets" sub-tab any more - contacts are on the map. */
 let mapMode="map";            /* patch614: "map" or "list" - which half of the Map tab is
                                   showing. Session-only, same reasoning as resMode/raidMode -
                                   never saved, always opens on the map itself. */
@@ -1986,7 +2191,7 @@ let mktBuy=25;                /* patch636: which SELL chip is selected on the Ma
                                   50 or 100 = SURPLUS - see mktAmount()), no longer a fixed
                                   amount or MAX. Session-only, same reasoning as resMode/
                                   raidMode/mapMode above - never saved, always opens on 25%. */
-const RAID_PANES={targets:"#rpTargets",fleet:"#rpFleet",loadout:"#rpLoadout",crew:"#rpCrew"};
+const RAID_PANES={fleet:"#rpFleet",loadout:"#rpLoadout",crew:"#rpCrew"};
 function syncRaidMode(){
   $$(".rmbtn[data-rd]").forEach(x=>x.classList.toggle("on",x.dataset.rd===raidMode));
   for(const k in RAID_PANES){ const el=$(RAID_PANES[k]); if(el)el.hidden=(k!==raidMode); }

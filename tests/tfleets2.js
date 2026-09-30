@@ -138,9 +138,9 @@ const { chromium } = require('playwright-core');
 
  // ================== PLAN-fleets run 2: position, travel, the fleet bar ==================
  // BRIEF-fleets-run2.md's "Tests" section: travelSecs() maths, fleetSend()/
- // fleetTravelTick() landing and refusing, engageTarget() gated on t.sys, a raid
- // card's SEND/ENGAGE states, an offline arrival, the fleet bar's hidden/locked
- // states and its LOCATE tap, and node-tap interception with the SEND chip.
+ // fleetTravelTick() landing and refusing, the Raids tab losing its target list, an
+ // offline arrival, the fleet bar's hidden/locked
+ // states and its select tap, and node-tap interception with the SEND chip.
 
  // earlier tests in this file fight battles but never close the results screen -
  // BT stays truthy until closeBattle() runs, and fleetSend() (rightly) refuses to
@@ -182,34 +182,22 @@ const { chromium } = require('playwright-core');
  ok('fleetSend() refuses a fleet that is already travelling', send.sentAgain===false, send);
  ok('fleetTravelTick(eta+1) lands the fleet: at=dest, to/from=null, eta=0', send.at2==='kor' && send.to2===null && send.from2===null && send.eta2===0, send);
 
- // ---------------- engageTarget() refused with no fleet at t.sys ----------------
+ // PLAN-raidmap: a raid contact is no longer "near a system" - it roams open space
+ // on the sector map, and the fleet that fights it is the one holding beside it
+ // (tests/traidmap2.js covers that whole flow). What is left to pin here is that
+ // nothing starts a fight for a contact no fleet has reached, and that the old
+ // Raids-tab target list is really gone.
  const noFleet=await p.evaluate(()=>{
    const G=window.__SD;
    G.adopt({...G.fresh(), all:1e30, lvl:99, lvSeen:99, ore:1e30, sh:[500,300,150], fhp:1,
      cmode:"wep", tg:[], rf:{gun:10,arm:10}, nx:{war:15}, xp:{casc:15,core:20}});
-   const t=Object.assign(G.newTarget(), {sys:"kor"});   // the fleet (migrated from sh/fhp) is at home
-   G.engageTarget(t,-1);
-   return { btStarted:!!G.BT };
- });
- ok('engageTarget() refuses (no battle starts) when no fleet is at t.sys', !noFleet.btStarted, noFleet);
-
- // ---------------- a raid target card: SEND while away, ENGAGE once there ----------------
- const card=await p.evaluate(()=>{
-   const G=window.__SD;
-   G.adopt({...G.fresh(), all:1e30, lvl:14, lvSeen:14, ore:1e30});
-   G.buyShip(0,10);
-   G.S.tg=[Object.assign(G.newTarget(),{sys:"kor"})];
+   const t=G.newTarget(); G.S.tg.push(t);
+   G.raidEngage(t.id);                                   // no fleet is holding beside it
    G.gotoTab("p-raid"); G.dirty=true; G.render();
-   const away=document.querySelector("#tgts .tcard button");
-   const awayText=away?away.textContent:null;
-   G.fleetSend(G.S.fl[0],"kor");
-   G.fleetTravelTick(G.S.fl[0].eta+1);
-   G.dirty=true; G.render();
-   const there=document.querySelector("#tgts .tcard button");
-   return { awayText, thereText: there?there.textContent:null };
+   return { btStarted:!!G.BT, list:!!document.getElementById("tgts"), hasSys:'sys' in t };
  });
- ok('a raid target card shows SEND while the fleet is away', /SEND/.test(card.awayText), card);
- ok('...and ENGAGE/AUTO-RESOLVE once the fleet has arrived', /ENGAGE|AUTO-RESOLVE/.test(card.thereText), card);
+ ok('raidEngage() starts no battle for a contact no fleet has reached', !noFleet.btStarted, noFleet);
+ ok('...and the Raids tab no longer lists targets (contacts carry no system)', !noFleet.list && !noFleet.hasSys, noFleet);
 
  // ---------------- offline arrival: eta<=away lands the fleet, quietly ----------------
  const offline=await p.evaluate(()=>{
@@ -237,7 +225,7 @@ const { chromium } = require('playwright-core');
  ok('the fleet bar is hidden below the Raids unlock level', bar.hiddenBelow===true, bar);
  ok('at level 12: one real fleet button + two LOCKED slots', !bar.hiddenAt12 && bar.count===3 && bar.locked===2, bar);
 
- // ---------------- tapping a bar button LOCATEs - switches mapSec ----------------
+ // ---------------- tapping a bar button selects - it no longer moves the map (PLAN-raidmap) ----------------
  const locate=await p.evaluate(()=>{
    const G=window.__SD;
    G.adopt({...G.fresh(), lvl:14, lvSeen:14});
@@ -245,10 +233,10 @@ const { chromium } = require('playwright-core');
    G.gotoTab("p-map"); G.setMapSec(0); G.dirty=true; G.render();
    const before=G.mapSec;
    document.querySelector('#fleetBar [data-fl="1"]').click();
-   return { before, after:G.mapSec, expected:G.SYSMAP.ash.sec };
+   return { before, after:G.mapSec, expected:G.SYSMAP.ash.sec, sel:G.flSel };
  });
- ok('tapping the fleet bar button switches mapSec to the fleet\'s own sector',
-   locate.before===0 && locate.expected!==0 && locate.after===locate.expected, locate);
+ ok('tapping the fleet bar button selects the fleet and leaves the map on the sector the player chose',
+   locate.before===0 && locate.expected!==0 && locate.after===0 && locate.sel===1, locate);
 
  // ---------------- node tap while selected: chip, not the system page; chip sends ----------------
  const nodeTap=await p.evaluate(()=>{
@@ -415,19 +403,21 @@ const { chromium } = require('playwright-core');
  ok('a queued purchase already sitting in a loaded save drains immediately when a fleet is already home',
    JSON.stringify(queueOnLoad.sh)==="[2,0,0]" && JSON.stringify(queueOnLoad.flQ)==="[0,0,0]", queueOnLoad);
 
- // ---------------- three markers render; two stacked at the same node offset 14px ----------------
+ // ---------------- three markers render; docked at the same node they step 26px apart ----------------
  const markers=await p.evaluate(()=>{
    const G=window.__SD;
    G.adopt({...G.fresh(), lvl:22, lvSeen:22});   // 22: all three fleet slots open (item 4)
    G.S.fl[1].sh=[1,0,0]; G.S.fl[2].sh=[1,0,0];
    G.gotoTab("p-map"); G.setMapSec(0); G.dirty=true; G.render();
    const marks=[...document.querySelectorAll('#fleetMarkers .flmark:not(.trav)')];
-   const offsets=marks.map(m=>{ const mm=m.style.left.match(/\+\s*(-?\d+)px/); return mm?+mm[1]:null; });
+   /* PLAN-raidmap: markers are placed by transform (mapFleetFrame) - read each one's x */
+   const xs=marks.map(m=>{ const mm=m.style.transform.match(/translate3d\((-?[\d.]+)px/); return mm?+mm[1]:null; });
+   const offsets=xs.map(x=>Math.round(x-xs[0]));
    return { count:marks.length, offsets };
  });
  ok('three fleets idle at home render three markers', markers.count===3, markers);
- ok('...stepped 0px/14px/28px right of each other in fleet order, not stacked on top of one another',
-   JSON.stringify(markers.offsets)==="[0,14,28]", markers);
+ ok('...stepped 0px/26px/52px right of each other in fleet order, not stacked on top of one another',
+   JSON.stringify(markers.offsets)==="[0,26,52]", markers);
 
  // ---------------- autoResolveTarget(): the fleet AT the target, not the selected tab ----------------
  const twoFleetResolve=await p.evaluate(()=>{
@@ -441,12 +431,14 @@ const { chromium } = require('playwright-core');
    // target is at home, so the fight must use fleet 1 regardless of which fleet the
    // Raids pane happens to be showing.
    G.S.fl[1].sh=G.S.fl[0].sh.slice(); G.S.fl[1].at="kor"; G.S.flSel=2;
-   const t=Object.assign(G.assaultTarget(G.SYSMAP.dra), {sys:"home"});
-   const canAuto=G.canAutoResolve(t);
-   const resolved=G.autoResolveTarget(t,-1);
+   /* PLAN-raidmap: there is no t.sys lookup any more - the caller (the system page's
+      ASSAULT button) passes the fleet standing at that system, exactly like this */
+   const t=G.assaultTarget(G.SYSMAP.dra), here=G.fleetAtSys("home");
+   const canAuto=G.canAutoResolve(t,here);
+   const resolved=G.autoResolveTarget(t,-1,here);
    return { canAuto, resolved, fightFleet:G.BT?G.BT.f.id:null, selectedTab:G.S.flSel };
  });
- ok('canAutoResolve()/autoResolveTarget() find the fleet at t.sys (fleet 1, at home)', twoFleetResolve.canAuto && twoFleetResolve.resolved, twoFleetResolve);
+ ok('canAutoResolve()/autoResolveTarget() fight with the fleet they are handed (fleet 1, at home)', twoFleetResolve.canAuto && twoFleetResolve.resolved, twoFleetResolve);
  ok('...not the fleet the Raids pane tab happens to be showing (fleet 2, selected but away)',
    twoFleetResolve.fightFleet===1 && twoFleetResolve.selectedTab===2, twoFleetResolve);
 

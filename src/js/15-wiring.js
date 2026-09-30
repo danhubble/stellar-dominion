@@ -64,7 +64,7 @@ function hscroll(el){
   const wrap=document.querySelector("#mapWrap"); if(!wrap)return;
   wrap.addEventListener("click", e=>{
     if(flSel==null)return;
-    if(e.target.closest(".mnode")||e.target.closest(".sendchip"))return;
+    if(e.target.closest(".mnode")||e.target.closest(".sendchip")||e.target.closest(".enmark")||e.target.closest("#flHint")||e.target.closest("#flBanner"))return;
     fleetDeselect(); dirty=true; render();
   });
 })();
@@ -134,7 +134,6 @@ $$(".tab").forEach(t=>t.onclick=()=>{
      player opens it - clear it rather than leave it covering the tab's own list */
   const fk=S.notifyQueue&&S.notifyQueue[0], fv=fk&&fk.indexOf("vega:")===0&&VEGA[fk.slice(5)];
   if(fv&&fv.go===id&&!noticeIsStory(fk))dismissNotice();
-  if(id==="p-raid" && thq().length>0){ raidMode="targets"; syncRaidMode(); }
   dirty=true; render();
   if(view){
     const to = paneNeedsTop(id) ? 0 : (paneScroll[id]||0);

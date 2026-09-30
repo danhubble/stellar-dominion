@@ -1,14 +1,34 @@
 /* ============================ raids ============================ */
 const TGT_MAX=3, TGT_EVERY=110;
+/* PLAN-raidmap. DOCK_REP (TUNING-PENDING): a fleet docked at Sol Reach or a Shipyard
+   mends this many times faster than one out in the dark - what makes RECALL worth a
+   trip. tgCap(): the first TGT_MAX contacts are the old stream exactly (Math.random,
+   the loop csim4.js has always run); every sector the map opens adds room for two
+   more, and THOSE come off the save's own little generator (S.tgR) so they never
+   spend a Math.random() call csim's seeded baseline would notice. */
+const DOCK_REP=6;
+function tgCap(){ return TGT_MAX+2*tgMaxSec() }
+function tgRand(){
+  if(S.tgR==null)S.tgR=(Date.now()&0x3fffffff)|0;
+  S.tgR=(S.tgR+0x6D2B79F5)|0;
+  let t=Math.imul(S.tgR^S.tgR>>>15,1|S.tgR);
+  t=t+Math.imul(t^t>>>7,61|t)^t;
+  return ((t^t>>>14)>>>0)/4294967296;
+}
 function raidTick(dt){
   if(!BT){
     const rep=dt/600*Math.pow(1.30,rfl("rep"))*crewMul("eng");
-    for(const f of fleets()) if(f.hp<1) f.hp=Math.min(1,f.hp+rep);
+    for(const f of fleets()) if(f.hp<1) f.hp=Math.min(1,f.hp+rep*(idleAtYard(f)?DOCK_REP:1));
   }
   S.tgT=(S.tgT||0)+dt;
   const every=TGT_EVERY/(Math.pow(1.22,rfl("sen"))*crewMul("nav"));
   while(S.tg.length<TGT_MAX && S.tgT>=every){ S.tgT-=every; S.tg.push(newTarget()); dirty=true; }
   if(S.tg.length>=TGT_MAX)S.tgT=Math.min(S.tgT,every);
+  const cap=tgCap();
+  if(S.tg.length>=TGT_MAX && S.tg.length<cap){
+    S.tgX=(S.tgX||0)+dt;
+    while(S.tg.length<cap && S.tgX>=every){ S.tgX-=every; S.tg.push(newTarget(tgRand)); dirty=true; }
+  } else if(S.tgX) S.tgX=Math.min(S.tgX,every);
 }
 let BT=null;
 const bcv=$("#bcv"); let bx=null,BW=0,BH=0;
@@ -55,11 +75,10 @@ function engage(idx){
 /* idx < 0 means the target is not one of the drifting contacts in S.tg - an assault
    builds its own target, so endBattle() must not splice it out of that list. */
 function engageTarget(t, idx, f){
-  /* run 2 (decision 3): a raid target (t.sys set) needs a fleet actually there -
-     see canAutoResolve()'s own comment, same rule. Anything without t.sys (an
-     assault's t.sysId, the final battle's t.final) is unaffected. */
-  f=f||(t&&t.sys?fleetAtSys(t.sys):curFleet());
-  if(t&&t.sys&&!f){ toast("No fleet at "+((SYSMAP[t.sys]||{}).n||t.sys)); return }
+  /* a map contact is fought by the fleet holding beside it (passed in); an assault
+     (t.sysId) passes the fleet at that system; the final battle passes its merged
+     fleet. Nothing passed: the Raids tab's selected fleet. */
+  f=f||curFleet();
   const dps=fleetDPS(f), hpm=fleetHPMax(f);
   if(dps<=0){ toast("Build warships before you engage."); return }
   if(f.hp<0.15){ toast("Fleet too damaged — let it repair."); return }
