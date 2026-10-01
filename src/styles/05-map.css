@@ -48,6 +48,10 @@ body.syspage #mapWrap.homeonly{height:24vh;max-height:24vh}
 }
 #mapLinks{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 #mapBg{position:absolute;inset:0;width:100%;height:100%;display:block}
+/* the painted planets, lane motes and ownership rings (mapPlanetsDraw) - over the
+   lanes, under the node buttons */
+#mapPl{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;transition:opacity .28s ease}
+#mapWrap.zoomed #mapPl{opacity:0}
 #mapEdge{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 #mapEdge[hidden],#mapChips[hidden]{display:none}
 /* patch603: map zoom - the map square becomes the tapped system's planet scene.
@@ -127,30 +131,29 @@ body.syspage #mapZoomBar{opacity:1;pointer-events:auto}
 #mapLinks .terrlab{font:700 2.6px/1 system-ui;letter-spacing:.28px;text-anchor:middle;
   opacity:.62;pointer-events:none;
   paint-order:stroke;stroke:rgba(3,4,12,.85);stroke-width:.9px;stroke-linejoin:round}
-#mapLinks line{stroke:rgba(140,170,255,.20);stroke-width:1}
-#mapLinks line.held{stroke:rgba(92,230,165,.55);stroke-width:1.6}
+/* lanes are thin routes of light, not bars: faint and dotted where nobody you know
+   holds both ends, a glowing line where you do, rose dashes into enemy ground */
+#mapLinks line{stroke:rgba(150,175,255,.22);stroke-width:.35;stroke-dasharray:.9 1.5}
+#mapLinks line.held{stroke:rgba(120,240,190,.8);stroke-width:.5;stroke-dasharray:none;
+  filter:drop-shadow(0 0 1px rgba(92,230,165,.9))}
+#mapWrap{box-shadow:inset 0 0 60px rgba(0,0,0,.55)}
+#mapLinks .terr text{transform:translateY(2.4px)}
 .mnode{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;
   align-items:center;gap:3px;cursor:pointer;background:none;border:0;padding:4px;
   min-width:44px;min-height:44px;justify-content:center}
-.mdot{width:15px;height:15px;border-radius:50%;border:2px solid var(--a);
-  background:rgba(6,9,22,.9);box-shadow:0 0 9px -1px var(--a);transition:transform .18s}
-.mnode:hover .mdot{transform:scale(1.25)}
+.mdot{width:22px;height:22px;border-radius:50%;opacity:0}   /* invisible: the planet is painted under it (mapPlanetsDraw) - it only keeps the button's size and centre */
 /* the label hangs under the dot, out of the flow: the button's centre is then the
    DOT's centre, which is the point the lane lines (and fleet markers) are drawn to.
    In the flow it pushed the dot ~6px above where every lane actually ended. */
-.mnode .mlab{position:absolute;left:50%;top:calc(50% + 11px);transform:translateX(-50%);
-  font:700 8.5px/1 system-ui;letter-spacing:.08em;color:var(--mut);white-space:nowrap;
-  text-shadow:0 0 5px #000}
-.mnode.home .mlab{top:calc(50% + 14px)}
-.mnode.held .mdot{background:var(--a)}
+.mnode .mlab{position:absolute;left:50%;top:calc(50% + 16px);transform:translateX(-50%);
+  font:700 9.5px/1 system-ui;letter-spacing:.1em;color:var(--mut);white-space:nowrap;
+  text-shadow:0 1px 2px #000,0 0 6px #000,0 0 10px #000}
+.mnode.home .mlab{top:calc(50% + 21px)}
 .mnode.held .mlab{color:var(--txt)}
-.mnode.home .mdot{width:20px;height:20px;border-width:3px}
-.mnode.open .mdot{animation:mpulse 1.9s ease-in-out infinite}
-.mnode.foe .mdot{border-style:double;border-width:4px}
-.mnode.sdfort .mdot{box-shadow:0 0 0 2px rgba(72,226,255,.35)}
-.mnode.occ .mdot{box-shadow:0 0 0 2px var(--rd)}                 /* STAGE 2 */
-.mnode.incoming .mdot{animation:mincoming 1.1s ease-in-out infinite}  /* STAGE 2 (2C) */
-@keyframes mincoming{0%,100%{box-shadow:0 0 6px -1px var(--rd)}50%{box-shadow:0 0 16px 3px var(--rd)}}
+.mnode.home .mdot{width:30px;height:30px}
+/* held / open / enemy / fortified / occupied / incoming are all drawn on #mapPl now
+   (rings round the painted planet) - the classes stay on the button for the tests
+   and for the label colours below */
 /* scoped to the panel it lives in: a bare `button.something` selector will find every
    button in the game that happens to share the word, and map nodes are buttons */
 #sysAct button.fortbtn{width:100%;margin-top:8px;border:1px solid rgba(72,226,255,.55);
@@ -159,13 +162,10 @@ body.syspage #mapZoomBar{opacity:1;pointer-events:auto}
 #sysAct button.fortbtn:hover:not(:disabled){background:rgba(72,226,255,.2)}
 #sysAct button.fortbtn:disabled{opacity:.4;cursor:not-allowed}
 .mnode.foe .mlab{color:var(--a)}
-#mapLinks line.foe{stroke:rgba(255,107,138,.35);stroke-dasharray:3 3}
+#mapLinks line.foe{stroke:rgba(255,107,138,.5);stroke-width:.4;stroke-dasharray:1.6 1.6}
 #sysInfo button.foe,#sysAct button.foe{border-color:rgba(255,107,138,.6);background:rgba(255,107,138,.14);color:#ffb3c2}
-.mnode.locked{opacity:.42}
-.mnode.locked .mdot{border-style:dashed;box-shadow:none}
-.mnode.sel .mdot{transform:scale(1.35);box-shadow:0 0 14px 1px var(--a)}
+.mnode.locked .mlab{opacity:.55}
 .mnode.sel .mlab{color:var(--a)}
-@keyframes mpulse{0%,100%{box-shadow:0 0 6px -1px var(--a)}50%{box-shadow:0 0 15px 2px var(--a)}}
 /* ---------- system page (patch595, redesigned patch626 - PLAN-page.md "a system
    is a page, not a sheet"): in-flow content under the map header, not an overlay -
    #sysInfo/#sysAct keep their ids and guarded-render idiom. No position/transform/

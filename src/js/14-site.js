@@ -482,6 +482,7 @@ function draw(t){
      canvas resize check, drawSite()/drawSysScene() onto it, the pick-what-to-draw
      lookup - is gone with the widget itself. draw() now only ever paints the
      starfield (above) and the map-zoom canvas (below). */
+  mapPlanetsDraw(t);   /* the sector map's painted planets - returns at once unless the map itself is showing */
   // ---------- map zoom scene (patch603) ----------
   if(mzx===null || (++mzChk%20===0 &&
       (MZW!==Math.round(mapZoomCv.clientWidth*devicePixelRatio)

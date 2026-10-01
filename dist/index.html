@@ -1352,6 +1352,10 @@ body.syspage #mapWrap.homeonly{height:24vh;max-height:24vh}
 }
 #mapLinks{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 #mapBg{position:absolute;inset:0;width:100%;height:100%;display:block}
+/* the painted planets, lane motes and ownership rings (mapPlanetsDraw) - over the
+   lanes, under the node buttons */
+#mapPl{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;transition:opacity .28s ease}
+#mapWrap.zoomed #mapPl{opacity:0}
 #mapEdge{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 #mapEdge[hidden],#mapChips[hidden]{display:none}
 /* patch603: map zoom - the map square becomes the tapped system's planet scene.
@@ -1431,30 +1435,29 @@ body.syspage #mapZoomBar{opacity:1;pointer-events:auto}
 #mapLinks .terrlab{font:700 2.6px/1 system-ui;letter-spacing:.28px;text-anchor:middle;
   opacity:.62;pointer-events:none;
   paint-order:stroke;stroke:rgba(3,4,12,.85);stroke-width:.9px;stroke-linejoin:round}
-#mapLinks line{stroke:rgba(140,170,255,.20);stroke-width:1}
-#mapLinks line.held{stroke:rgba(92,230,165,.55);stroke-width:1.6}
+/* lanes are thin routes of light, not bars: faint and dotted where nobody you know
+   holds both ends, a glowing line where you do, rose dashes into enemy ground */
+#mapLinks line{stroke:rgba(150,175,255,.22);stroke-width:.35;stroke-dasharray:.9 1.5}
+#mapLinks line.held{stroke:rgba(120,240,190,.8);stroke-width:.5;stroke-dasharray:none;
+  filter:drop-shadow(0 0 1px rgba(92,230,165,.9))}
+#mapWrap{box-shadow:inset 0 0 60px rgba(0,0,0,.55)}
+#mapLinks .terr text{transform:translateY(2.4px)}
 .mnode{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;
   align-items:center;gap:3px;cursor:pointer;background:none;border:0;padding:4px;
   min-width:44px;min-height:44px;justify-content:center}
-.mdot{width:15px;height:15px;border-radius:50%;border:2px solid var(--a);
-  background:rgba(6,9,22,.9);box-shadow:0 0 9px -1px var(--a);transition:transform .18s}
-.mnode:hover .mdot{transform:scale(1.25)}
+.mdot{width:22px;height:22px;border-radius:50%;opacity:0}   /* invisible: the planet is painted under it (mapPlanetsDraw) - it only keeps the button's size and centre */
 /* the label hangs under the dot, out of the flow: the button's centre is then the
    DOT's centre, which is the point the lane lines (and fleet markers) are drawn to.
    In the flow it pushed the dot ~6px above where every lane actually ended. */
-.mnode .mlab{position:absolute;left:50%;top:calc(50% + 11px);transform:translateX(-50%);
-  font:700 8.5px/1 system-ui;letter-spacing:.08em;color:var(--mut);white-space:nowrap;
-  text-shadow:0 0 5px #000}
-.mnode.home .mlab{top:calc(50% + 14px)}
-.mnode.held .mdot{background:var(--a)}
+.mnode .mlab{position:absolute;left:50%;top:calc(50% + 16px);transform:translateX(-50%);
+  font:700 9.5px/1 system-ui;letter-spacing:.1em;color:var(--mut);white-space:nowrap;
+  text-shadow:0 1px 2px #000,0 0 6px #000,0 0 10px #000}
+.mnode.home .mlab{top:calc(50% + 21px)}
 .mnode.held .mlab{color:var(--txt)}
-.mnode.home .mdot{width:20px;height:20px;border-width:3px}
-.mnode.open .mdot{animation:mpulse 1.9s ease-in-out infinite}
-.mnode.foe .mdot{border-style:double;border-width:4px}
-.mnode.sdfort .mdot{box-shadow:0 0 0 2px rgba(72,226,255,.35)}
-.mnode.occ .mdot{box-shadow:0 0 0 2px var(--rd)}                 /* STAGE 2 */
-.mnode.incoming .mdot{animation:mincoming 1.1s ease-in-out infinite}  /* STAGE 2 (2C) */
-@keyframes mincoming{0%,100%{box-shadow:0 0 6px -1px var(--rd)}50%{box-shadow:0 0 16px 3px var(--rd)}}
+.mnode.home .mdot{width:30px;height:30px}
+/* held / open / enemy / fortified / occupied / incoming are all drawn on #mapPl now
+   (rings round the painted planet) - the classes stay on the button for the tests
+   and for the label colours below */
 /* scoped to the panel it lives in: a bare `button.something` selector will find every
    button in the game that happens to share the word, and map nodes are buttons */
 #sysAct button.fortbtn{width:100%;margin-top:8px;border:1px solid rgba(72,226,255,.55);
@@ -1463,13 +1466,10 @@ body.syspage #mapZoomBar{opacity:1;pointer-events:auto}
 #sysAct button.fortbtn:hover:not(:disabled){background:rgba(72,226,255,.2)}
 #sysAct button.fortbtn:disabled{opacity:.4;cursor:not-allowed}
 .mnode.foe .mlab{color:var(--a)}
-#mapLinks line.foe{stroke:rgba(255,107,138,.35);stroke-dasharray:3 3}
+#mapLinks line.foe{stroke:rgba(255,107,138,.5);stroke-width:.4;stroke-dasharray:1.6 1.6}
 #sysInfo button.foe,#sysAct button.foe{border-color:rgba(255,107,138,.6);background:rgba(255,107,138,.14);color:#ffb3c2}
-.mnode.locked{opacity:.42}
-.mnode.locked .mdot{border-style:dashed;box-shadow:none}
-.mnode.sel .mdot{transform:scale(1.35);box-shadow:0 0 14px 1px var(--a)}
+.mnode.locked .mlab{opacity:.55}
 .mnode.sel .mlab{color:var(--a)}
-@keyframes mpulse{0%,100%{box-shadow:0 0 6px -1px var(--a)}50%{box-shadow:0 0 15px 2px var(--a)}}
 /* ---------- system page (patch595, redesigned patch626 - PLAN-page.md "a system
    is a page, not a sheet"): in-flow content under the map header, not an overlay -
    #sysInfo/#sysAct keep their ids and guarded-render idiom. No position/transform/
@@ -2116,6 +2116,7 @@ body.syspage #toasts{bottom:calc(var(--sysbarh) + 8px + env(safe-area-inset-bott
           <button class="rmbtn" data-mm="list">LIST</button>
         </div>
         <div id="mapWrap"><canvas id="mapBg" width="600" height="600"></canvas><svg id="mapLinks" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
+          <canvas id="mapPl"></canvas>
           <div id="mapNodes"></div><div id="mapEdge"></div>
           <svg id="fleetLines" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
           <div id="fleetMarkers"></div>
@@ -7207,91 +7208,146 @@ function renderMapChips(){
    every render tick) - see /home/claude/sd/map-mock.html, same five looks. ---- */
 function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
   t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
-function mapDrawStars(cx,W,H,rng,n,opts){
-  opts=opts||{};
-  for(let i=0;i<n;i++){
-    const x=rng()*W, y=rng()*H, r=(opts.rmin||0.4)+rng()*(opts.rspread||1.1);
-    const br=(opts.brmin||0.25)+rng()*(opts.brspread||0.55);
-    cx.beginPath();cx.arc(x,y,r,0,7);
-    cx.fillStyle=`rgba(${opts.col||"221,229,255"},${br.toFixed(2)})`;
-    cx.fill();
-  }
-}
-const MAP_BACKDROPS=[
- function(cx,W,H){ /* Core: violet/blue nebula tint */
-  const rng=mulberry32(1001);
-  const g=cx.createRadialGradient(W*0.5,H*0.5,20,W*0.5,H*0.5,W*0.7);
-  g.addColorStop(0,"rgba(70,60,150,.30)");g.addColorStop(0.5,"rgba(50,30,110,.20)");g.addColorStop(1,"rgba(4,5,13,0)");
-  cx.fillStyle="#080a1c";cx.fillRect(0,0,W,H);
-  cx.fillStyle=g;cx.fillRect(0,0,W,H);
-  for(let i=0;i<4;i++){
-    const bx=rng()*W,by=rng()*H,br=90+rng()*140;
-    const bg=cx.createRadialGradient(bx,by,0,bx,by,br);
-    const hue=i%2?"120,90,220":"70,140,220";
-    bg.addColorStop(0,`rgba(${hue},.16)`);bg.addColorStop(1,"rgba(0,0,0,0)");
-    cx.fillStyle=bg;cx.beginPath();cx.arc(bx,by,br,0,7);cx.fill();
-  }
-  mapDrawStars(cx,W,H,rng,90,{});
- },
- function(cx,W,H){ /* Inner Reach: dense star cluster near centre */
-  const rng=mulberry32(2002);
-  cx.fillStyle="#070b1e";cx.fillRect(0,0,W,H);
-  const g=cx.createRadialGradient(W*0.5,H*0.5,10,W*0.5,H*0.5,W*0.55);
-  g.addColorStop(0,"rgba(60,100,200,.18)");g.addColorStop(1,"rgba(4,5,13,0)");
-  cx.fillStyle=g;cx.fillRect(0,0,W,H);
-  for(let i=0;i<160;i++){
-    const a=rng()*6.28, d=Math.pow(rng(),1.6)*180;
-    const x=W*0.45+Math.cos(a)*d, y=H*0.5+Math.sin(a)*d*0.7;
-    const r=0.4+rng()*1.3, br=0.3+rng()*0.6;
-    cx.beginPath();cx.arc(x,y,r,0,7);cx.fillStyle=`rgba(200,225,255,${br.toFixed(2)})`;cx.fill();
-  }
-  mapDrawStars(cx,W,H,rng,60,{});
- },
- function(cx,W,H){ /* Frontier: near-black void, sparse dim stars only */
-  const rng=mulberry32(3003);
-  cx.fillStyle="#020208";cx.fillRect(0,0,W,H);
-  const g=cx.createRadialGradient(W*0.5,H*0.5,0,W*0.5,H*0.5,W*0.75);
-  g.addColorStop(0,"rgba(10,14,28,.4)");g.addColorStop(1,"rgba(0,0,0,.85)");
-  cx.fillStyle=g;cx.fillRect(0,0,W,H);
-  mapDrawStars(cx,W,H,rng,34,{rmin:0.3,rspread:0.7,brmin:0.15,brspread:0.35});
- },
- function(cx,W,H){ /* The Deep: dark red-brown tint + small angular wreck fragments */
-  const rng=mulberry32(4004);
-  cx.fillStyle="#0a0710";cx.fillRect(0,0,W,H);
-  const g=cx.createRadialGradient(W*0.5,H*0.5,10,W*0.5,H*0.5,W*0.7);
-  g.addColorStop(0,"rgba(120,40,40,.14)");g.addColorStop(1,"rgba(4,5,13,0)");
-  cx.fillStyle=g;cx.fillRect(0,0,W,H);
-  for(let i=0;i<26;i++){
-    const x=rng()*W,y=rng()*H,s=4+rng()*10,rot=rng()*6.28;
-    cx.save();cx.translate(x,y);cx.rotate(rot);
-    cx.strokeStyle=`rgba(255,140,90,${(0.1+rng()*0.22).toFixed(2)})`;cx.lineWidth=1;
-    cx.beginPath();cx.moveTo(-s,0);cx.lineTo(0,-s*0.5);cx.lineTo(s,0.2*s);cx.lineTo(0.2*s,s);cx.closePath();cx.stroke();
-    cx.restore();
-  }
-  mapDrawStars(cx,W,H,rng,50,{brmin:0.15,brspread:0.3});
- },
- function(cx,W,H){ /* Beyond: mostly black, one faint spiral-galaxy glow, tucked in a corner */
-  const rng=mulberry32(5005);
-  cx.fillStyle="#030309";cx.fillRect(0,0,W,H);
-  const gx=W*0.72,gy=H*0.28;
-  cx.save();cx.translate(gx,gy);cx.rotate(-0.4);
-  const gg=cx.createRadialGradient(0,0,0,0,0,120);
-  gg.addColorStop(0,"rgba(255,240,220,.5)");gg.addColorStop(0.3,"rgba(180,160,255,.18)");gg.addColorStop(1,"rgba(0,0,0,0)");
-  cx.scale(1,0.34);cx.beginPath();cx.arc(0,0,120,0,7);cx.fillStyle=gg;cx.fill();
-  cx.restore();
-  for(let a=0;a<3;a++){
-    cx.save();cx.translate(gx,gy);cx.rotate(-0.4+a*0.9);cx.scale(1,0.34);
-    cx.strokeStyle="rgba(200,190,255,.10)";cx.lineWidth=6;
-    cx.beginPath();cx.arc(0,0,60+a*22,0.2,2.6);cx.stroke();
-    cx.restore();
-  }
-  mapDrawStars(cx,W,H,rng,70,{brmin:0.2,brspread:0.45});
- }
+/* ---- the sector backdrop: a painted nebula per sector (map look refresh) ----
+   The flat tinted gradients gave way to a cloud with filaments and dust lanes, so the
+   map sits in the same painted world as the planets (13b-planets.js). Baked once per
+   sector at low resolution from warped value noise, then scaled up smooth onto #mapBg
+   with crisp stars drawn over it at full size; cached, so a sector switch after the
+   first costs one drawImage. base / two cloud colours / cloud strength / star count: */
+const MAP_LOOK=[
+ {base:[7,9,26],  c1:[92,70,190], c2:[60,130,220], k:1.0, stars:150, seed:11},   /* Core: violet and blue */
+ {base:[5,10,26], c1:[40,110,170],c2:[90,200,210], k:.8,  stars:260, seed:23},   /* Inner Reach: teal, dense stars */
+ {base:[2,3,9],   c1:[40,60,110], c2:[90,110,150], k:.45, stars:90,  seed:37},   /* Frontier: nearly empty */
+ {base:[9,5,10],  c1:[150,50,45], c2:[210,120,60], k:.85, stars:120, seed:41},   /* The Deep: embers */
+ {base:[3,3,10],  c1:[90,60,170], c2:[200,170,255],k:.55, stars:110, seed:59}    /* Beyond: thin violet, and its galaxy */
 ];
+const mapBgCache={};
+function mapNoiseH(x,y,s){ const n=Math.sin(x*127.1+y*311.7+s*74.7)*43758.5453; return n-Math.floor(n) }
+function mapNoiseV(x,y,s){ const xi=Math.floor(x), yi=Math.floor(y), xf=x-xi, yf=y-yi, u=xf*xf*(3-2*xf), v=yf*yf*(3-2*yf);
+  const a=mapNoiseH(xi,yi,s), b=mapNoiseH(xi+1,yi,s), c=mapNoiseH(xi,yi+1,s), d=mapNoiseH(xi+1,yi+1,s);
+  return a+(b-a)*u+(c-a)*v+(a-b-c+d)*u*v }
+function mapFbm(x,y,s){ let t=0,a=.5; for(let i=0;i<4;i++){ t+=a*mapNoiseV(x,y,s+i*13); x*=2.03; y*=2.03; a*=.5 } return t/.9375 }
+function bakeMapBg(sec,S2){
+  if(mapBgCache[sec])return mapBgCache[sec];
+  const N=150, lo=document.createElement("canvas"); lo.width=lo.height=N;
+  const g=lo.getContext("2d"), im=g.createImageData(N,N), d=im.data, L=MAP_LOOK[sec]||MAP_LOOK[0];
+  for(let y=0;y<N;y++)for(let x=0;x<N;x++){
+    const u=x/N, v=y/N;
+    /* warp the lookup so the cloud has filaments rather than blobs */
+    const wx=mapFbm(u*2.2+3,v*2.2+7,L.seed), wy=mapFbm(u*2.2+11,v*2.2+1,L.seed+5);
+    let n=mapFbm(u*2.6+wx*1.6,v*2.6+wy*1.6,L.seed+9);
+    const m=mapFbm(u*5+wy*2,v*5+wx*2,L.seed+17);
+    n=Math.max(0,(n-.38)*2.1); n=n*n*L.k;
+    const mix=Math.min(1,Math.max(0,(m-.3)*2.2));
+    const dark=1-.55*Math.max(0,mapFbm(u*3.3+5,v*3.3+9,L.seed+29)-.45)*2;      /* dust lanes */
+    const vg=1-.55*Math.pow(Math.hypot(u-.5,v-.5)*1.25,2.2);                      /* vignette */
+    const o=(y*N+x)*4;
+    for(let c=0;c<3;c++){
+      const col=L.c1[c]+(L.c2[c]-L.c1[c])*mix;
+      d[o+c]=Math.min(255,(L.base[c]+col*n*1.15)*dark*vg);
+    }
+    d[o+3]=255;
+  }
+  g.putImageData(im,0,0);
+  const out=document.createElement("canvas"); out.width=out.height=S2;
+  const og=out.getContext("2d"); og.imageSmoothingEnabled=true; og.imageSmoothingQuality="high";
+  og.drawImage(lo,0,0,S2,S2);
+  /* stars: mostly tiny, a few bright ones with a small glint */
+  const r=mulberry32(L.seed*977);
+  for(let i=0;i<L.stars;i++){
+    const x=r()*S2, y=r()*S2, b=Math.pow(r(),3), rad=.5+b*1.5, a=.25+r()*.55;
+    const tint=r()<.2?"255,220,190":r()<.5?"190,215,255":"235,240,255";
+    og.fillStyle="rgba("+tint+","+a.toFixed(2)+")"; og.beginPath(); og.arc(x,y,rad,0,7); og.fill();
+    if(b>.72){ og.strokeStyle="rgba("+tint+",.35)"; og.lineWidth=.8; og.beginPath();
+      og.moveTo(x-rad*4,y); og.lineTo(x+rad*4,y); og.moveTo(x,y-rad*4); og.lineTo(x,y+rad*4); og.stroke(); }
+  }
+  if(sec===4){
+    og.save(); og.translate(S2*.72,S2*.28); og.rotate(-.4); og.scale(1,.34);
+    const gg=og.createRadialGradient(0,0,0,0,0,S2*.2);
+    gg.addColorStop(0,"rgba(255,240,220,.55)"); gg.addColorStop(.3,"rgba(180,160,255,.2)"); gg.addColorStop(1,"rgba(0,0,0,0)");
+    og.fillStyle=gg; og.beginPath(); og.arc(0,0,S2*.2,0,7); og.fill(); og.restore();
+  }
+  return mapBgCache[sec]=out;
+}
 function drawMapBg(sec){
   const cv=$("#mapBg"); if(!cv)return;
   const cx=cv.getContext("2d"); if(!cx)return;
-  (MAP_BACKDROPS[sec]||MAP_BACKDROPS[0])(cx,cv.width,cv.height);
+  cx.drawImage(bakeMapBg(sec,cv.width),0,0,cv.width,cv.height);
+}
+/* ---- the systems themselves: painted planets on #mapPl (map look refresh) ----
+   Each node is a small copy of its own painted, slowly turning planet (the same
+   PLANETS.draw() its system page uses). Whose it is is said by the ring, never by the
+   planet's colour: yours = a bright ring in the system's colour over a soft glow;
+   enemy = a thick rose ring, a second one outside it and a rose glow; open to claim =
+   a pulsing ring; out of reach = the planet sunk into shadow, a faint dashed ring. A
+   governed system carries a tilted orbit with a small station going round it. Motes of
+   light run outward along every lane the player holds.
+   renderMap() (11Hz) works out mapNodeInfo/mapLaneInfo from the game state; this only
+   draws them, every animation frame, from 14-site.js's draw() loop. The .mnode buttons
+   on top are unchanged - their dot is simply invisible now, so every tap, test hook
+   and label is where it always was. */
+let mapNodeInfo=[], mapLaneInfo=[], mapPlW=0, mapPlH=0, mapPlD=1;
+const MAP_RM=(()=>{ try{ return matchMedia("(prefers-reduced-motion:reduce)").matches }catch(e){ return false } })();
+function mapHexA(col,a){
+  if(col&&col[0]==="#"&&col.length===7){ const n=parseInt(col.slice(1),16); return "rgba("+(n>>16&255)+","+(n>>8&255)+","+(n&255)+","+a+")" }
+  return col;
+}
+function mapPlanetsDraw(t){
+  const cv=$("#mapPl"); if(!cv||S.msel||!cv.offsetParent)return;
+  const w=cv.clientWidth, h=cv.clientHeight; if(!w||!h)return;
+  const D=Math.min(devicePixelRatio||1,2.5);
+  if(Math.round(w*D)!==mapPlW||Math.round(h*D)!==mapPlH||D!==mapPlD){ mapPlD=D; mapPlW=cv.width=Math.round(w*D); mapPlH=cv.height=Math.round(h*D); }
+  const g=cv.getContext("2d"), W=mapPlW, H=mapPlH;
+  g.clearRect(0,0,W,H);
+  if(!MAP_RM) mapLaneInfo.forEach((ln,i)=>{
+    for(let k=0;k<2;k++){
+      const q=((t/2600)+k*.5+i*.17)%1, x=(ln.ax+(ln.bx-ln.ax)*q)*W/100, y=(ln.ay+(ln.by-ln.ay)*q)*H/100;
+      const a=Math.sin(q*Math.PI);
+      const gr=g.createRadialGradient(x,y,0,x,y,5*D);
+      gr.addColorStop(0,"rgba(210,255,235,"+(.9*a).toFixed(2)+")"); gr.addColorStop(1,"rgba(92,230,165,0)");
+      g.fillStyle=gr; g.beginPath(); g.arc(x,y,5*D,0,7); g.fill();
+    }
+  });
+  for(const n of mapNodeInfo){
+    const s=n.s, x=s.sx*W/100, y=s.sy*H/100, R=(s.home?15:11)*D*(n.sel?1.15:1), col=n.col;
+    if(n.held){ const gl=g.createRadialGradient(x,y,R*.9,x,y,R*2.6);
+      gl.addColorStop(0,mapHexA(col,.34)); gl.addColorStop(1,mapHexA(col,0)); g.fillStyle=gl; g.beginPath(); g.arc(x,y,R*2.6,0,7); g.fill(); }
+    if(n.foe){ const rg=g.createRadialGradient(x,y,R,x,y,R*2.4);
+      rg.addColorStop(0,"rgba(255,80,110,.32)"); rg.addColorStop(1,"rgba(255,80,110,0)"); g.fillStyle=rg; g.beginPath(); g.arc(x,y,R*2.4,0,7); g.fill(); }
+    PLANETS.draw(g,x,y,R,t+s.sx*9000,s.home?"home":s.kind,s.id,n.held?40:0);
+    if(n.locked){ g.fillStyle="rgba(3,4,12,.62)"; g.beginPath(); g.arc(x,y,R*1.03,0,7); g.fill(); }
+    if(n.held){ g.lineWidth=1.6*D; g.strokeStyle=mapHexA(col,.95); g.beginPath(); g.arc(x,y,R+3.5*D,0,7); g.stroke(); }
+    else if(n.foe){
+      g.lineWidth=3*D; g.strokeStyle="rgba(255,107,138,1)"; g.beginPath(); g.arc(x,y,R+4*D,0,7); g.stroke();
+      g.lineWidth=1.5*D; g.strokeStyle="rgba(255,107,138,.55)"; g.beginPath(); g.arc(x,y,R+8*D,0,7); g.stroke();
+    } else if(n.open){
+      const p=MAP_RM?1:.5+.5*Math.sin(t/420);
+      g.lineWidth=1.6*D; g.strokeStyle=mapHexA(col,(.45+.5*p).toFixed(2)); g.beginPath(); g.arc(x,y,R+(3.5+2.5*p)*D,0,7); g.stroke();
+    } else {
+      g.setLineDash([3*D,4*D]); g.lineWidth=1*D; g.strokeStyle="rgba(150,170,220,.35)";
+      g.beginPath(); g.arc(x,y,R+3.5*D,0,7); g.stroke(); g.setLineDash([]);
+    }
+    if(n.fort){     /* fortified: four cyan bastion arcs outside the ring */
+      g.lineWidth=2*D; g.strokeStyle="rgba(72,226,255,.85)";
+      for(let k=0;k<4;k++){ const a0=k*Math.PI/2+.5; g.beginPath(); g.arc(x,y,R+6.5*D,a0,a0+.57); g.stroke(); }
+    }
+    if(n.gov){
+      const rx=R+9*D, ry=rx*.36, a=MAP_RM?.9:t/1700+s.sx;
+      g.save(); g.translate(x,y); g.rotate(-.42);
+      /* the near half of the orbit over the planet, the far half faint behind it */
+      g.lineWidth=1.1*D; g.strokeStyle="rgba(214,226,244,.75)"; g.beginPath(); g.ellipse(0,0,rx,ry,0,0,Math.PI); g.stroke();
+      g.strokeStyle="rgba(214,226,244,.3)"; g.beginPath(); g.ellipse(0,0,rx,ry,0,Math.PI,2*Math.PI); g.stroke();
+      const ox=Math.cos(a)*rx, oy=Math.sin(a)*ry;
+      g.globalAlpha=Math.sin(a)>0?1:.45;
+      g.fillStyle="#04050d"; g.beginPath(); g.arc(ox,oy,3.4*D,0,7); g.fill();
+      g.fillStyle="#eaf2ff"; g.beginPath(); g.arc(ox,oy,2.3*D,0,7); g.fill();
+      g.globalAlpha=1; g.restore();
+    }
+    if(n.alert){
+      const p=MAP_RM?1:.5+.5*Math.sin(t/260);
+      g.lineWidth=2*D; g.strokeStyle="rgba(255,107,138,"+(.4+.6*p).toFixed(2)+")"; g.beginPath(); g.arc(x,y,R+(7+3*p)*D,0,7); g.stroke();
+    }
+  }
 }
 /* exit lane out to the next sector (or the end-of-map flag on the last one).
    patch568 adds the rival-fleet/trip warnings into this same #mapEdge host. */
@@ -7542,23 +7598,25 @@ function renderFleetBar(){
    then places everything with a sub-pixel transform; it runs from frame() on every
    animation frame so motion is smooth, and once from here so a paused tab (or a
    test) still gets correct positions. */
-const FL_DART="M0 -5.2L3.4 3.8 0 2 -3.4 3.8Z", EN_BOX="M0 -5.6L2.7 -2.6V4.6H-2.7V-2.6Z", EN_RED="#ff6b8a";
-function flFormationSVG(col){
-  return `<svg viewBox="-17 -17 34 34" aria-hidden="true"><g class="rot"><g transform="scale(1.45)" fill="${col}" stroke="#04050d" stroke-width=".9" stroke-linejoin="round">
-    <path d="${FL_DART}" transform="translate(-6.5 4.5) scale(.82)"/><path d="${FL_DART}" transform="translate(6.5 4.5) scale(.82)"/>
-    <path d="${FL_DART}" transform="translate(0 -3.5)"/></g></g></svg>`;
-}
-/* one silhouette per RAIDS entry: convoy, hauler, patrol, anomaly, flagship */
-const EN_SHAPE=[
- `<path d="${EN_BOX}" transform="translate(-4.5 1)"/><path d="${EN_BOX}" transform="translate(4.5 1)"/><path d="${FL_DART}" transform="translate(0 -7) scale(.7)"/>`,
- `<path d="M0 -8L3.3 -4.6V7H-3.3V-4.6Z" transform="translate(-3 1)"/><path d="${FL_DART}" transform="translate(6 -2) scale(.8)"/>`,
- `<path d="${FL_DART}" transform="translate(-6.5 4.5) scale(.85)"/><path d="${FL_DART}" transform="translate(6.5 4.5) scale(.85)"/><path d="${FL_DART}" transform="translate(0 -3.5) scale(1.05)"/>`,
- `<path d="M0 -7.5L6 0 0 7.5 -6 0Z"/><circle r="10" fill="none" stroke="${EN_RED}" stroke-width="1" stroke-dasharray="2 2.5"/>`,
- `<path d="M0 -10L5 -3v9L0 10 -5 6v-9z"/><path d="${FL_DART}" transform="translate(-9.5 6) scale(.7)"/><path d="${FL_DART}" transform="translate(9.5 6) scale(.7)"/>`
+/* Markers are console symbols in the game's own icon language - the ship buy rows':
+   one colour, a 2.6 stroke on a 48 box, a faint fill of the same colour, no shading -
+   on a dark disc so they read over the nebula. A fleet is a three-ship wing; a
+   contact has one glyph per RAIDS entry (convoy, hauler, patrol, anomaly, flagship). */
+const EN_RED="#ff6b8a";
+const MK_LINE=`fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"`;
+const MK_WING=`<g ${MK_LINE}><path d="M24 4l9 20-9 6-9-6z" fill="currentColor" fill-opacity=".18"/><path d="M10 24l6 14-6 4-6-4zM38 24l6 14-6 4-6-4z" fill="currentColor" fill-opacity=".18"/></g>`;
+const EN_ICO=[
+ `<g ${MK_LINE}><path d="M12 16h9v20h-9zM27 16h9v20h-9z" fill="currentColor" fill-opacity=".18"/><path d="M24 4l4 7h-8z" fill="currentColor" fill-opacity=".18"/></g>`,
+ `<g ${MK_LINE}><path d="M17 7h14l3 7v25H14V14z" fill="currentColor" fill-opacity=".18"/><path d="M14 22h20M14 30h20"/></g>`,
+ `<g ${MK_LINE}><path d="M24 5l8 18-8 6-8-6z" fill="currentColor" fill-opacity=".18"/><path d="M11 24l5 12-5 4-5-4zM37 24l5 12-5 4-5-4z" fill="currentColor" fill-opacity=".18"/></g>`,
+ `<g ${MK_LINE}><path d="M24 9l11 15-11 15-11-15z" fill="currentColor" fill-opacity=".18"/><circle cx="24" cy="24" r="21" stroke-dasharray="4 5"/><circle cx="24" cy="24" r="2.5" fill="currentColor"/></g>`,
+ `<g ${MK_LINE}><path d="M24 3l10 9v24l-10 9-10-9V12z" fill="currentColor" fill-opacity=".2"/><path d="M14 15L5 20v10l9 5M34 15l9 5v10l-9 5M24 14v20"/></g>`
 ];
-function enMarkSVG(ti){
-  return `<svg viewBox="-17 -17 34 34" aria-hidden="true"><g class="rot"><g transform="scale(1.3)" fill="${EN_RED}" stroke="#04050d" stroke-width=".8" stroke-linejoin="round">${EN_SHAPE[ti]||EN_SHAPE[0]}</g></g></svg>`;
+function mkMarkSVG(inner,col,size){
+  return `<svg viewBox="-17 -17 34 34" aria-hidden="true"><circle r="13" fill="#04050d" opacity=".55"/><g class="rot"><g transform="translate(${-size/2} ${-size/2}) scale(${size/48})" color="${col}">${inner}</g></g></svg>`;
 }
+function flFormationSVG(col){ return mkMarkSVG(MK_WING,col,30) }
+function enMarkSVG(ti){ return mkMarkSVG(EN_ICO[ti]||EN_ICO[0],EN_RED,28) }
 /* the fleet a contact's danger is judged against: the one selected on the bar, else
    the first fleet that actually has ships */
 function tgJudge(){ return (flSel!=null&&fleet(flSel))||fleets().find(f=>fleetCount(f)>0)||fleets()[0] }
@@ -8674,6 +8732,7 @@ function renderMap(){
   if(!mapBuilt||mapSecBuilt!==mapSec||mapRevealBuilt!==(level()>=unlockLv("p-map")))buildMap();
   renderMapChips();
   renderMapList();
+  const nodeInfo=[], laneInfo=[], laneSeen={};
   for(const s of sysInSec(mapSec)){
     const el=$$("#mapNodes .mnode").find(x=>x.dataset.s===s.id); if(!el)continue;
     const held=s.home||sysHeld(s.id), open=sysOpen(s), foe=sysContested(s);
@@ -8693,10 +8752,14 @@ function renderMap(){
        clashed with the game's own signals (Vasht's green is home's green). The faction
        itself is named by drawTerritory()'s label. The last branch puts a retaken,
        non-exotic system back to buildMap()'s default, so it does not stay red. */
-    if(foe)el.style.setProperty("--a","#ff6b8a");
-    else if(s.res)el.style.setProperty("--a",exoDef(s.res).col);
-    else el.style.setProperty("--a","#5ce6a5");
+    const ncol=foe?"#ff6b8a":s.res?exoDef(s.res).col:"#5ce6a5";
+    el.style.setProperty("--a",ncol);
     el.classList.toggle("sel",S.msel===s.id);
+    /* what mapPlanetsDraw() paints for this node - see its own header */
+    nodeInfo.push({s, held, foe, open:open&&!held&&!foe, locked:!held&&!open&&!foe, col:ncol, sel:S.msel===s.id,
+      gov:!!(held&&!s.home&&sysState(s.id)&&sysState(s.id).gov),
+      fort:el.classList.contains("sdfort"),
+      alert:el.classList.contains("occ")||el.classList.contains("incoming")});
     const wantBadge = held&&!s.home&&LF&&LF.sysId===s.id;
     let badge=el.querySelector(".fleetbadge");
     if(wantBadge && !badge){
@@ -8710,8 +8773,16 @@ function renderMap(){
       const ofoe=other&&sysContested(other);
       x.classList.toggle("held",held&&oheld);
       x.classList.toggle("foe",foe||ofoe);
+      /* a held lane carries motes of light, running outward from home */
+      const lk=x.dataset.a+">"+x.dataset.b;
+      if(held&&oheld&&other&&!laneSeen[lk]){
+        laneSeen[lk]=1;
+        const from=(s.home||(!other.home&&s.ring<=other.ring))?s:other, to=from===s?other:s;
+        laneInfo.push({ax:from.sx,ay:from.sy,bx:to.sx,by:to.sy});
+      }
     });
   }
+  mapNodeInfo=nodeInfo; mapLaneInfo=laneInfo;
   refreshTerritory();
   renderTripMarker();
   renderMapEdge();
@@ -14347,6 +14418,7 @@ function draw(t){
      canvas resize check, drawSite()/drawSysScene() onto it, the pick-what-to-draw
      lookup - is gone with the widget itself. draw() now only ever paints the
      starfield (above) and the map-zoom canvas (below). */
+  mapPlanetsDraw(t);   /* the sector map's painted planets - returns at once unless the map itself is showing */
   // ---------- map zoom scene (patch603) ----------
   if(mzx===null || (++mzChk%20===0 &&
       (MZW!==Math.round(mapZoomCv.clientWidth*devicePixelRatio)
@@ -14877,6 +14949,7 @@ window.__SD={get S(){return S},NEXUS,buyNex,openSite,SITE,siteSlots,
   TRAVEL_BASE,TRAVEL_PER_UNIT,TRAVEL_PER_RING,travelSecs,fleetSend,fleetTravelTick,
   FLEET_UNLOCK,fleetTravelingTo,nearestIdleFleetTo,
   typeSpeak,typeSpeakDone,TYPE_MS,
+  mapPlanetsDraw,get mapNodeInfo(){return mapNodeInfo},get mapLaneInfo(){return mapLaneInfo},
   fleetBusy,fleetPos,fleetMapPos,travelSecsPos,fleetAttack,fleetRecall,fleetRelease,fleetWhere,
   tgById,tgPos,tgCap,tgMaxSec,tgRand,raidAutoResolve,raidPrompt,raidEngage,mapFleetFrame,
   TG_SEC_DIF,TG_W,TG_FX_SECS,DOCK_REP,
