@@ -1439,8 +1439,13 @@ body.syspage #mapZoomBar{opacity:1;pointer-events:auto}
 .mdot{width:15px;height:15px;border-radius:50%;border:2px solid var(--a);
   background:rgba(6,9,22,.9);box-shadow:0 0 9px -1px var(--a);transition:transform .18s}
 .mnode:hover .mdot{transform:scale(1.25)}
-.mnode .mlab{font:700 8.5px/1 system-ui;letter-spacing:.08em;color:var(--mut);white-space:nowrap;
+/* the label hangs under the dot, out of the flow: the button's centre is then the
+   DOT's centre, which is the point the lane lines (and fleet markers) are drawn to.
+   In the flow it pushed the dot ~6px above where every lane actually ended. */
+.mnode .mlab{position:absolute;left:50%;top:calc(50% + 11px);transform:translateX(-50%);
+  font:700 8.5px/1 system-ui;letter-spacing:.08em;color:var(--mut);white-space:nowrap;
   text-shadow:0 0 5px #000}
+.mnode.home .mlab{top:calc(50% + 14px)}
 .mnode.held .mdot{background:var(--a)}
 .mnode.held .mlab{color:var(--txt)}
 .mnode.home .mdot{width:20px;height:20px;border-width:3px}
