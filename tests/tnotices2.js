@@ -212,6 +212,28 @@ const { chromium } = require('playwright-core');
  ok('a save with a pending notifyQueue boots straight onto the fixed overlay (not the old in-flow bar)',
    oldSaveBoot.on && oldSaveBoot.position==='fixed' && oldSaveBoot.opacity==='1' && oldSaveBoot.q.length===1, oldSaveBoot);
 
+ // ---------- VEGA's line is typed out, not shown all at once ----------
+ const typed=await p.evaluate(async()=>{
+   const G=window.__SD;
+   G.S.notifyQueue.length=0; dirty=true; render();
+   G.S.notifyQueue.push('vega:missions'); dirty=true; render();
+   const el=document.getElementById('noticeTxt'), full=G.NOTICES['vega:missions'].t;
+   const h0=el.offsetHeight;
+   await new Promise(r=>setTimeout(r,G.TYPE_MS*6));
+   const shown=el.firstChild&&el.firstChild.textContent, rest=el.lastChild&&getComputedStyle(el.lastChild).visibility;
+   const mid={ text:el.textContent, shown, rest, h:el.offsetHeight };
+   dirty=true; render(); render();                     /* a repaint must not restart the typing */
+   const afterRepaint=el.firstChild&&el.firstChild.textContent.length;
+   G.typeSpeakDone(el);
+   return { full, h0, mid, afterRepaint, end:{ text:el.textContent, spans:el.children.length } };
+ });
+ ok('a VEGA notice types out: the visible part grows, the rest is there but hidden',
+    typed.mid.shown.length>0 && typed.mid.shown.length<typed.full.length && typed.full.indexOf(typed.mid.shown)===0 && typed.mid.rest==='hidden', typed);
+ ok('...the element always holds the whole sentence and never changes height while typing',
+    typed.mid.text===typed.full && typed.mid.h===typed.h0, typed);
+ ok('...a repaint does not restart it, and it ends as plain text',
+    typed.afterRepaint>=typed.mid.shown.length && typed.end.text===typed.full && typed.end.spans===0, typed);
+
  console.log(out.join('\n'));
  console.log(out.filter(l=>l.startsWith('FAIL')).length+' failures');
  await b.close();

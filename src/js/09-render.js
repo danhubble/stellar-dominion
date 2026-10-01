@@ -52,8 +52,9 @@ function renderNotice(){
     if(who){ who.hidden=!whoText; if(whoText)who.textContent=whoText; }
     const av=$("#noticeAv");
     if(av){ av.hidden=!avHTML; if(avHTML)av.innerHTML=avHTML; }
+    /* typed out once, when the notice first comes up - never again on a repaint */
+    typeSpeak($("#noticeTxt"), n.t, key.indexOf("rival:")===0 ? VOICE_RIVAL : n.who ? VOICE_VEGA : 0);
   }
-  $("#noticeTxt").textContent=n.t;
   const go=$("#noticeGo"); if(go)go.hidden=!n.go;
   const banner=!noticeIsStory(key);
   el.classList.toggle("banner",banner);

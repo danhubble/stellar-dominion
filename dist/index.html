@@ -2498,6 +2498,42 @@ function blip(f,dur,type,vol){
     o1.start(t0); o1.stop(t0+D+.05);
   }catch(e){ audioWarn(e) }
 }
+/* A speaker's line typed out a character at a time, with a short sine tick as it
+   goes - VEGA's "voice". The whole line is in the element from the first frame (the
+   part not typed yet is there but invisible), so the card never changes size while
+   it types and el.textContent is always the full sentence. `pitch` is the voice:
+   omitted = silent typing (plain narration). A pause sits on punctuation, the pitch
+   wobbles a little with each letter so it reads as speech rather than a dial tone,
+   and only every other letter ticks. Reduced motion: the line just appears.
+   typeSpeakDone(el) finishes a line early and says whether it had still been typing. */
+const TYPE_MS=26;
+function typeSpeak(el,text,pitch){
+  if(!el)return;
+  if(el._ty){ clearInterval(el._ty); el._ty=null; }
+  text=String(text==null?"":text);
+  if(hush||!text||(window.matchMedia&&matchMedia("(prefers-reduced-motion:reduce)").matches)){ el.textContent=text; return; }
+  el.textContent="";
+  const on=document.createElement("span"), off=document.createElement("span");
+  off.style.visibility="hidden"; off.textContent=text;
+  el.appendChild(on); el.appendChild(off);
+  let n=0, wait=0;
+  el._ty=setInterval(()=>{
+    if(!el.isConnected||on.parentNode!==el){ clearInterval(el._ty); el._ty=null; return; }
+    if(wait>0){ wait--; return; }
+    n++;
+    on.textContent=text.slice(0,n); off.textContent=text.slice(n);
+    const ch=text[n-1];
+    if(pitch&&ch!==" "&&n%2===1)blip(pitch+(ch.charCodeAt(0)%6)*14,.05,"sine",.026);
+    if(n>=text.length){ clearInterval(el._ty); el._ty=null; el.textContent=text; return; }
+    if(".!?".indexOf(ch)>=0)wait=9; else if(",;:—".indexOf(ch)>=0)wait=4;
+  },TYPE_MS);
+}
+function typeSpeakDone(el){
+  if(!el||!el._ty)return false;
+  clearInterval(el._ty); el._ty=null; el.textContent=el.textContent;
+  return true;
+}
+const VOICE_VEGA=640, VOICE_VEGA_TURNED=300, VOICE_RIVAL=210;
 /* named cues, 2-3 synthesised layers each, every one kept under ~0.6s per layer and
    at/below the old volumes. Every layer that isn't explicitly dry (waveIn only) sends
    into the shared delay - "battle cues route through the delay". jit() gives every
@@ -6889,8 +6925,9 @@ function renderNotice(){
     if(who){ who.hidden=!whoText; if(whoText)who.textContent=whoText; }
     const av=$("#noticeAv");
     if(av){ av.hidden=!avHTML; if(avHTML)av.innerHTML=avHTML; }
+    /* typed out once, when the notice first comes up - never again on a repaint */
+    typeSpeak($("#noticeTxt"), n.t, key.indexOf("rival:")===0 ? VOICE_RIVAL : n.who ? VOICE_VEGA : 0);
   }
-  $("#noticeTxt").textContent=n.t;
   const go=$("#noticeGo"); if(go)go.hidden=!n.go;
   const banner=!noticeIsStory(key);
   el.classList.toggle("banner",banner);
@@ -13379,10 +13416,13 @@ function sceneRender(){
   /* patch617: same has flag, reflected onto the card so a speakerless line can be
      centred in CSS - see the .scenecard.solo rule in the stylesheet. */
   const card=$(".scenecard"); if(card)card.classList.toggle("solo",!has);
-  const tx=$("#sceneTxt"); if(tx)tx.textContent=n.t;
+  const tx=$("#sceneTxt");
+  typeSpeak(tx, n.t, n.who==="vega" ? (turned?VOICE_VEGA_TURNED:VOICE_VEGA) : n.who ? VOICE_RIVAL : 0);
 }
 function sceneAdvance(){
   if(!sceneLines)return;
+  /* a tap while a line is still typing finishes the line; the next tap moves on */
+  if(typeSpeakDone($("#sceneTxt")))return;
   sceneI++;
   if(sceneI>=sceneLines.length){ sceneFinish(); return; }
   sceneRender();
@@ -14836,6 +14876,7 @@ window.__SD={get S(){return S},NEXUS,buyNex,openSite,SITE,siteSlots,
   mergeFleetsForFinal,unmergeAfterFinal,
   TRAVEL_BASE,TRAVEL_PER_UNIT,TRAVEL_PER_RING,travelSecs,fleetSend,fleetTravelTick,
   FLEET_UNLOCK,fleetTravelingTo,nearestIdleFleetTo,
+  typeSpeak,typeSpeakDone,TYPE_MS,
   fleetBusy,fleetPos,fleetMapPos,travelSecsPos,fleetAttack,fleetRecall,fleetRelease,fleetWhere,
   tgById,tgPos,tgCap,tgMaxSec,tgRand,raidAutoResolve,raidPrompt,raidEngage,mapFleetFrame,
   TG_SEC_DIF,TG_W,TG_FX_SECS,DOCK_REP,

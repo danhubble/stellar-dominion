@@ -203,6 +203,42 @@ function blip(f,dur,type,vol){
     o1.start(t0); o1.stop(t0+D+.05);
   }catch(e){ audioWarn(e) }
 }
+/* A speaker's line typed out a character at a time, with a short sine tick as it
+   goes - VEGA's "voice". The whole line is in the element from the first frame (the
+   part not typed yet is there but invisible), so the card never changes size while
+   it types and el.textContent is always the full sentence. `pitch` is the voice:
+   omitted = silent typing (plain narration). A pause sits on punctuation, the pitch
+   wobbles a little with each letter so it reads as speech rather than a dial tone,
+   and only every other letter ticks. Reduced motion: the line just appears.
+   typeSpeakDone(el) finishes a line early and says whether it had still been typing. */
+const TYPE_MS=26;
+function typeSpeak(el,text,pitch){
+  if(!el)return;
+  if(el._ty){ clearInterval(el._ty); el._ty=null; }
+  text=String(text==null?"":text);
+  if(hush||!text||(window.matchMedia&&matchMedia("(prefers-reduced-motion:reduce)").matches)){ el.textContent=text; return; }
+  el.textContent="";
+  const on=document.createElement("span"), off=document.createElement("span");
+  off.style.visibility="hidden"; off.textContent=text;
+  el.appendChild(on); el.appendChild(off);
+  let n=0, wait=0;
+  el._ty=setInterval(()=>{
+    if(!el.isConnected||on.parentNode!==el){ clearInterval(el._ty); el._ty=null; return; }
+    if(wait>0){ wait--; return; }
+    n++;
+    on.textContent=text.slice(0,n); off.textContent=text.slice(n);
+    const ch=text[n-1];
+    if(pitch&&ch!==" "&&n%2===1)blip(pitch+(ch.charCodeAt(0)%6)*14,.05,"sine",.026);
+    if(n>=text.length){ clearInterval(el._ty); el._ty=null; el.textContent=text; return; }
+    if(".!?".indexOf(ch)>=0)wait=9; else if(",;:—".indexOf(ch)>=0)wait=4;
+  },TYPE_MS);
+}
+function typeSpeakDone(el){
+  if(!el||!el._ty)return false;
+  clearInterval(el._ty); el._ty=null; el.textContent=el.textContent;
+  return true;
+}
+const VOICE_VEGA=640, VOICE_VEGA_TURNED=300, VOICE_RIVAL=210;
 /* named cues, 2-3 synthesised layers each, every one kept under ~0.6s per layer and
    at/below the old volumes. Every layer that isn't explicitly dry (waveIn only) sends
    into the shared delay - "battle cues route through the delay". jit() gives every

@@ -736,10 +736,13 @@ function sceneRender(){
   /* patch617: same has flag, reflected onto the card so a speakerless line can be
      centred in CSS - see the .scenecard.solo rule in the stylesheet. */
   const card=$(".scenecard"); if(card)card.classList.toggle("solo",!has);
-  const tx=$("#sceneTxt"); if(tx)tx.textContent=n.t;
+  const tx=$("#sceneTxt");
+  typeSpeak(tx, n.t, n.who==="vega" ? (turned?VOICE_VEGA_TURNED:VOICE_VEGA) : n.who ? VOICE_RIVAL : 0);
 }
 function sceneAdvance(){
   if(!sceneLines)return;
+  /* a tap while a line is still typing finishes the line; the next tap moves on */
+  if(typeSpeakDone($("#sceneTxt")))return;
   sceneI++;
   if(sceneI>=sceneLines.length){ sceneFinish(); return; }
   sceneRender();

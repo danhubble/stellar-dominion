@@ -144,7 +144,7 @@ const { chromium } = require('playwright-core');
      pips:marks.map(m=>m.querySelectorAll('.pips i').length) };
  });
  ok('each contact in the sector on screen is a marker on the map', mark.n===2, mark);
- ok('...with a 44px tap target, and the sector chip counts them', mark.tap[0]>=44&&mark.tap[1]>=44&&mark.cnt==='2', mark);
+ ok('...with a 44px tap target, and the sector chip counts them', mark.tap[0]>=43.9&&mark.tap[1]>=43.9&&mark.cnt==='2'   /* a transform-placed box measures 43.99998 on some frames */, mark);
  ok('...and more pips the more dangerous it is', mark.pips[0]===1 && mark.pips[1]===4, mark.pips);
  ok('tapping one opens the prompt: a weak contact offers ATTACK and FIGHT IT MYSELF, with a fleet picker',
    mark.easyP.open && mark.easyP.atk && mark.easyP.man && mark.easyP.picks===3, mark.easyP);
