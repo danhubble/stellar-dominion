@@ -61,7 +61,9 @@ const { chromium } = require('playwright-core');
  await clickNode('dra');
  st=await zoomState();
  ok('unclaimed tap opens sheet', st.sheetOpen && st.msel==='dra', st);
- ok('unclaimed tap does not zoom', st.mapZoom===null && !st.wrapZoomed, st);
+ // every system page shows its own planet now - an unheld page used to leave the
+ // (squeezed, and since the painted map visibly distorted) sector map on screen
+ ok('unclaimed tap zooms too, to its own planet', st.mapZoom==='dra' && st.wrapZoomed, st);
 
  // ---------- 3. '<' MAP closes the WHOLE page now (zoom AND selection together) ----------
  // patch627 (PLAN-page.md, "one fact"): the old sheet/zoom split let '< MAP' clear
@@ -210,9 +212,9 @@ const { chromium } = require('playwright-core');
  // the swipe, which the old mapZoom-only guard would have missed entirely.
  await p.evaluate(()=>{ const btn=document.getElementById('mapZoomBack'); if(btn)btn.click(); });
  await p.waitForTimeout(200);
- await clickNode('dra'); // unclaimed - page opens, never zoomed
+ await clickNode('dra'); // unclaimed - page opens
  st=await zoomState();
- ok('setup: dra page open but not zoomed before the unclaimed-swipe check', st.sheetOpen && st.msel==='dra' && !st.wrapZoomed, st);
+ ok('setup: dra page open before the unclaimed-swipe check', st.sheetOpen && st.msel==='dra', st);
  const secBeforeUnzoomedPage=await p.evaluate(()=>__SD.mapSec);
  await swipeLeft();
  await p.waitForTimeout(150);

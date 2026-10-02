@@ -610,7 +610,10 @@ const RESH=[
     call site in tick() (06-progress.js) for what actually spends these levels now.
     PLAN-polish batch C #2 (Governors v2): max 3->6 (adopt()'s own clamp raised to
     match); cost curve still unchanged. */
- {id:"auto",  n:"Governors",   max:6, c:25, cg:3.2, col:"#ffd166", req:{id:"drill",lv:4},
+ /* sec:1 (owner): Governors only open once the empire reaches the second sector -
+    the player has to hold a system in the Inner Reach before the first level can be
+    researched. See resLocked(). */
+ {id:"auto",  n:"Governors",   max:6, c:25, cg:3.2, col:"#ffd166", req:{id:"drill",lv:4}, sec:1,
   ic:`<rect x="14" y="14" width="20" height="20" rx="3" fill="none" stroke="currentColor" stroke-width="3"/><rect x="21" y="21" width="6" height="6" fill="currentColor"/><g stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M19 14V7M29 14V7M19 41v-7M29 41v-7M14 19H7M14 29H7M41 19h-7M41 29h-7"/></g>`,
   d:lv=>lv?("Appoint up to "+lv+" governor"+(lv>1?"s":"")):"No governors yet",
   t:"Each level hands one more system's buildings to a governor who buys on their own."}, /* PLACEHOLDER */
@@ -685,9 +688,15 @@ const GLYPH=[
  `<g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M24 24m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0"/><path d="M24 8a16 16 0 0 1 16 16"/><path d="M24 40A16 16 0 0 1 8 24"/></g>`
 ];
 function glyphFor(bi,k){ return GLYPH[(bi*5+k*7)%GLYPH.length] }
-function resLocked(r){ return r.req ? lv(S.rs,r.req.id) < r.req.lv : false }
-function resReqText(r){ if(!r.req)return ""; const src=RESH.find(x=>x.id===r.req.id);
-  return "Requires "+src.n+" "+r.req.lv }
+/* r.sec: the node also needs a held system in that sector (or further out) before its
+   FIRST level - never re-locks something already researched (an older save). */
+function resSecLocked(r){ return !!r.sec && lv(S.rs,r.id)<1 && !heldSystems().some(s=>s.sec>=r.sec) }
+function resLocked(r){ return (r.req ? lv(S.rs,r.req.id) < r.req.lv : false) || resSecLocked(r) }
+function resReqText(r){
+  if(r.req && lv(S.rs,r.req.id)<r.req.lv){ const src=RESH.find(x=>x.id===r.req.id); return "Requires "+src.n+" "+r.req.lv }
+  if(resSecLocked(r))return "Requires a system in the "+SECTORS[r.sec].n;
+  return "";
+}
 const PJ1_MUL=1.25, PJ2_MUL=1.25, PJ3_MUL=1.5;   /* TUNING-PENDING: THE PROJECT bonuses */
 const NEXUS=[
  /* cg was 1.55: 25 levels of that is 521,065 DM, 84% of the whole tree and about
@@ -1665,6 +1674,9 @@ function repairFleet(f){
   if(BT&&!BT.done)return false;           /* not mid-battle - a finished one is fine,
                                              and is exactly when you want to repair */
   const c=repairCost(f); if(c<=0)return false;
+  /* paid repairs are yard work: the fleet has to be docked at Sol Reach or a
+     Shipyard (RECALL brings it home). Out in the dark it only mends slowly by itself. */
+  if(!idleAtYard(f)){ toast("Dock at Sol Reach or a Shipyard to repair","y"); return false }
   if(S.ore<c)return false;
   S.ore-=c; f.hp=1;
   blip(660,.22,"sine",.05); toast("Fleet repaired","g"); dirty=true; return true;
@@ -1801,18 +1813,19 @@ function shipMax(i,f){ const S1=SHIPS[i];
    below and the buy button's own label (11-combat.js) read, so they can never
    disagree about which fleet a purchase would land on. */
 function idleAtYard(fl){ return !fleetBusy(fl) && !!fl.at && (fl.at==="home" || sysHasShipyard(fl.at)); }
+/* Owner, after playing the raid map: buying for a fleet that was away took the ore
+   and the count on screen never moved (the hulls went to another fleet, or into the
+   delivery queue). A purchase now only ever goes to the fleet on screen, and only
+   while that fleet is docked - at Sol Reach or a Shipyard. Away, the button says so
+   and is disabled. Nothing new is ever queued; S.flQ/tryDrainFleetQueue() stay only
+   so hulls an older save already had on order still arrive. */
 function buyShip(i,k){ if(k<1)return false;
   const cf=curFleet();
-  const tgt = idleAtYard(cf) ? cf : fleets().find(idleAtYard);
-  const capFleet = tgt || fleet(1);
-  if(k*SHIPS[i].pw>capLeft(capFleet))return false;    /* capacity is checked before price */
+  if(!idleAtYard(cf))return false;
+  if(k*SHIPS[i].pw>capLeft(cf))return false;    /* capacity is checked before price */
   const c=shipCost(i,k); if(S.ore<c)return false;
   S.ore-=c;
-  if(tgt){ tgt.sh[i]+=k; }
-  else {
-    if(!Array.isArray(S.flQ)||S.flQ.length!==3)S.flQ=[0,0,0];
-    S.flQ[i]+=k;
-  }
+  cf.sh[i]+=k;
   blip(300+i*60,.1,"triangle",.05); dirty=true; return true }
 /* the fleet is away or mid-fight is fine to buy into (it queues), but not to sell
    from: a hull already travelling can't be un-sold out from under an in-flight

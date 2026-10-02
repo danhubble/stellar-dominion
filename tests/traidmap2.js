@@ -260,6 +260,18 @@ const { chromium } = require('playwright-core');
    G.dirty=true; G.render();
    return { dock:a.hp-0.5, out:c.hp-0.5, k:G.DOCK_REP, where:G.fleetWhere(a) };
  });
+ const yard=await p.evaluate(()=>{
+   const G=window.__SD;
+   __fx();
+   const a=G.S.fl[0], c=G.S.fl[1];
+   a.hp=0.5; c.hp=0.5; c.at=null; c.pos={sec:0,x:30,y:70};
+   const ore0=G.S.ore;
+   const away=G.repairFleet(c), awayHp=c.hp, awaySpent=ore0-G.S.ore;
+   const docked=G.repairFleet(a);
+   return { away, awayHp, awaySpent, docked, dockedHp:a.hp };
+ });
+ ok('a paid repair needs a dock: refused in open space (no ore spent), done at Sol Reach',
+   yard.away===false && yard.awayHp===0.5 && yard.awaySpent===0 && yard.docked===true && yard.dockedHp===1, yard);
  ok('a fleet docked at Sol Reach mends DOCK_REP times faster than one in open space',
    rep.out>0 && Math.abs(rep.dock/rep.out-rep.k)<0.01 && /^REPAIRING \d+%$/.test(rep.where), rep);
 

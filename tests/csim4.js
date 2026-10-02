@@ -102,7 +102,7 @@ const CYCLES = (()=>{ const i=process.argv.indexOf('--cycles'); return i>=0 ? (p
        for(let k=0;k<20;k++){
          let best=null,bc=Infinity;
          for(const rr of G.RESH){ const l=(G.S.rs[rr.id]||0); if(l>=rr.max)continue;
-           if(rr.req&&(G.S.rs[rr.req.id]||0)<rr.req.lv)continue;
+           if(G.resLocked(rr))continue;   /* the game's own lock rule (req, and Governors' second-sector gate) - a hand copy of it here stalled ALL research on a node the sim could not buy */
            const bal=G.resBal(rr); const c=rr.c*Math.pow(rr.cg,l);
            if(c<=bal&&c<bc){bc=c;best=rr} }
          if(!best)break; if(!G.buyRes(best))break;
@@ -274,7 +274,7 @@ const CYCLES = (()=>{ const i=process.argv.indexOf('--cycles'); return i>=0 ? (p
      for(let k=0;k<20;k++){
        let best=null,bc=Infinity;
        for(const rr of G.RESH){ const l=(G.S.rs[rr.id]||0); if(l>=rr.max)continue;
-         if(rr.req&&(G.S.rs[rr.req.id]||0)<rr.req.lv)continue;
+         if(G.resLocked(rr))continue;   /* the game's own lock rule (req, and Governors' second-sector gate) - a hand copy of it here stalled ALL research on a node the sim could not buy */
          const bal=G.resBal(rr);
          const c=rr.c*Math.pow(rr.cg,l); if(c<=bal&&c<bc){bc=c;best=rr} }
        if(!best)break;

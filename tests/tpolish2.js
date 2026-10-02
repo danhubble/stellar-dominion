@@ -99,34 +99,30 @@ const { chromium } = require('playwright-core');
  ok('#flTransfer (Raids tab) is gone', transfer.raidsTransferGone);
 
  // ---------- item 10/12: buy-button label ----------
- // PLAN-polish batch B item 4: Fleet 2 now opens at level 16, not 14 - fixture
- // bumped so ensureFleets() actually adds it (level 14 would leave fleets()
- // length 1 and G.fleet(2) null, crashing the line right below).
+ // Ships are only ever bought into the fleet on screen, and only while it is docked
+ // (Sol Reach or a Shipyard): away, the button says so and is disabled - it used to
+ // take the ore and deliver the hulls to another fleet, or into a queue, so the
+ // count on screen never moved.
  const buyLabel=await p.evaluate(()=>{
    const G=window.__SD;
    G.adopt({...G.fresh(), lvl:16, lvSeen:16, xpn:G.xpNeed(16), ore:1e9, all:1e9});
    G.ensureFleets();   // adds Fleet 2
-   const f2=G.fleet(2); f2.at='home'; f2.to=null;
-   G.S.flSel=2;   // select Fleet 2's tab...
-   const f1=G.fleet(1); f1.at='home'; f1.to=null;   // ...while Fleet 1 is the one idle at home
-   f2.at='kor';   // Fleet 2 (selected) is away - buyShip() will land on Fleet 1 instead
+   const f1=G.fleet(1); f1.at='home'; f1.to=null;
+   const f2=G.fleet(2); f2.at='kor'; f2.to=null;   // Fleet 2 is away...
+   G.S.flSel=2;                                     // ...and is the fleet on screen
    G.gotoTab('p-raid'); G.dirty=true; G.render();
-   const btn=[...document.querySelectorAll('#flShips .shp')][0].querySelector('button i');
-   return btn.textContent;
+   const btn=[...document.querySelectorAll('#flShips .shp')][0].querySelector('button');
+   const ore0=G.S.ore, bought=G.buyShip(0,1);
+   const away={ text:btn.querySelector('i').textContent, disabled:btn.disabled, bought, spent:ore0-G.S.ore, f1:f1.sh[0], f2:f2.sh[0] };
+   G.S.flSel=1; dirty=true; render();
+   const b1=[...document.querySelectorAll('#flShips .shp')][0].querySelector('button');
+   b1.click();
+   return { away, home:{ text:b1.querySelector('i').textContent, f1:f1.sh[0] } };
  });
- ok('BUY label names the fleet a purchase actually lands on when it isn\'t the selected tab',
-    /BUY.*1ST FLEET/i.test(buyLabel), buyLabel);
-
- const noShipyard=await p.evaluate(()=>{
-   const G=window.__SD;
-   G.adopt({...G.fresh(), ore:1e9, all:1e9});
-   const f1=G.fleet(1); f1.at='kor'; f1.to=null;   // no fleet idle at home at all
-   G.gotoTab('p-raid'); G.dirty=true; G.render();
-   const btn=[...document.querySelectorAll('#flShips .shp')][0].querySelector('button i');
-   return btn.textContent;
- });
- ok('"NO SHIPYARD HERE" replaces the old "DELIVERS AT SOL REACH" placeholder',
-    /NO SHIPYARD HERE/.test(noShipyard), noShipyard);
+ ok('a fleet that is away cannot buy: the button reads FLEET NOT DOCKED, is disabled, and no ore is spent',
+    /FLEET NOT DOCKED/.test(buyLabel.away.text) && buyLabel.away.disabled && buyLabel.away.bought===false &&
+    buyLabel.away.spent===0 && buyLabel.away.f1===0 && buyLabel.away.f2===0, buyLabel);
+ ok('a docked fleet buys into itself, and its own count goes up', /^BUY/.test(buyLabel.home.text) && buyLabel.home.f1===1, buyLabel);
 
  // ---------- item 11: Command Lattice is inert (hidden, but csim-safe underneath) ----------
  const comm=await p.evaluate(()=>{

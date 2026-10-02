@@ -68,7 +68,11 @@ function syncSysPage(){
   document.body.classList.toggle("syspage", on);
   const nameEl=$("#mapZoomName");
   if(nameEl){ const s=on?SYSMAP[S.msel]:null; nameEl.textContent=s?s.n.toUpperCase():""; }
-  const want = on && (sysHeld(S.msel)||sysOccupied(S.msel)) ? S.msel : null;
+  /* every system page shows its own planet in the band now, held or not. An unheld
+     page used to leave the sector map on screen instead, squeezed into the page's
+     short band - harmless while the map was flat dots, visibly distorted once it
+     became painted planets (round things drawn on a stretched canvas). */
+  const want = on ? S.msel : null;
   if(want!==mapZoom) setMapZoom(want);
   /* patch628b (coordinator overruled patch627's own transition-based rule here):
      the page scrolls to top when the SELECTED SYSTEM changes, not when the tab

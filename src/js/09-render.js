@@ -603,7 +603,8 @@ function openFleetCard(id){
     : fleetWhere(f);
   const hulls=SHIPS.map((sp,i)=>f.sh[i]?f.sh[i]+" "+sp.n+(f.sh[i]===1?"":"s"):null).filter(Boolean).join(" · ")||"No ships";
   const rc=repairCost(f);
-  const canRepair=fleetCount(f)>0 && f.hp<1 && S.ore>=rc;
+  const docked=idleAtYard(f);
+  const canRepair=docked && fleetCount(f)>0 && f.hp<1 && S.ore>=rc;
   /* run 3: TRANSFER only makes sense with another idle fleet standing right here -
      otherIdleFleetsAt() is empty while travelling too, so this never shows for a
      fleet mid-flight. */
@@ -614,7 +615,7 @@ function openFleetCard(id){
     <div class="fchulls">${hulls}</div>
     <div class="fcint">Integrity <b>${Math.round(f.hp*100)}%</b></div>
     <div class="row">
-      <button id="fcRepair" ${canRepair?"":"disabled"}>REPAIR · ${fmt(rc)} ORE</button>
+      <button id="fcRepair" ${canRepair?"":"disabled"}>${docked||f.hp>=1?"REPAIR · "+fmt(rc)+" ORE":"REPAIR · DOCK FIRST"}</button>
       <button id="fcTransfer" class="transfer" ${canTransfer?"":"disabled"}>TRANSFER</button>
     </div>`,
     ()=>{

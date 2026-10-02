@@ -376,24 +376,24 @@ const { chromium } = require('playwright-core');
  ok('...and "→ <system> · Ns" once that fleet is travelling (Fleet 2, the selected tab)',
    flLoc.selTab===2 && /^→ KORU · \d+s$/.test(flLoc.travelling), flLoc);
 
- // ---------------- buyShip(): lands at home, else queues; queue drains on arrival ----------------
+ // ---------------- buyShip(): only into a docked fleet; nothing new is ever queued ----------------
  const queue=await p.evaluate(()=>{
    const G=window.__SD;
    G.adopt({...G.fresh(), lvl:13, lvSeen:13, ore:1e30});   // lvl 13: only Fleet 1 exists (fleetSlots()===1)
    const f=G.S.fl[0];
-   G.fleetSend(f,'kor');                   // the only fleet leaves home - none idle there
-   const bought=G.buyShip(0,5);
-   const queuedAfterBuy=G.S.flQ.slice();
-   const totalAfterBuy=G.shipTotal(0);     // must count the queue immediately
-   G.fleetTravelTick(f.eta+1);             // lands the fleet at kor - still no fleet home
-   G.fleetSend(f,'home');                  // now send it back
-   G.fleetTravelTick(f.eta+1);             // lands the fleet home, draining the queue
-   return { bought, queuedAfterBuy, totalAfterBuy, landedSh:f.sh.slice(), flQAfter:G.S.flQ.slice() };
+   G.fleetSend(f,'kor');                   // the only fleet leaves home
+   const ore0=G.S.ore;
+   const bought=G.buyShip(0,5);            // refused: the fleet on screen is not docked
+   const r={ bought, spent:ore0-G.S.ore, flQ:G.S.flQ.slice(), total:G.shipTotal(0) };
+   G.fleetTravelTick(f.eta+1);             // at kor (no Shipyard there) - still refused
+   r.atKor=G.buyShip(0,5);
+   G.fleetSend(f,'home'); G.fleetTravelTick(f.eta+1);
+   r.atHome=G.buyShip(0,5); r.sh=f.sh.slice();
+   return r;
  });
- ok('buyShip() queues on S.flQ when no fleet is idle at home', queue.bought && JSON.stringify(queue.queuedAfterBuy)==="[5,0,0]", queue);
- ok('shipTotal() counts the queue toward the empire-wide total right away', queue.totalAfterBuy===5, queue);
- ok('the queue lands in the fleet that next arrives home idle, and clears',
-   JSON.stringify(queue.landedSh)==="[5,0,0]" && JSON.stringify(queue.flQAfter)==="[0,0,0]", queue);
+ ok('buyShip() refuses while the fleet is away - no ore spent, nothing queued', queue.bought===false && queue.spent===0 && JSON.stringify(queue.flQ)==="[0,0,0]" && queue.total===0, queue);
+ ok('...and at a system with no Shipyard; back at Sol Reach it buys into the fleet itself',
+   queue.atKor===false && queue.atHome===true && JSON.stringify(queue.sh)==="[5,0,0]", queue);
 
  const queueOnLoad=await p.evaluate(()=>{
    const G=window.__SD;

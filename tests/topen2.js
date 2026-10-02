@@ -187,8 +187,8 @@ const URL=GAME_URL;
      barVisible: getComputedStyle(bar).opacity!=='0' && getComputedStyle(bar).pointerEvents!=='none',
      nameText: name.textContent };
  });
- ok('an unclaimed system\'s page is never zoomed but DOES show a working < MAP bar + name',
-    unclaimedState.mapZoom===null && unclaimedState.bodySyspage && unclaimedState.barVisible &&
+ ok('an unclaimed system\'s page shows its own planet too (it used to leave the squeezed sector map up), with a working < MAP bar + name',
+    unclaimedState.mapZoom===unclaimedState.msel && unclaimedState.bodySyspage && unclaimedState.barVisible &&
     unclaimedState.nameText.length>0, unclaimedState);
  const unclaimedClosed=await p.evaluate(()=>{
    document.getElementById('mapZoomBack').click();

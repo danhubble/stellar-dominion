@@ -205,6 +205,40 @@ const { chromium } = require('playwright-core');
  ok('with no system governed, 500 ticks leave S.sys completely untouched by governor bookkeeping',
    inert.untouched && inert.govBuys===undefined, inert);
 
+ // ---------------- a governor fits a balanced set, not three Turret Rings ----------------
+ const balance=await p.evaluate(()=>{
+   const G=window.__SD;
+   G.adopt({...G.fresh(), ore:1e30, all:1e30, exo:{ir:1e12},
+     rs:{drill:4,auto:1}, lvl:20, sys:{kor:{b:{0:5},gov:1,gb:1e12,gft:0}}});
+   const fitted=[];
+   for(let i=0;i<3;i++){
+     G.govTick(G.GOV_FIT_EVERY);
+     const d=G.S.def.kor; d.s.forEach(sl=>{ if(sl&&sl.q){ sl.q.dueAt=Date.now()-1; } });
+     G.dmodComplete();
+   }
+   G.S.def.kor.s.forEach(sl=>fitted.push(sl&&sl.m));
+   return { fitted, distinct:new Set(fitted.filter(Boolean)).size };
+ });
+ ok('three empty slots get three different modules (it used to be a Turret Ring every time)',
+   balance.distinct===3 && balance.fitted.indexOf('shy')<0, balance);
+
+ // ---------------- Governors research opens with the second sector ----------------
+ const gate=await p.evaluate(()=>{
+   const G=window.__SD;
+   const r=G.RESH.find(x=>x.id==="auto");
+   G.adopt({...G.fresh(), cry:1e12, rs:{drill:4}, lvl:20, sys:{home:{b:{}},kor:{b:{}}}});   // Core only
+   const coreLocked=G.resLocked(r), coreText=G.resReqText(r), coreBuy=G.buyRes(r);
+   G.adopt({...G.fresh(), cry:1e12, rs:{drill:4}, lvl:20, sys:{home:{b:{}},kor:{b:{}},ash:{b:{}}}});   // + Inner Reach
+   const reachLocked=G.resLocked(r), reachBuy=G.buyRes(r);
+   G.adopt({...G.fresh(), cry:1e12, rs:{drill:4,auto:2}, lvl:20, sys:{home:{b:{}},kor:{b:{}}}});   // an older save: already researched
+   const oldLocked=G.resLocked(r);
+   return { coreLocked, coreText, coreBuy, reachLocked, reachBuy, oldLocked };
+ });
+ ok('Governors cannot be researched while the empire only holds the Core, and says why',
+   gate.coreLocked && gate.coreBuy===false && /Inner Reach/.test(gate.coreText), gate);
+ ok('...it opens once a system in the Inner Reach is held; a save that already has it is never re-locked',
+   !gate.reachLocked && gate.reachBuy===true && !gate.oldLocked, gate);
+
  if(errs.length)ok('no page errors', false, errs);
  console.log(out.join('\n'));
  console.log(out.filter(l=>l.startsWith('FAIL')).length+' failures');

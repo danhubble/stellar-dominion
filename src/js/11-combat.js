@@ -2655,30 +2655,22 @@ function renderRaids(){
      now - a BUY still queues (see buyShip()'s own comment), it just doesn't land in
      curFleet() immediately. Said plainly on the button rather than silently landing
      somewhere the player can't see yet. */
-  const noHomeIdle=!fleets().some(idleAtYard);
-  /* polish batch A #12, extended batch C #1: buyShip() lands a purchase on
-     curFleet() only when IT is idle at a yard - otherwise the first idle-at-yard
-     fleet takes it, same rule buyShip() itself uses (idleAtYard(), 01-content.js).
-     Worked out once per render, same for every ship class this loop draws a button
-     for. */
-  const buyTgt = idleAtYard(cf) ? cf : fleets().find(idleAtYard);
+  /* buyShip() only buys into the fleet on screen, and only while it is docked (Sol
+     Reach or a Shipyard) - anywhere else the button says so and is disabled. */
+  const docked=idleAtYard(cf);
   SHIPS.forEach((sp,i)=>{
     const d=document.createElement("div"); d.className="shp"; d.style.setProperty("--a",sp.col);
     const k=S.sell?Math.min(S.buy==="max"?cf.sh[i]:S.buy,cf.sh[i]):(S.buy==="max"?Math.max(1,shipMax(i)):S.buy);
     const c=S.sell?(k>0?0.5*sp.b*Math.pow(sp.g,shipTotal(i)-k)*(Math.pow(sp.g,k)-1)/(sp.g-1):0):shipCost(i,k);
     const fits=k*sp.pw<=capLeft();
-    const can=S.sell?(k>0&&!fleetBusy(cf)):(S.ore>=c&&fits);
-    /* polish batch A #10/#12: "DELIVERS AT SOL REACH" (nothing here has a shipyard
-       yet, PLACEHOLDER copy either way) when nothing is home to take it, and now
-       also says which fleet it actually lands on when that isn't the selected tab. */
-    const buyLabel = "BUY ×"+k+(buyTgt&&buyTgt!==cf?" → "+buyTgt.n.toUpperCase():"");
+    const can=S.sell?(k>0&&!fleetBusy(cf)):(docked&&S.ore>=c&&fits);
     d.innerHTML=`<div class="si"><svg viewBox="0 0 48 48">${sp.ic}</svg></div>
       <div><div class="sn">${sp.n}</div>
         <div class="sd">${fmt(sp.dps*fleetMult())} dps · ${fmt(sp.hp*fleetMult())} hull · ⚡${sp.pw}</div></div>
       <div style="display:flex;align-items:center;gap:10px">
         <div class="sc">${cf.sh[i]}</div>
         <button class="gb"><b>${S.sell||fits?fmt(c)+" ore":"NO CAPACITY"}</b><i>${
-          S.sell?"SCRAP ×"+k:(noHomeIdle?"NO SHIPYARD HERE":buyLabel)}</i></button>
+          S.sell?"SCRAP ×"+k:(docked?"BUY ×"+k:"FLEET NOT DOCKED")}</i></button>
       </div>`;
     const bt=d.querySelector("button"); bt.disabled=!can;
     bt.onclick=()=>{ if(S.sell)sellShip(i,k); else buyShip(i,k); render(); };
@@ -2816,7 +2808,8 @@ function raidLive(){
   const fx=$("#flFix");
   if(fx&&!fx.classList.contains("hide")){
     const cf=curFleet(), rc=repairCost(cf);
-    raidSet(fx, oreGbHTML("REPAIR",rc), S.ore<rc||cf.hp>=1);
+    if(idleAtYard(cf)) raidSet(fx, oreGbHTML("REPAIR",rc), S.ore<rc||cf.hp>=1);
+    else raidSet(fx, `<b>REPAIR</b><i>dock the fleet first</i>`, true);   /* yard work - see repairFleet() */
   }
   /* rockets: priced off rate(), which moves as income does */
   const am=$("#buyAmmo");

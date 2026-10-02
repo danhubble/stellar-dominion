@@ -290,7 +290,13 @@ function govFitStep(id, st){
   if(price>st.gb)return false;
   const afford = s.res ? exo(s.res)>=price : S.ore>=price;
   if(!afford)return false;
-  const moduleId=GOV_FIT_MODULES.find(m=>!DEF_MODULES[m].disabled); if(!moduleId)return false;
+  /* a balanced set: whichever module this system has fewest of (it used to be the
+     first in the list every time - three Turret Rings on every governed world).
+     Ties go to list order, so an empty system gets one of each in turn. */
+  const have={}; for(const sl of d.s) if(sl&&sl.m)have[sl.m]=(have[sl.m]||0)+1;
+  const moduleId=GOV_FIT_MODULES.filter(m=>!DEF_MODULES[m].disabled)
+    .reduce((best,m)=>best==null||(have[m]||0)<(have[best]||0)?m:best,null);
+  if(!moduleId)return false;
   const open=document.body.classList.contains("syspage") && S.msel===id;
   hush=!open;
   const built=dmodBuild(s,slotIdx,moduleId);
