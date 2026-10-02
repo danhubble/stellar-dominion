@@ -467,6 +467,62 @@ function drawSysScene(g,W,H,vid,t,D,compose){
     }
     for(const o of lanes) if(Math.sin(o.a)>=0) sprite(g,o,D);
 }
+/* ============================ comets ============================
+   Owner: "in Stardust a meteor would sometimes pass on the system screen, and if you
+   were quick enough it gave a brief bonus on your manual scans." Every so often a
+   comet crosses the planet band of an open system page; tap it before it leaves and
+   manual scans are multiplied for a short while (scanSurgeMul(), 03-defence.js).
+   All of it is runtime: nothing is saved, nothing runs in tick(), and Math.random()
+   here is drawn from the draw loop csim never enters. TUNING-PENDING: the gap between
+   comets and how long one takes to cross. Coordinates are fractions of the band. */
+const COMET_GAP=[70,150], COMET_SECS=4.5, COMET_HIT=38;
+let comet=null, cometNext=0;
+function cometSchedule(t,first){ cometNext=t+(first?20+Math.random()*30:COMET_GAP[0]+Math.random()*(COMET_GAP[1]-COMET_GAP[0]))*1000 }
+function cometSpawn(t){
+  const ltr=Math.random()<.5;
+  comet={t0:t, x0:ltr?-.1:1.1, y0:.1+Math.random()*.3, x1:ltr?1.1:-.1, y1:.6+Math.random()*.3, hit:0};
+}
+function cometAt(t){ const q=(t-comet.t0)/(COMET_SECS*1000);
+  return {q, x:comet.x0+(comet.x1-comet.x0)*q, y:comet.y0+(comet.y1-comet.y0)*q} }
+function cometCatch(t){
+  if(!comet||comet.hit)return false;
+  comet.hit=t;
+  surgeUntil=Date.now()+SURGE_SECS*1000;
+  toast("Comet caught — manual scans ×"+SURGE_MUL+" for "+SURGE_SECS+"s","y");
+  blip(880,.18,"sine",.06); blip(1320,.22,"sine",.04);
+  cometSchedule(t); dirty=true; return true;
+}
+function cometDraw(g,W,H,t,D){
+  if(!cometNext)cometSchedule(t,true);
+  if(!comet){ if(t<cometNext)return; cometSpawn(t); }
+  const p=cometAt(t), x=p.x*W, y=p.y*H;
+  if(comet.hit){
+    /* caught: a gold ring opens where it was, then it is gone */
+    const k=(t-comet.hit)/500; if(k>=1){ comet=null; return }
+    const hp=cometAt(comet.hit), hx=hp.x*W, hy=hp.y*H;
+    g.lineWidth=3*D*(1-k); g.strokeStyle="rgba(255,209,102,"+(1-k).toFixed(2)+")";
+    g.beginPath(); g.arc(hx,hy,(10+46*k)*D,0,6.2832); g.stroke();
+    return;
+  }
+  if(p.q>=1){ comet=null; cometSchedule(t); return }
+  const dx=(comet.x1-comet.x0)*W, dy=(comet.y1-comet.y0)*H, dl=Math.hypot(dx,dy)||1, ux=dx/dl, uy=dy/dl, L=Math.min(W,H)*.9;
+  const tail=g.createLinearGradient(x,y,x-ux*L,y-uy*L);
+  tail.addColorStop(0,"rgba(255,236,190,.9)"); tail.addColorStop(.25,"rgba(255,209,102,.35)"); tail.addColorStop(1,"rgba(255,209,102,0)");
+  g.strokeStyle=tail; g.lineCap="round"; g.lineWidth=5*D; g.beginPath(); g.moveTo(x,y); g.lineTo(x-ux*L,y-uy*L); g.stroke();
+  g.lineWidth=1.5*D; g.beginPath(); g.moveTo(x,y); g.lineTo(x-ux*L*.8+uy*6*D,y-uy*L*.8-ux*6*D); g.stroke();
+  const hd=g.createRadialGradient(x,y,0,x,y,13*D);
+  hd.addColorStop(0,"rgba(255,255,255,1)"); hd.addColorStop(.3,"rgba(255,230,170,.9)"); hd.addColorStop(1,"rgba(255,209,102,0)");
+  g.fillStyle=hd; g.beginPath(); g.arc(x,y,13*D,0,6.2832); g.fill();
+  /* a faint ring round it, so it reads as something to tap */
+  g.lineWidth=1.2*D; g.strokeStyle="rgba(255,209,102,"+(.35+.3*Math.sin(t/140)).toFixed(2)+")";
+  g.beginPath(); g.arc(x,y,20*D,0,6.2832); g.stroke();
+}
+/* the tap: generous (COMET_HIT css px round the head) - it is moving, and a thumb is wide */
+mapZoomCv.addEventListener("pointerdown",e=>{
+  if(!comet||comet.hit||!mapZoom||mapSite!=null)return;
+  const r=mapZoomCv.getBoundingClientRect(), p=cometAt(performance.now());
+  if(Math.hypot(e.clientX-r.left-p.x*r.width, e.clientY-r.top-p.y*r.height)<=COMET_HIT){ e.stopPropagation(); e.preventDefault(); cometCatch(performance.now()); }
+},true);
 function draw(t){
   if(BT){ requestAnimationFrame(draw); return }   /* battle overlay hides all of this */
   // starfield
@@ -507,6 +563,7 @@ function draw(t){
       /* patch626: the whole canvas is always the visible band now - see
          drawSysScene()'s own comment. */
       drawSysScene(mzx,MZW,MZH,mapZoom,t,devicePixelRatio,{cy:MZH*0.5,bandH:MZH});
+      if(zoom>=1)cometDraw(mzx,MZW,MZH,t,devicePixelRatio);
     }
     mzx.restore(); mzx.globalAlpha=1;
   }

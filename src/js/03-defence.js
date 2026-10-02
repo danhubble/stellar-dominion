@@ -867,7 +867,13 @@ function clickRaw(){
    make the perk worth ~15% at one end of the curve and ~nothing at the other. */
 function scanPerkMul(){ return 1+0.15*pkl("scan") }
 function clickCap(){ return (SFLOOR+SCAP*rate())*Math.sqrt(scanPerkMul()) }
-function clickPow(){ return softCap(clickRaw(), clickCap()) }
+/* Scan surge (the comet, 14-site.js): catching a comet on a system page multiplies
+   manual scans for a short while. Runtime only - never saved, and csim never sees a
+   comet, so this is always 1 there. TUNING-PENDING: both numbers. */
+const SURGE_MUL=3, SURGE_SECS=20;
+let surgeUntil=0;
+function scanSurgeMul(){ return Date.now()<surgeUntil ? SURGE_MUL : 1 }
+function clickPow(){ return softCap(clickRaw(), clickCap())*scanSurgeMul() }
 function cryRate(){
   if(!anyOf(1))return 0;
   const r=rate(); if(r<=0)return 0;

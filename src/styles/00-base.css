@@ -239,6 +239,10 @@ main{flex:1 1 auto;display:flex;min-height:0}
 .scanbtn:active{transform:translateY(3px)}
 .scanbtn:active::after{height:1px}
 .scanbtn:focus-visible{outline:2px solid #eafcff;outline-offset:3px}
+/* scan surge (a caught comet): a gold tag on the key with the multiplier and seconds left */
+.scanbtn[data-surge]{box-shadow:0 0 0 2px var(--gd),0 0 18px -2px rgba(255,209,102,.8)}
+.scanbtn[data-surge]::before{content:attr(data-surge);position:absolute;top:5px;right:7px;padding:3px 6px;border-radius:6px;
+  background:var(--gd);color:#2a1c00;font:800 11px/1 ui-monospace,monospace;letter-spacing:.02em;pointer-events:none}
 .scanbtn small{display:block;margin-top:5px;font:600 11px/1 ui-monospace,monospace;letter-spacing:.05em;color:#06303c}
 .scanbtn small .ci{color:#06303c}
 

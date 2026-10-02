@@ -254,7 +254,11 @@ function render(){
      new button unchanged) - never two separate computations of the same number. */
   { const cv="+"+fmt(clickPow());
     $("#clickv").textContent=cv;
-    const sv=$("#sshScanV"); if(sv)sv.textContent=cv; }
+    const sv=$("#sshScanV"); if(sv)sv.textContent=cv;
+    /* a scan surge shows on both Scan keys: a gold tag with the multiplier and the
+       seconds left (CSS reads it off data-surge) */
+    const left=Math.ceil((surgeUntil-Date.now())/1000), tag=left>0?"SURGE ×"+SURGE_MUL+" · "+left+"s":"";
+    for(const b of $$(".scanbtn")){ if(tag){ if(b.dataset.surge!==tag)b.dataset.surge=tag } else if(b.dataset.surge!==undefined)delete b.dataset.surge; } }
   /* polish batch A #13: also hides once a system is claimed - the owner playthrough
      still had it up post-claim (claiming needs ore, not necessarily a built
      structure or 25 scans, so neither existing condition is guaranteed by then). */
