@@ -154,7 +154,7 @@ const NOTICES={
    behaviour the two old hand-written entries they replace (sysClaimable/exoBanked) had. */
 for(const k in VEGA) NOTICES["vega:"+k]={t:VEGA[k].t, who:VEGA_NAME, go: VEGA[k].go ? ()=>gotoTab(VEGA[k].go) : null};
 NOTICES["vega:claimable"].go=()=>{ const s=SYS.find(x=>!x.home&&sysOpen(x)); S.msel=s?s.id:null; gotoTab("p-map"); };
-NOTICES["vega:exoBanked"].go=()=>{ gotoTab("p-res"); resMode="prog"; syncResMode(); dirty=true; render(); };
+NOTICES["vega:exoBanked"].go=()=>{ gotoTab("p-res"); techTab="eco"; techSel=null; dirty=true; render(); };   /* programmes live in the research trees now - Economy holds the first ones an exotic opens */
 /* polish batch A #4: TAKE ME THERE for vega:map must land on the map itself, not
    whatever system page happens to be open - close it (S.msel=null) same as
    vega:claimable does above, then switch tabs. */

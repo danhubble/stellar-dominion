@@ -75,7 +75,6 @@ function hscroll(el){
    grab handle went in patch626; sector change and the tab-change zoom-clear are
    deleted just below). */
 const navHsUpd=hscroll(document.querySelector("nav"));
-const resTabsHsUpd=hscroll($("#resTabs"));
 
 /* #view is one scroller shared by every pane, so without this each page inherits a
    scroll position that belongs to a different page. Remember one per pane instead. */
@@ -146,9 +145,6 @@ $$(".tab").forEach(t=>t.onclick=()=>{
     jump();
     requestAnimationFrame(jump);
   }
-});
-$$(".rmbtn[data-rm]").forEach(b=>b.onclick=()=>{
-  resMode=b.dataset.rm; syncResMode(); dirty=true; render();
 });
 $$(".rmbtn[data-rd]").forEach(b=>b.onclick=()=>{
   raidMode=b.dataset.rd; syncRaidMode(); dirty=true; render();

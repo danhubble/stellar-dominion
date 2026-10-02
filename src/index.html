@@ -113,17 +113,12 @@
         <div id="resCryStrip">
           <button class="rcard c-ctx" id="ctxCard" title="Selected system"><div class="ricon"><i class="exdot" id="ctxDot"></i></div><div><div class="val" id="vCtxVal">—</div><div class="ctxnums"><div class="sub" id="vCtxName">—</div><div class="sub" id="vCtxRate"> </div></div></div></button>
         </div>
-        <div id="resMode" class="rmode">
-          <button class="rmbtn on" data-rm="tree">TECH TREE</button>
-          <button class="rmbtn" data-rm="prog">PROGRAMMES</button>
-        </div>
-        <div id="resTreePane">
-          <div id="resTabs"></div>
-          <div id="rtrack" class="rtk"></div>
-        </div>
-        <div id="resProgPane" hidden>
-          <div id="progList"></div>
-        </div>
+        <!-- the four research trees (renderRes(), 09-render.js): balance chips, a tab
+             per tree, one line saying what the tree is for, then the tree itself -->
+        <div id="techBal" class="techbal"></div>
+        <div id="techTabs" class="techtabs"></div>
+        <p id="techWhat" class="techwhat"></p>
+        <div id="techTree"></div>
       </div>
       <div class="pane" id="p-raid">
         <div id="endCard"></div>

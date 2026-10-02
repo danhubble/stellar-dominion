@@ -213,22 +213,6 @@ function updateEmpBars(){
     const badge=el.querySelector(".ready");
     if(badge)badge.hidden = !(nextGi!=null && ladderCost(sysId,nextGi,1)<=S.ore);
   }
-  for(const p of resProgEls){
-    if(!p.head.isConnected)continue;
-    const have=exo(p.exoId), rate=exoRate(p.exoId);
-    const bk=p.head.querySelector("[data-banked]"); if(bk)bk.textContent=fmt(have);
-    const rt=p.head.querySelector("[data-rate]"); if(rt)rt.textContent=fmt(rate);
-    const rows=XPROG.filter(z=>z.x===p.exoId&&!INERT_PROGS.has(z.id));
-    const anyAfford=rows.some(r=>{ const l=xlv(r.id); return l<r.max && have>=xpCost(r,l) });
-    const badge=p.head.querySelector("[data-badge]");
-    if(badge)badge.style.display=anyAfford?"inline-block":"none";
-    if(p.body&&p.body.isConnected){
-      p.body.querySelectorAll("[data-xp]").forEach(b=>{
-        const r=xpDef(b.dataset.xp);
-        b.disabled = exo(r.x) < xpCost(r);
-      });
-    }
-  }
   /* PLAN-pacing: the Project's "you make R/h · ~T to go" line (and the Nexus slabs'
      LINK/NEED) - S.en ticks every frame outside of dirty, so nexLive() refreshes them
      in place on this unconditional pass; renderNex() only rebuilds on a real change. */
@@ -282,8 +266,8 @@ function render(){
      sheet's own held/e computation, same place empSysRow() used to build the row
      that is now these same ladderTierRow()s inline in the sheet. The function
      stays defined (dead) until patch612 deletes it with the rest of the widget. */
-  if(dirty){ dirty=false; renderRes(); renderProg(); renderNex(); renderMis(); renderAch(); renderRaids(); renderArmoury(); }
-  else { softButtons(); if($("#p-res").classList.contains("on"))resInfo();
+  if(dirty){ dirty=false; renderRes(); renderNex(); renderMis(); renderAch(); renderRaids(); renderArmoury(); }
+  else { softButtons(); if($("#p-res").classList.contains("on"))techLive();
     if($("#p-raid").classList.contains("on"))raidLive() }   /* salvage/ore slabs follow the balance in place */
   if(nmLive&&$("#mask").classList.contains("on"))nmTick();
   if(rmLive&&$("#mask").classList.contains("on"))rmTick();
@@ -2251,9 +2235,6 @@ function exoModal(){
     <div class="row"><button id="rmClose">CLOSE</button></div>`,
     ()=>{ $("#rmClose").onclick=hideModal; rmTick(); });
 }
-let resMode="tree";           /* which half of the Research tab is showing - "tree" or
-                                  "prog". Not persisted: presentation-only, always opens
-                                  on the tech tree, same as the tab itself always did. */
 let raidMode="fleet";         /* which sub-tab of the Raids tab is showing. Session-only,
                                   same reasoning as resMode above. PLAN-raidmap: there is
                                   no "targets" sub-tab any more - contacts are on the map. */
@@ -2290,17 +2271,9 @@ function resCur(r){ return r.cur||"cry" }
 function resBal(r){ return resCur(r)==="sv" ? (S.sv||0) : S.cry }
 function resIncome(r){ return resCur(r)==="sv" ? 0 : cryRate() }
 function curBranch(){ return RESH[Math.min(RESH.length-1,Math.max(0,S.rtab|0))] }
-/* The Research tab is one branch at a time, drawn as a vertical track (every branch is
-   a straight line of nodes, so a tree grid only cost space). renderRes() rebuilds the
-   picker and the track on a real change only (dataset.h guards - tchurn2 sweeps this
-   pane for buttons that get swapped out mid-click); resInfo() runs every render() pass
-   and only updates the next node's button in place (disabled state and "need X"). */
 const R_CHEV='<svg class="chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 6l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const R_CHECK='<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3L13 5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const R_LOCK='<svg class="rlock" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="1.5" fill="currentColor"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>';
-let resFxUntil=0, resFlash=false;
-function resIcon(r){ return `<svg class="ri" viewBox="0 0 48 48" aria-hidden="true">${r.ic}</svg>` }
-function resNodeName(r,k){ return (RNAMES[r.id]||[])[k-1]||("Level "+k) }
 function resBtnHTML(r,cost){
   const have=resBal(r);
   return have>=cost ? `RESEARCH<b>${fmt(cost)} ${RI(resCur(r))}</b>`
@@ -2308,7 +2281,7 @@ function resBtnHTML(r,cost){
 }
 /* "+75% all ore production" -> "+101% all ore production" reads as
    "+75% -> +101% all ore production": when the two lines differ in one word only,
-   show that word changing and the rest once. */
+   show that word changing and the rest once. (The Nexus rows use this.) */
 function resEffDiff(a,b){
   const A=a.split(" "), B=b.split(" ");
   if(A.length===B.length){ const d=A.map((w,i)=>w!==B[i]?i:-1).filter(i=>i>=0);
@@ -2316,139 +2289,128 @@ function resEffDiff(a,b){
       return A.slice(0,i).join(" ")+(i?" ":"")+`<span>${A[i]} →</span> ${B[i]}`+(i<A.length-1?" "+A.slice(i+1).join(" "):""); } }
   return `<span>${a} →</span> ${b}`;
 }
-function resPicker(){
-  showModal(`<h3>Research branches</h3><div class="rbrs">${RESH.map((r,i)=>{
-      const l=lv(S.rs,r.id), lk=resLocked(r);
-      return `<button type="button" class="rbr${i===(S.rtab|0)?" on":""}${lk?" lk":""}" data-i="${i}">${resIcon(r)}
-        <span>${r.n}${lk?`<small>${R_LOCK}${resReqText(r)}</small>`:""}</span><b>${l}/${r.max}</b></button>`;
-    }).join("")}</div><div class="row"><button id="rbClose">CLOSE</button></div>`,()=>{
-      $("#rbClose").onclick=hideModal;
-      $$(".rbr").forEach(b=>b.onclick=()=>{ S.rtab=+b.dataset.i; hideModal(); dirty=true; render(); save(); });
-    });
+/* ==================== the Research tab: four trees of cards ====================
+   TECH_TREES (01-content.js) puts every research node and every exotic programme in
+   one of four trees - Economy, Combat, Defence, Command - picked by a row of tabs.
+   Each node is a compact card on a spine: its name, level, one plain line saying
+   what a level does, and a row of pips. Nothing bought is ever hidden: a finished
+   node shrinks to one slim line with a tick but stays on the tree. Tapping a card
+   opens it in place (an animated unfold - CSS, .tmore) to show the flavour line,
+   "now -> next", and the RESEARCH slab.
+   renderRes() rebuilds the tabs and the tree only when something real changes (the
+   tree shown, a level, a lock) - dataset.h guards, tchurn2 sweeps this pane. Opening
+   and closing a card only toggles a class, which is what lets it animate. techLive()
+   runs every render() pass and follows the balances in place: each slab's label and
+   disabled state, and the balance chips. */
+let techTab="eco", techSel=null, resFxUntil=0;
+function techDef(id){ const r=RESH.find(x=>x.id===id); if(r)return {k:"rs",r}; const x=xpDef(id); return x?{k:"xp",r:x}:null }
+/* one shape for both kinds of node: a research node (crystal or salvage, may have a
+   requirement) and a programme (an exotic; shown locked until that exotic has ever
+   been banked - the same exoEverBanked() gate the old PROGRAMMES list used) */
+function techInfo(id){
+  const d=techDef(id); if(!d)return null; const r=d.r;
+  if(d.k==="rs"){ const l=lv(S.rs,id), lk=resLocked(r);
+    return {id,k:"rs",r,max:r.max,lv:l,cost:resCost(r,l),cur:resCur(r),bal:resBal(r),locked:lk,req:lk?resReqText(r):"",unit:RI(resCur(r))}; }
+  const l=xlv(id), e=exoDef(r.x), seen=exoEverBanked(r.x);
+  return {id,k:"xp",r,max:r.max,lv:l,cost:xpCost(r,l),cur:r.x,bal:exo(r.x),locked:!seen,req:seen?"":"Bank "+e.n+" to unlock",unit:e.n};
+}
+function techSlabHTML(n){
+  if(n.locked)return "LOCKED";
+  return n.bal>=n.cost ? `RESEARCH<b>${fmt(n.cost)} ${n.unit}</b>` : `NEED<b>${fmt(n.cost-n.bal)} ${n.unit}</b>`;
+}
+function techNodeHTML(id){
+  const n=techInfo(id); if(!n)return "";
+  const max=n.lv>=n.max, r=n.r;
+  const pips=Array.from({length:n.max},(_,i)=>`<i class="${i<n.lv?"on":""}"></i>`).join("");
+  return `<div class="tnode${n.lv?" has":""}${max?" max":""}${n.locked&&!n.lv?" lock":""}" data-id="${id}">
+    <button type="button" class="thead" aria-expanded="false">
+      <span class="ttop"><span class="tnm">${r.n}</span><span class="tlv">${max?R_CHECK+" MAX":n.lv+"/"+n.max}</span></span>
+      <span class="tfx">${TECH_FX[id]||r.d(1)}</span>
+      <span class="tpips">${pips}</span>
+      ${n.locked&&!n.lv?`<span class="treq">${R_LOCK}${n.req}</span>`:""}
+    </button>
+    <div class="tmore"><div class="tmorein">
+      <p>${r.t}</p>
+      <div class="tnx">Now: ${r.d(n.lv)}${max?"":` <span>\u2192 ${r.d(n.lv+1)}</span>`}</div>
+      ${max?"":`<div class="rconf"></div><button type="button" class="${n.cur==="sv"?"svslab":"resslab"} tslab" data-buy="${id}"></button>`}
+    </div></div></div>`;
 }
 function renderRes(){
-  const cs=$("#resCryStrip"); if(cs)cs.hidden = resMode!=="prog";
+  const cs=$("#resCryStrip"); if(cs&&!cs.hidden)cs.hidden=true;   /* the exotic context card went with the PROGRAMMES list - balances are the chips above the tree now */
   if(Date.now()<resFxUntil)return;           /* a RESEARCHED beat is playing - leave the card be */
-  const r=curBranch(), l=lv(S.rs,r.id), locked=resLocked(r), cost=resCost(r,l);
-  const tabs=$("#resTabs");
-  const ph=`<button type="button" class="rpick" id="resPick" aria-label="Change research branch">${resIcon(r)}<b>${r.n}</b>
-    <span class="rpc"><i>${l}</i> / ${r.max}</span>${R_CHEV}</button>`;
-  if(tabs.dataset.h!==ph){ tabs.dataset.h=ph; tabs.innerHTML=ph; $("#resPick").onclick=resPicker; }
-  let h="";
-  if(l>0) h+=`<div class="rtr got${resFlash?" flash":""}"><div class="rdot">${R_CHECK}</div>
-      <div class="rnm">${l} researched<span class="rfx">${r.d(l)}</span></div></div>`;
-  if(l<r.max){
-    const k=l+1;
-    const eff = l>0 ? resEffDiff(r.d(l),r.d(k)) : r.d(k);
-    h+=`<div class="rtr next"><div class="rdot">${k}</div><div class="rnext${locked?" lkd":""}" id="rNext">
-      <div class="rtop"><span>NODE ${k} / ${r.max}</span><span>${locked?"LOCKED":"NEXT UP"}</span></div>
-      <h3>${resNodeName(r,k)}</h3><div class="ref">${eff}</div><div class="rfl">${r.t}</div>
-      ${locked?`<div class="rreq">${R_LOCK}${resReqText(r)}</div>`
-        :`<div class="rconf" id="rConf"></div><button type="button" class="resslab" id="riBuy">${resBtnHTML(r,cost)}</button>`}
-      </div></div>`;
-    for(let j=k+1;j<=r.max;j++) h+=`<button type="button" class="rtr far" data-k="${j}"><div class="rdot">${j}</div>
-      <div class="rnm">${resNodeName(r,j)}</div></button>`;
-  } else {
-    h+=`<div class="rtr next"><div class="rdot">${R_CHECK}</div><div class="rnext"><div class="rtop"><span>${r.max} / ${r.max}</span><span>COMPLETE</span></div>
-      <h3>${r.n} complete</h3><div class="ref">${r.d(l)}</div></div></div>`;
+  const tabs=$("#techTabs"), host=$("#techTree"); if(!tabs||!host)return;
+  if(!TECH_TREES.some(t=>t.id===techTab))techTab=TECH_TREES[0].id;
+  const th=TECH_TREES.map(t=>{ let got=0, tot=0; for(const id of techIds(t)){ const n=techInfo(id); if(n){ got+=n.lv; tot+=n.max } }
+    return `<button type="button" class="techtab${t.id===techTab?" on":""}" data-t="${t.id}">${t.n}<b>${got}/${tot}</b></button>` }).join("");
+  if(tabs.dataset.h!==th){
+    tabs.dataset.h=th; tabs.innerHTML=th;
+    tabs.querySelectorAll(".techtab").forEach(b=>b.onclick=()=>{ if(techTab===b.dataset.t)return; techTab=b.dataset.t; techSel=null; dirty=true; render(); });
   }
-  const tk=$("#rtrack");
-  if(tk.dataset.h!==h){
-    tk.dataset.h=h; tk.innerHTML=h;
-    tk.querySelectorAll(".rtr.far").forEach(b=>b.onclick=()=>nodeModal(r,+b.dataset.k));
-    const bt=$("#riBuy"); if(bt)bt.onclick=()=>resBuyFx(r);
+  const t=TECH_TREES.find(x=>x.id===techTab);
+  const what=$("#techWhat"); if(what&&what.textContent!==t.what)what.textContent=t.what;
+  const h = t.trunk
+    ? `<div class="ttrunk">${techNodeHTML(t.trunk)}</div><div class="tforkbar"></div>
+       <div class="tfork">${t.cols.map(c=>`<div class="tcol"><h4>${c.h}</h4><div class="tspine">${c.ids.map(techNodeHTML).join("")}</div></div>`).join("")}</div>`
+    : `<div class="tspine">${t.ids.map(techNodeHTML).join("")}</div>`;
+  if(host.dataset.h!==h){
+    host.dataset.h=h; host.innerHTML=h;
+    host.querySelectorAll(".tnode").forEach(nd=>{
+      const id=nd.dataset.id;
+      if(id===techSel){ nd.classList.add("sel"); nd.querySelector(".thead").setAttribute("aria-expanded","true"); }
+      nd.querySelector(".thead").onclick=()=>techToggle(id);
+      const bt=nd.querySelector(".tslab"); if(bt)bt.onclick=()=>techBuy(id);
+    });
   }
-  resFlash=false;
-  resInfo();
+  techLive();
 }
-/* the per-frame part: the next node's button follows the balance without a rebuild */
-function resInfo(){
-  const bt=$("#riBuy"); if(!bt||Date.now()<resFxUntil)return;
-  const r=curBranch(), cost=resCost(r,lv(S.rs,r.id));
-  const ok=resBal(r)>=cost, html=resBtnHTML(r,cost);
-  if(bt.disabled===ok)bt.disabled=!ok;
-  if(bt.dataset.h!==html){ bt.dataset.h=html; bt.innerHTML=html; }
+/* open or close a card in place - a class flip only, so the unfold animates and no
+   button is ever swapped out */
+function techToggle(id){
+  techSel = techSel===id ? null : id;
+  $$("#techTree .tnode").forEach(nd=>{
+    const on=nd.dataset.id===techSel;
+    nd.classList.toggle("sel",on);
+    nd.querySelector(".thead").setAttribute("aria-expanded",on?"true":"false");
+  });
+  techLive();
 }
-/* buy, then the console confirmation: RESEARCHED types in on the card, and the track
-   rebuilds a beat later with the researched line flashing */
-function resBuyFx(r){
+/* the per-frame part: slabs and balance chips follow what the player holds */
+function techLive(){
+  if(Date.now()<resFxUntil)return;
+  const t=TECH_TREES.find(x=>x.id===techTab); if(!t)return;
+  $$("#techTree .tslab").forEach(bt=>{
+    const n=techInfo(bt.dataset.buy); if(!n)return;
+    const html=techSlabHTML(n), dis=n.locked||n.bal<n.cost;
+    if(bt.disabled!==dis)bt.disabled=dis;
+    if(bt.dataset.h!==html){ bt.dataset.h=html; bt.innerHTML=html; }
+  });
+  /* what this tree is paid in, and how much of each you hold */
+  const bal=$("#techBal");
+  if(bal){
+    const seen={}, chips=[];
+    for(const id of techIds(t)){ const n=techInfo(id); if(!n||seen[n.cur])continue; seen[n.cur]=1;
+      if(n.k==="xp"&&!exoEverBanked(n.cur))continue;
+      const nm=n.cur==="cry"?"Crystal":n.cur==="sv"?"Salvage":exoDef(n.cur).n;
+      const col=n.cur==="cry"?"var(--vi)":n.cur==="sv"?"var(--bz,#e0a672)":exoDef(n.cur).col;
+      chips.push(`<span><small>${nm.toUpperCase()}</small><b style="color:${col}">${fmt(n.bal)}</b></span>`); }
+    const bh=chips.join("");
+    if(bal.dataset.h!==bh){ bal.dataset.h=bh; bal.innerHTML=bh; }
+  }
+}
+/* buy, then the console confirmation: RESEARCHED types in on the card, and the tree
+   rebuilds a beat later with the new pip lit */
+function techBuy(id){
+  const d=techDef(id); if(!d)return;
   const slow=lowMotion(), hold=slow?250:900;
   resFxUntil=Date.now()+hold;
-  if(!buyRes(r)){ resFxUntil=0; return }
-  const card=$("#rNext"), conf=$("#rConf"), bt=$("#riBuy");
-  if(card)card.classList.add("done");
+  const ok = d.k==="rs" ? buyRes(d.r) : buyXp(d.r);
+  if(!ok){ resFxUntil=0; return }
+  const nd=$('#techTree .tnode[data-id="'+id+'"]'), conf=nd&&nd.querySelector(".rconf"), bt=nd&&nd.querySelector(".tslab");
   if(bt)bt.disabled=true;
   if(conf){ const w="RESEARCHED";
     if(slow)conf.textContent=w; else { let n=0;
-      const t=setInterval(()=>{ conf.textContent=w.slice(0,++n); if(n>=w.length||!conf.isConnected)clearInterval(t) },45) } }
-  setTimeout(()=>{ resFxUntil=0; resFlash=true; dirty=true; render(); }, hold);
-}
-/* ---------------- Research tab: exotic programmes (Stage 1 / v3) ----------------
-   Moved here from the Empire accordion (patch416-428) - same XPROG data, same costs,
-   same exoEverBanked() gate, unmodified. No accordion: every banked programme's cards
-   just render open, so empOpen/empAccordionTap stay system-rows-only on Empire. */
-let resProgEls=[];
-function renderProg(){
-  const host=$("#progList"); if(!host)return;
-  resProgEls=[];
-  host.innerHTML="";
-  if(!EXO.some(e=>exoEverBanked(e.id))){
-    const d=document.createElement("div");
-    d.className="sysrow2 beyond";
-    d.textContent="Bank an exotic resource to unlock its programme.";
-    host.appendChild(d);
-    return;
-  }
-  for(const e of EXO) if(exoEverBanked(e.id)) host.appendChild(progRow(e.id));
-}
-function progRow(exoId){
-  const e=exoDef(exoId), have=exo(exoId), rate=exoRate(exoId);
-  /* polish batch A #11: INERT_PROGS rows (Command Lattice) never get a card here -
-     see its own header note (01-content.js). */
-  const rows=XPROG.filter(z=>z.x===exoId&&!INERT_PROGS.has(z.id));
-  const anyAfford=rows.some(r=>{ const l=xlv(r.id); return l<r.max && have>=xpCost(r,l) });
-  const wrap=document.createElement("div");
-  const head=document.createElement("div");
-  head.className="sysrow2 held expanded proghead";
-  head.dataset.sys="x:"+exoId;
-  head.innerHTML=`<div class="sysrow2-main">
-      <span class="sysname" style="color:${e.col}">${e.n.toUpperCase()} PROGRAMME</span>
-      <span class="kindbadge" data-badge style="--a:var(--gr);display:${anyAfford?"inline-block":"none"}">UPGRADE</span>
-    </div>
-    <div class="sysrow2-stats">
-      <span><b data-banked>${fmt(have)}</b> BANKED</span>
-      <span><b data-rate>${fmt(rate)}</b> /S</span>
-    </div>`;
-  wrap.appendChild(head);
-  const body=document.createElement("div"); body.className="sysbody";
-  let h='<div class="grid">';
-  for(const r of rows){
-    const l=xlv(r.id), max=l>=r.max, c=xpCost(r,l);
-    h+=`<div class="card${max?" done":""}"><h5>${r.n} <span class="lv">Lv ${l}/${r.max}</span></h5>
-      <p>${r.t}</p><div class="eff">${r.d(l)}${max?"":" \u2192 "+r.d(l+1)}</div>
-      ${max?"<button class=\"resslab\" disabled>MAXED</button>"
-           :`<button class="resslab" data-xp="${r.id}">UPGRADE<b>${fmt(c)} ${e.n}</b></button>`}</div>`;
-  }
-  h+="</div>";
-  body.innerHTML=h;
-  body.querySelectorAll("[data-xp]").forEach(b=>{
-    const r=xpDef(b.dataset.xp);
-    b.disabled = exo(r.x) < xpCost(r);
-    b.onclick=()=>{ if(buyXp(r)){ dirty=true; render(); save() } };
-  });
-  wrap.appendChild(body);
-  resProgEls.push({head,body,exoId});
-  return wrap;
-}
-/* applies resMode to the sub-tab buttons and shows/hides the matching pane - the one
-   place that does this, so the click handler and the exoBanked notice's go() (which
-   jumps straight to PROGRAMMES) can't drift out of sync with each other. */
-function syncResMode(){
-  $$(".rmbtn[data-rm]").forEach(x=>x.classList.toggle("on",x.dataset.rm===resMode));
-  const t=$("#resTreePane"), pr=$("#resProgPane");
-  if(t)t.hidden = resMode!=="tree";
-  if(pr)pr.hidden = resMode!=="prog";
-  const cs=$("#resCryStrip"); if(cs)cs.hidden = resMode!=="prog";   /* exotic context card belongs with the programmes */
+      const tk=setInterval(()=>{ conf.textContent=w.slice(0,++n); if(n>=w.length||!conf.isConnected)clearInterval(tk) },45) } }
+  setTimeout(()=>{ resFxUntil=0; dirty=true; render(); save(); }, hold);
 }
 function nodeModal(r,k){
   const l=lv(S.rs,r.id), locked=resLocked(r), cost=resCost(r,k-1);
@@ -2473,7 +2435,7 @@ function nodeModal(r,k){
     ${(k>l&&!locked&&k===l+1)?`<div class="nmbal" id="nmBal"></div>`:""}
     <div class="row">${act}</div>`,()=>{
       $("#nmClose").onclick=hideModal;
-      const bt=$("#nmBuy"); if(bt)bt.onclick=()=>{ hideModal(); resBuyFx(r); };
+      const bt=$("#nmBuy"); if(bt)bt.onclick=()=>{ hideModal(); techBuy(r.id); };
       nmLive={r,k,cost}; nmTick();
     });
 }

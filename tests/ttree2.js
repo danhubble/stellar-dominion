@@ -31,13 +31,15 @@ const { chromium } = require('playwright-core');
  await p.evaluate(()=>{ __SD.S.xpn=1e9; __SD.S.lvl=80; __SD.S.lvSeen=80; });   // open the level-gated tabs
  await p.evaluate(()=>{ __SD.S.rs={drill:5,amp:4,cryo:3,cold:1,auto:2}; __SD.S.cry=5e4; });
  await p.click('.tab[data-p="p-res"]'); await p.waitForTimeout(700);
- console.log('picker',await p.$$eval('#resPick',n=>n.length),'track rows',await p.$$eval('#rtrack .rtr',n=>n.length),'buy',await p.$$eval('#riBuy',n=>n.length));
+ // the Research tab is four trees of cards now (tprogresearch2.js covers it in full)
+ console.log('tree tabs',await p.$$eval('#techTabs .techtab',n=>n.length),'cards',await p.$$eval('#techTree .tnode',n=>n.length),'slabs',await p.$$eval('#techTree .tslab',n=>n.length));
  await p.screenshot({path:SHOTS+'r2-drill.png'});
- await p.click('#resPick'); await p.waitForTimeout(200); await p.click('.rbr:nth-child(6)'); await p.waitForTimeout(600);
+ await p.click('#techTabs .techtab[data-t="war"]'); await p.waitForTimeout(400);
  await p.screenshot({path:SHOTS+'r2-void.png'});
- await p.click('#resPick'); await p.waitForTimeout(200); await p.click('.rbr:nth-child(1)'); await p.waitForTimeout(400);
+ await p.click('#techTabs .techtab[data-t="eco"]'); await p.waitForTimeout(400);
  const before=await p.evaluate(()=>__SD.S.rs.drill);
- await p.click('#riBuy'); await p.waitForTimeout(1200);   // research track: the next node's own button (RESEARCHED beat holds ~0.9s)
+ await p.click('#techTree .tnode[data-id="drill"] .thead'); await p.waitForTimeout(500);   // unfold the card
+ await p.click('#techTree .tnode[data-id="drill"] .tslab'); await p.waitForTimeout(1200);  // its own button (RESEARCHED beat holds ~0.9s)
  console.log('drill',before,'->',await p.evaluate(()=>__SD.S.rs.drill));
  await p.click('.tab[data-p="p-map"]'); await p.waitForTimeout(400);
  // patch628b: #sysSheet.open is gone - body.syspage is the fact now.

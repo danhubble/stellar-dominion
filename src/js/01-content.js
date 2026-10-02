@@ -697,6 +697,39 @@ function resReqText(r){
   if(resSecLocked(r))return "Requires a system in the "+SECTORS[r.sec].n;
   return "";
 }
+/* ---------------- the Research tab's four trees (owner: "separate it into an
+   offensive/combat tree, defense tree, economy tree... programmes could be folded
+   in") ----------------
+   Presentation only: every id here is an existing RESH node (bought with buyRes()) or
+   an existing XPROG programme (bought with buyXp()) - same costs, same maxes, same
+   requirements, same save fields. TECH_TREES says where each one is shown; TECH_FX is
+   the plain one-line "what it does per level" each card leads with, so nobody has to
+   guess what a Scanner Amplifier is. Economy forks under its trunk: the everyday
+   resources on one side, the exotics on the other. Command Lattice (INERT_PROGS)
+   is in no tree, exactly as it had no card before. */
+const TECH_TREES=[
+ {id:"eco", n:"ECONOMY", what:"What your empire earns. One trunk, then two branches: the everyday resources on the left, the rare exotics on the right.",
+  trunk:"drill", cols:[{h:"ORE & CRYSTAL", ids:["cryo","frame","found","burn","yield"]},{h:"EXOTICS", ids:["latt","loom"]}]},
+ {id:"war", n:"COMBAT",  what:"How hard your fleets hit, and what a raid pays.", ids:["core","casc","void","caged"]},
+ {id:"def", n:"DEFENCE", what:"What protects the systems you hold when a rival comes for them.", ids:["pdef","bat","bul"]},
+ {id:"cmd", n:"COMMAND", what:"Running the empire: your own scans, time away, and who manages your worlds.", ids:["amp","optic","cold","vault","auto"]}
+];
+const TECH_FX={
+ drill:"<b>+15% ore</b> from every structure, per level",
+ cryo:"<b>+60% crystal</b> per level", frame:"<b>\u00d71.07 all production</b> per level",
+ found:"<b>Cheaper structures</b>, about \u22125% per level", burn:"<b>\u00d71.15 crystal</b> per level",
+ yield:"<b>\u00d71.08 all production</b> per level", latt:"<b>\u00d71.08 from exotic structures</b> per level",
+ loom:"<b>\u00d71.35 exotic yield</b> everywhere, per level",
+ core:"<b>+6 fleet capacity</b> per level", casc:"<b>\u00d71.22 fleet damage and hull</b> per level",
+ void:"<b>+12% Dark Matter</b> from raids, per level", caged:"<b>\u00d71.4 Dark Matter</b> from raids, per level",
+ pdef:"<b>\u00d71.13 defence damage</b> when you fly the defence, per level",
+ bat:"<b>+0.4 garrison strength</b> per level, for fights without you",
+ bul:"<b>\u00d71.10 system hull</b> in a defence, per level",
+ amp:"<b>Manual scan \u00d72.2</b> per level", optic:"<b>Manual scan \u00d71.7</b> per level",
+ cold:"<b>+2h offline cap</b> per level", vault:"<b>+3h offline cap</b> per level",
+ auto:"<b>One more governor</b> per level"
+};
+function techIds(t){ return t.trunk ? [t.trunk].concat(...t.cols.map(c=>c.ids)) : t.ids }
 const PJ1_MUL=1.25, PJ2_MUL=1.25, PJ3_MUL=1.5;   /* TUNING-PENDING: THE PROJECT bonuses */
 const NEXUS=[
  /* cg was 1.55: 25 levels of that is 521,065 DM, 84% of the whole tree and about

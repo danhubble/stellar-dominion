@@ -128,11 +128,14 @@ const { chromium } = require('playwright-core');
  const comm=await p.evaluate(()=>{
    const G=window.__SD;
    G.adopt({...G.fresh(), exo:{he:1e6}, all:1e9});
-   G.gotoTab('p-res'); resMode='prog'; syncResMode(); G.dirty=true; G.render();
-   const names=[...document.querySelectorAll('#progList .card h5')].map(h=>h.textContent);
+   /* programmes are cards in the four research trees now - look across all of them */
+   G.gotoTab('p-res');
+   const names=[];
+   for(const t of G.TECH_TREES){ G.techTab=t.id; dirty=true; render();
+     document.querySelectorAll('#techTree .tnode .tnm').forEach(h=>names.push(h.textContent)); }
    return {names, stillBuyable:G.buyXp(G.xpDef('comm'))};
  });
- ok('Command Lattice has no card in the Programmes tab', !comm.names.some(n=>/Command Lattice/.test(n)), comm);
+ ok('Command Lattice has no card in any research tree', !comm.names.some(n=>/Command Lattice/.test(n)), comm);
  ok('...but XPROG/buyXp() still work on it underneath (csim4.js is unaffected)', comm.stillBuyable, comm);
 
  // ---------- item 13: Getting Started hides once a system is claimed ----------
