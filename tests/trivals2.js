@@ -149,7 +149,9 @@ function ok(label, cond, extra){ out.push((cond?'PASS ':'FAIL ')+label+(extra!==
    const before = { b: JSON.stringify(G.S.sys.kor.b), exo: G.S.exo.ir };
    // a threat already in flight when the game closed, well past its own ETA now
    const th = { id:1, rv:'hel', sysId:'kor', dif:5, t:-10 };
+   const R=Math.random; Math.random=()=>0.999;   /* offline now rolls the defences too - pin the loss */
    const res = G.holdResolve(th, true, true, /*offline*/true);
+   Math.random=R;
    return {
      res, before,
      bAfter: JSON.stringify(G.S.sys.kor.b),

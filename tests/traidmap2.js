@@ -149,7 +149,7 @@ const { chromium } = require('playwright-core');
  ok('tapping one opens the prompt: a weak contact offers ATTACK and FIGHT IT MYSELF, with a fleet picker',
    mark.easyP.open && mark.easyP.atk && mark.easyP.man && mark.easyP.picks===3, mark.easyP);
  ok('a contact too strong to auto-resolve offers only the manual attack, and says why',
-   !mark.hardP.atk && mark.hardP.man && /Too strong/.test(mark.hardP.warn||'') && mark.hardP.risk==='SEVERE', mark.hardP);
+   !mark.hardP.atk && mark.hardP.man && /Too close a fight/.test(mark.hardP.warn||'') && mark.hardP.risk==='SEVERE', mark.hardP);
 
  // ---------------- ATTACK: fly there, settle it on the map ----------------
  const auto=await p.evaluate(()=>{

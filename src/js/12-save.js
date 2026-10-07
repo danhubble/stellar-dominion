@@ -81,7 +81,10 @@ function adopt(o){
       if(fl&&okPos(fl.o))o={sec:fl.o.sec,x:+fl.o.x,y:+fl.o.y,sys:(typeof fl.o.sys==="string"&&SYSMAP[fl.o.sys])?fl.o.sys:null};
       else { const s=SYSMAP[from||at||"home"]||SYSMAP.home; o={sec:s.sec,x:s.sx,y:s.sy,sys:s.id}; }
     }
-    return {id,n,sh,hp,at,to,eta,from,tot,pos,tg,hold,o};
+    /* sg: the enemy system this fleet was sent to attack from the attack prompt
+       (sga: settle it on its own when it gets there) */
+    const sg=(fl&&typeof fl.sg==="string"&&SYSMAP[fl.sg])?fl.sg:null, sga=sg&&fl.sga?1:0;
+    return {id,n,sh,hp,at,to,eta,from,tot,pos,tg,hold,o,sg,sga};
   });
   if(f.flSel==null || !f.fl.some(fl=>fl.id===f.flSel))f.flSel=f.fl[0].id;
   /* run 3: the delivery queue (S.flQ, decision 6) - three non-negative counts,

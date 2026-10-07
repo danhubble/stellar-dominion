@@ -50,9 +50,19 @@ function hscroll(el){
 (function(){
   const nodes=document.querySelector("#mapNodes"); if(!nodes)return;
   nodes.addEventListener("click", e=>{
+    const btn=e.target.closest(".mnode");
+    const s=btn?SYSMAP[btn.dataset.s]:null;
+    /* an enemy system goes straight to the attack prompt - with a fleet selected, or
+       with one of the player's fleets already sitting there (owner's ask) */
+    if(s&&sysContested(s)&&(flSel!=null||fleetAtSys(s.id))){
+      e.stopPropagation();
+      sendChipSys=null; sysPrompt(s.id);
+      dirty=true; render();
+      return;
+    }
     if(flSel==null)return;
     e.stopPropagation();
-    const btn=e.target.closest(".mnode"); if(!btn)return;
+    if(!btn)return;
     sendChipSys=btn.dataset.s;
     dirty=true; render();
   }, true);
@@ -223,7 +233,7 @@ function restartDialog(){
         else note.textContent="RESTART unlocks in "+t+"…";
       },1000);
       yes.onclick=()=>{
-        clearInterval(iv); Store.del(KEY); S=fresh(); LF=null; hideModal();
+        clearInterval(iv); Store.del(KEY); S=fresh(); LF=null; mapViewReset(); hideModal();
         renderAll(); playOpening(); save();
         toast("New game started. Good luck out there.","g");
       };
@@ -241,7 +251,7 @@ $("#btnSave").onclick=()=>{
       $("#mCopy").onclick=()=>copyCode($("#mCode").value);
       $("#mLoad").onclick=()=>{
         try{ const o=JSON.parse(decodeURIComponent(escape(atob($("#mCode").value.trim()))));
-          if(adopt(o)){ hideModal(); LF=null; lfSettleMarkOnLoad();
+          if(adopt(o)){ hideModal(); LF=null; mapViewReset(); lfSettleMarkOnLoad();
             renderAll(); offlineReport(); save(); toast("Save loaded","g"); }
           else toast("That code didn't parse.");
         }catch(e){ toast("That code didn't parse.") }

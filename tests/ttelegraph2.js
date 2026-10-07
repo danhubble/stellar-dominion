@@ -234,10 +234,10 @@ ok('the only mentions of offlineReport() in csim4.js are comments describing its
  ok('the system no longer counts as held once occupied', loseFight.held===false, loseFight);
 
  // ---------------- FIX 1: pressing LET DEFENCES HOLD resolves via the exact same
- // lfResolveOffline() path as an offline arrival - unconditional occupation, no
- // roll. The task's own wording ("defence check, repel or occupy") reads as if
- // there is a repel chance here; there is not, by design (see HANDOVER/patch481's
- // own note), so this test asserts what actually happens: always occupied. ----------------
+ // lfResolveOffline() path as an offline arrival. That path now rolls the system's
+ // defences (holdResolve/holdOdds - tplaylist2.js covers the hold side); from here
+ // on the roll is pinned to a loss so these checks stay about the occupation road. ----------------
+ await p.evaluate(()=>{ Math.random=()=>0.999; });
  const pressHold = await p.evaluate(()=>{
    const G=window.__SD;
    G.lfClear(); if(G.DT)G.closeDefence();
@@ -257,7 +257,7 @@ ok('the only mentions of offlineReport() in csim4.js are comments describing its
      modalClosed: !document.querySelector('#mask').classList.contains('on'),
    };
  });
- ok('LET DEFENCES HOLD always occupies the system (no repel roll - unconditional, same as lfResolveOffline() always was)', pressHold.occ==='hel', pressHold);
+ ok('LET DEFENCES HOLD, roll lost: the system is occupied', pressHold.occ==='hel', pressHold);
  ok('...buildings survive it untouched, same as any other live-fleet resolution', pressHold.before.b===pressHold.bAfter, pressHold);
  ok('...the exotic stockpile is never touched by it either', pressHold.exoAfter===1000, pressHold);
  ok('LET DEFENCES HOLD clears the live fleet record', pressHold.lfCleared, pressHold);

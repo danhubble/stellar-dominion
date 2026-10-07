@@ -446,19 +446,20 @@ function lfOccupy(sysId, rid){
   dmodConsumeMines(sysId);   /* the live-fleet offline-occupy path also resolves an attack */
   return occupySystem(s.id, rid);
 }
-/* 2C: "If the ETA expires while offline, it resolves per 2A into occupation - no
-   simulated battle needed in v1." Calls occupySystem() directly rather than the
-   thq/holdResolve offline branch (patch462) - this mechanism never touches S.thq
-   at all, by design, so there is nothing to route through holdResolve() here. */
+/* The owner found defences made no difference to a system attacked while they were
+   away ("doesn't matter how strong I have the defences"): this used to occupy
+   unconditionally. It now goes through holdResolve() like every other threat - the
+   garrison gets the same holdOdds() roll, so turret rings and the rest count. */
+function lfThreat(rv,sysId){
+  const s=SYSMAP[sysId];
+  return { rv, sysId, dif:1+(s?s.ring:0)*0.34+Math.max(0,level()-DEFLV)*0.012 };   /* lfOpenDefence()'s formula */
+}
 function lfResolveOffline(){
   if(!LF)return;
-  const s=SYSMAP[LF.sysId], rid=LF.rv;
-  if(lfOccupy(LF.sysId, rid)){
-    const rv=RIVALMAP[rid];
-    toast((rv?rv.n:"They")+" now occupy "+(s?s.n:"a system")+" \u2014 retake it on the map","r");
-    flag("p-map"); dirty=true; save();
-  }
+  const th=lfThreat(LF.rv, LF.sysId);
   lfClear();
+  const r=holdResolve(th, true, false, true);
+  if(r&&r.occ)flag("p-map");
 }
 /* 2C: "enough to open the fight prepared" - the real tactical defence overlay,
    the same machinery startDefence() builds for the pre-existing thq mechanic.
@@ -512,8 +513,8 @@ function lfPromptChoice(){
     <div style="font:700 11px/1.3 ui-monospace,monospace;color:${rv?rv.col:"var(--gd)"}">${rv?rv.n:"Hostiles"}</div>
     <p>${b.flav}</p>
     <p>${sdl>0
-      ? "Defences are up ("+dmodSummary(s.id)+"), but this is a live strike \u2014 walk away and the system will be lost, unless you defend it yourself."
-      : "No defences here \u2014 walk away and the system will be lost, unless you defend it yourself."}</p>
+      ? "Defences are up ("+dmodSummary(s.id)+"). Left alone they hold about "+Math.round(holdOdds(lfThreat(rid,s.id))*100)+"% of the time \u2014 or defend it yourself."
+      : "No defences here \u2014 left alone it holds only about "+Math.round(holdOdds(lfThreat(rid,s.id))*100)+"% of the time. Defend it yourself."}</p>
     <p class="mhint" id="lfPromptCd"></p>
     <div class="row">
       <button id="lfDefendBtn">DEFEND ${s.n.toUpperCase()}</button>
@@ -579,8 +580,8 @@ function lfSettleMarkOnLoad(){
   const m=S.lfMark; if(!m||typeof m!=="object")return;
   if(!SYSMAP[m.sysId]||SYSMAP[m.sysId].home||RVACT.indexOf(m.rv)<0){ S.lfMark=null; return }
   if(Date.now()<m.dueAt){ LF={ rv:m.rv, sysId:m.sysId, dueAt:m.dueAt }; return }
-  lfOccupy(m.sysId, m.rv);
   S.lfMark=null;
+  holdResolve(lfThreat(m.rv, m.sysId), true, true, true);
 }
 dcv.addEventListener("pointerdown",e=>{
   if(!DT||DT.done)return;
@@ -625,8 +626,10 @@ function holdResolve(th, auto, quiet, offline){
      not deemed to have lost a Nexus raid just because nobody was watching, the way an
      unattended HELD system auto-occupies under 2C below. The odds roll (and whether
      it happens at all) is otherwise identical to the ordinary branch. */
-  const odds=(isSab||!offline)?holdOdds(th):0;
-  const won=isSab ? Math.random()<odds : (!offline&&Math.random()<odds);
+  /* offline used to mean odds 0 - an absent player always lost the system whatever
+     its defences. Same roll now, present or not. */
+  const odds=holdOdds(th);
+  const won=Math.random()<odds;
   let sv=0, ex=0, occ=false, sab=0; const exId=isSab?null:s.res;
   if(won){
     S.defw=(S.defw||0)+1; xpOnDef(quiet);

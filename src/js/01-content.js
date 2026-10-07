@@ -727,7 +727,7 @@ const TECH_FX={
  bul:"<b>\u00d71.10 system hull</b> in a defence, per level",
  amp:"<b>Manual scan \u00d72.2</b> per level", optic:"<b>Manual scan \u00d71.7</b> per level",
  cold:"<b>+2h offline cap</b> per level", vault:"<b>+3h offline cap</b> per level",
- auto:"<b>One more governor</b> per level"
+ auto:"<b>One more governor</b> per level, and one per extra sector you hold"
 };
 function techIds(t){ return t.trunk ? [t.trunk].concat(...t.cols.map(c=>c.ids)) : t.ids }
 const PJ1_MUL=1.25, PJ2_MUL=1.25, PJ3_MUL=1.5;   /* TUNING-PENDING: THE PROJECT bonuses */
@@ -1534,6 +1534,7 @@ function fleetSend(f,toId){
   if(fleetBusy(f)){ toast(f.n+" is already en route","y"); return false }
   if(toId===f.at)return false;
   if(!SYSMAP[toId])return false;
+  f.sg=null; f.sga=0;                                    /* a plain SEND drops any attack order */
   if(BT||DT){ toast("Not mid-fight","y"); return false }
   const o=fleetPos(f), eta=travelSecsPos(o,sysPos(toId));
   fleetRelease(f);
@@ -1554,6 +1555,7 @@ function fleetAttack(f,t,auto){
   if(f.hp<0.15){ toast("Fleet too damaged \u2014 recall it to repair."); return false }
   if(fleets().some(x=>x!==f&&(x.tg===t.id||x.hold===t.id))){ toast("Another fleet is already on it","y"); return false }
   if(f.hold===t.id){ t.auto=auto?1:0; dirty=true; return true }   /* already beside it */
+  f.sg=null; f.sga=0;
   const o=fleetPos(f), eta=travelSecsPos(o,tgPos(t));
   fleetRelease(f);
   f.o={sec:o.sec,x:o.x,y:o.y,sys:o.sys||null};
@@ -1632,6 +1634,19 @@ function fleetTravelTick(dt, quiet){
       t.fx=(t.fx||0)+dt;
       if(t.fx>=TG_FX_SECS)raidAutoResolve(t,f);
     }
+  }
+  /* a fleet sent at an enemy system from the attack prompt (sysAttack): once it is
+     there, ATTACK settles it on its own; FIGHT IT MYSELF leaves it waiting under the
+     map's ENGAGE banner. An order whose system is no longer an enemy's is dropped. */
+  for(const f of fleets()){
+    if(!f.sg)continue;
+    const s=SYSMAP[f.sg];
+    if(!s||!sysContested(s)){ f.sg=null; f.sga=0; continue }
+    if(fleetBusy(f)||f.at!==f.sg||!f.sga||quiet||BT||DT)continue;
+    const gt=assaultTarget(s);
+    f.sg=null; f.sga=0;
+    if(!autoResolveTarget(gt,-1,f)){ f.sg=s.id; toast(f.n+" in position — "+s.n,"g"); flag("p-map"); }
+    dirty=true;
   }
   tryDrainFleetQueue(quiet);
   return arrived;

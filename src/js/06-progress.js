@@ -233,6 +233,13 @@ function govSystems(){
   return out;
 }
 function govCount(){ return govSystems().length }
+/* how many governors may be appointed: one per Governors level, plus one for every
+   sector past the first where the player holds a system (owner: "more unlocked as
+   you take sectors"). Nothing at all until Governors is researched. */
+function govCap(){
+  const r=lv(S.rs,"auto"); if(r<=0)return 0;
+  return r+new Set([0].concat(heldSystems().map(s=>s.sec))).size-1;   /* heldSystems() leaves out Sol Reach (sector 0) */
+}
 /* the cheapest of: one more of an owned tier, or the next reveal - tierBuildable()
    already is exactly that rule (see its own header comment), so this is nothing but
    a cost-sort over it. Exotic-gated tiers are skipped unless the exotic is there

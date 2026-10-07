@@ -56,7 +56,7 @@ function govSetAppointed(id,on){
   const st=sysState(id); if(!st)return false;
   if(on){
     if(st.gov)return false;
-    if(govCount()>=lv(S.rs,"auto")){ toast("Research Governors for another","y"); return false; }
+    if(govCount()>=govCap()){ toast("Research Governors or hold a new sector for another","y"); return false; }
     st.gov=1;
     queueNotice("vega:governor");
   } else {

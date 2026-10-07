@@ -564,6 +564,10 @@ function buildMap(){
    too, which is what RECALL needs. */
 let flSel=null, sendChipSys=null;
 function fleetDeselect(){ flSel=null; sendChipSys=null; }
+/* a different save just replaced S (RESTART, LOAD CODE): drop the map's own view
+   state, or the map stays on a sector the new save has not reached and shows
+   nothing - not even Sol Reach. */
+function mapViewReset(){ fleetDeselect(); mapSec=null; mapSecBuilt=-1; }
 function fleetBarTap(id){
   const f=fleet(id); if(!f)return;
   if(flSel===id){ openFleetCard(id); fleetDeselect(); }
@@ -703,6 +707,33 @@ function renderFleetBar(){
       if(hp.className!==cls)hp.className=cls;
     }
   }
+  renderFleetLoc();
+}
+/* owner: "when the player clicks on one of their fleets, can a pop up below appear to
+   locate it?" - a small callout under the selected button: where the fleet is, which
+   sector, and LOCATE (switch the map to that sector and bring the map into view; the
+   marker itself already pulses while selected). Rebuilt only when its text changes. */
+function renderFleetLoc(){
+  const el=$("#flFind"); if(!el)return;
+  const f=flSel!=null&&!S.msel?fleet(flSel):null;
+  if(!f){ if(!el.hidden){ el.hidden=true; el.dataset.h=""; el.innerHTML=""; } return; }
+  const sec=SECTORS[fleetMapPos(f).sec]||SECTORS[0];
+  const where=fleetCount(f)?fleetWhere(f):"NO SHIPS";
+  const key=f.id+"|"+where+"|"+sec.tag;
+  if(el.dataset.h!==key){
+    el.dataset.h=key;
+    el.style.setProperty("--i",f.id-1);
+    el.style.setProperty("--fc",FLEET_COL[f.id-1]||FLEET_COL[0]);
+    el.innerHTML=`<div class="fltxt"><b>${f.n.toUpperCase()}</b><span>${where} · ${sec.chip||sec.tag}</span></div>
+      <button type="button" id="flFindGo">LOCATE</button>`;
+    el.querySelector("#flFindGo").onclick=()=>{
+      const ff=flSel!=null?fleet(flSel):null; if(!ff)return;
+      setMapSec(fleetMapPos(ff).sec);
+      const w=$("#mapWrap"); if(w){ try{ w.scrollIntoView({block:"nearest",behavior:"smooth"}) }catch(_){ w.scrollIntoView() } }
+      dirty=true; render();
+    };
+  }
+  el.hidden=false;
 }
 /* ==================== PLAN-raidmap: fleets and raid contacts on the map ====================
    Fleets draw as a three-ship formation in the fleet's colour, pointing the way they
@@ -908,16 +939,21 @@ function renderFleetHint(){
    bottom of the map, ENGAGE opens the battle. Auto-resolved raids never show this. */
 function renderFleetBanner(){
   const el=$("#flBanner"); if(!el)return;
-  let f=null, t=null;
+  let f=null, t=null, s=null;
   for(const x of fleets()){ const tt=tgById(x.hold); if(tt&&!tt.auto){ f=x; t=tt; break } }
+  /* or one that flew at an enemy system under FIGHT IT MYSELF and is waiting there */
+  if(!f)for(const x of fleets()){ const ss=x.sg&&!x.sga&&!fleetBusy(x)&&x.at===x.sg?SYSMAP[x.sg]:null; if(ss&&sysContested(ss)){ f=x; s=ss; break } }
   if(!f||BT||DT){ if(!el.hidden){ el.hidden=true; el.dataset.h=""; } return; }
-  const risk=riskOf(t,f);
-  const key=f.id+":"+t.id+":"+risk[0];
+  const risk=riskOf(t||assaultTarget(s),f);
+  const key=f.id+":"+(t?t.id:s.id)+":"+risk[0];
   if(el.dataset.h!==key){
     el.dataset.h=key;
-    el.innerHTML=`<div class="fbtxt">${f.n} is in position<small>${t.name.toUpperCase()} \u00b7 ${risk[0]} \u00b7 ${(SECTORS[t.sec]||SECTORS[0]).tag}</small></div>
+    el.innerHTML=`<div class="fbtxt">${f.n} is in position<small>${(t?t.name:s.n).toUpperCase()} \u00b7 ${risk[0]} \u00b7 ${(SECTORS[t?t.sec:s.sec]||SECTORS[0]).tag}</small></div>
       <button type="button" class="raidgo">ENGAGE</button>`;
-    el.querySelector("button").onclick=e=>{ e.stopPropagation(); raidEngage(t.id); };
+    el.querySelector("button").onclick=e=>{ e.stopPropagation();
+      if(t){ raidEngage(t.id); return }
+      const ff=fleets().find(x=>x.sg===s.id&&x.at===s.id); if(!ff)return;
+      ff.sg=null; engageTarget(assaultTarget(s),-1,ff); render(); };
   }
   el.hidden=false;
 }
@@ -959,7 +995,7 @@ function raidPrompt(tid){
       ? `<button class="raidgo" id="rpAtk">ATTACK<b>\u00b7 ${pick.n.toUpperCase()} \u00b7 ${eta(pick)}s</b></button>
          <div class="rpalt"><button type="button" id="rpMan">FIGHT IT MYSELF<b>the fleet waits for you there</b></button></div>`
       : `<button class="raidgo" id="rpMan">ATTACK<b>\u00b7 ${pick.n.toUpperCase()} \u00b7 ${eta(pick)}s</b></button>
-         <div class="rpwarn">Too strong to win on its own. The fleet waits there for you to fight it.</div>`);
+         <div class="rpwarn">Too close a fight to settle on its own. The fleet waits there for you to fight it.</div>`);
   };
   showModal(`<div class="rprompt"><h3>${t.name}<span class="risk" id="rpRisk"></span></h3>
     <div class="rploc">${(SECTORS[t.sec]||SECTORS[0]).tag} \u00b7 OPEN SPACE</div>
@@ -978,6 +1014,64 @@ function raidPrompt(tid){
       const m=$("#rpMan"); if(m)m.onclick=()=>go(false);
       const en=$("#rpEng"); if(en)en.onclick=()=>{ hideModal(); raidEngage(t.id); };
       const au=$("#rpAuto"); if(au)au.onclick=()=>{ hideModal(); t.auto=1; dirty=true; render(); };
+    };
+    wire();
+  });
+}
+/* the same prompt for an enemy-held system (owner: "whenever a player taps an enemy
+   system with their fleet it should go to the attacking menu"). A fleet already there
+   fights at once; any other flies there under an attack order (f.sg) and, on arrival,
+   settles it itself (ATTACK) or waits under the ENGAGE banner (FIGHT IT MYSELF). */
+function sysAttack(f,s,auto){
+  const gt=assaultTarget(s);
+  if(!fleetBusy(f)&&f.at===s.id){
+    if(auto)autoResolveTarget(gt,-1,f); else engageTarget(gt,-1,f);
+    return true;
+  }
+  if(!fleetSend(f,s.id))return false;
+  f.sg=s.id; f.sga=auto?1:0;
+  return true;
+}
+function sysPrompt(sysId){
+  const s=SYSMAP[sysId]; if(!s||!sysContested(s))return;
+  const gt=assaultTarget(s), rv=RIVALMAP[sysOwner(s)], dest=sysPos(s.id);
+  const verb=sysOccupied(s.id)?"RETAKE":"ATTACK";
+  const eta=f=>(!fleetBusy(f)&&f.at===s.id)?0:Math.round(travelSecsPos(fleetPos(f),dest));
+  const coming=fleetTravelingTo(s.id);
+  const idle=fleets().filter(f=>!fleetBusy(f)&&fleetCount(f)>0);
+  /* a fleet already there, else the one picked on the bar, else the soonest free one */
+  let pick=idle.find(f=>f.at===s.id)||(flSel!=null&&idle.find(f=>f.id===flSel))||idle.slice().sort((a,b)=>eta(a)-eta(b))[0]||null;
+  const acts=()=>{
+    if(level()<s.lvl)return `<button class="raidgo" disabled>LOCKED<b>· LEVEL ${s.lvl}</b></button>`;
+    if(coming&&!idle.some(f=>f.at===s.id))return `<button class="raidgo" disabled>${coming.n.toUpperCase()} EN ROUTE<b>· ${Math.max(0,Math.ceil(coming.eta))}s</b></button>`;
+    if(!pick)return `<button class="raidgo" disabled>${fleets().some(f=>fleetCount(f)>0)?"ALL FLEETS BUSY":"NO WARSHIPS"}</button>`
+      +(fleets().some(f=>fleetCount(f)>0)?"":`<div class="rpwarn">Build warships on the Raids tab first.</div>`);
+    const chips=idle.length>1?`<div class="rppick">${idle.map(f=>`<button type="button" data-fl="${f.id}" class="${f===pick?"on":""}" style="--fc:${FLEET_COL[f.id-1]||FLEET_COL[0]}"><b>${f.id}</b>${eta(f)?eta(f)+"s":"HERE"}</button>`).join("")}</div>`:"";
+    if(pick.hp<0.15)return chips+`<button class="raidgo" disabled>${pick.n.toUpperCase()} TOO DAMAGED</button>
+      <div class="rpwarn">Recall it to Sol Reach to repair.</div>`;
+    const when=eta(pick)?eta(pick)+"s":"NOW";
+    return chips+(canAutoResolve(gt,pick)
+      ? `<button class="raidgo" id="rpAtk">${verb}<b>· ${pick.n.toUpperCase()} · ${when}</b></button>
+         <div class="rpalt"><button type="button" id="rpMan">FIGHT IT MYSELF<b>${eta(pick)?"the fleet waits for you there":"open the battle"}</b></button></div>`
+      : `<button class="raidgo" id="rpMan">${verb}<b>· ${pick.n.toUpperCase()} · ${when}</b></button>
+         <div class="rpwarn">Too close a fight to settle on its own.${eta(pick)?" The fleet waits there for you to fight it.":""}</div>`);
+  };
+  showModal(`<div class="rprompt"><h3>${s.n}<span class="risk" id="rpRisk"></span></h3>
+    <div class="rploc">RING ${s.ring} · ${rv?("HELD BY "+rv.n).toUpperCase():"ENEMY HELD"}</div>
+    <div class="rptm">${gt.en} defenders · ~${Math.round(gt.secs*gt.dif)}s engagement<br>
+      they can strip ~${Math.round(gt.dmg*100)}% of a full hull · reinforcements at ${waveTFor(gt)}s</div>
+    <div class="rptr">Win and the system is yours.</div><div id="rpActs"></div>
+    <div class="row" style="margin-top:8px"><button id="rpSys" class="ghost">VIEW SYSTEM</button><button id="rpClose">CLOSE</button></div></div>`, ()=>{
+    $("#rpClose").onclick=hideModal;
+    $("#rpSys").onclick=()=>{ hideModal(); fleetDeselect(); S.msel=s.id; dirty=true; render(); };
+    const go=auto=>{ if(sysAttack(pick,s,auto)){ hideModal(); fleetDeselect(); } dirty=true; render(); save(); };
+    const wire=()=>{
+      const risk=riskOf(gt,pick||coming||tgJudge()), rk=$("#rpRisk");
+      rk.textContent=risk[0]; rk.style.color=risk[1];
+      $("#rpActs").innerHTML=acts();
+      $$("#rpActs .rppick button").forEach(b=>b.onclick=()=>{ pick=fleet(+b.dataset.fl)||pick; wire(); });
+      const a=$("#rpAtk"); if(a)a.onclick=()=>go(true);
+      const m=$("#rpMan"); if(m)m.onclick=()=>go(false);
     };
     wire();
   });
@@ -1535,7 +1629,7 @@ function renderSysGov(s,held){
     if(!wrap.hidden){ wrap.hidden=true; wrap.dataset.h=""; wrap.innerHTML=""; }
     return;
   }
-  const cap=lv(S.rs,"auto"), cnt=govCount(), on=!!st.gov;
+  const cap=govCap(), cnt=govCount(), on=!!st.gov;
   /* hidden until at least one Governors level is researched - same "nothing to show
      yet" gate exoEverBankedAny()/the PROGRAMMES tab use, and what keeps a brand-new
      save's first BUY row exactly where it was before this feature existed

@@ -30,7 +30,7 @@ window.__SD={get S(){return S},NEXUS,buyNex,openSite,SITE,siteSlots,
   fleetBusy,fleetPos,fleetMapPos,travelSecsPos,fleetAttack,fleetRecall,fleetRelease,fleetWhere,
   tgById,tgPos,tgCap,tgMaxSec,tgRand,raidAutoResolve,raidPrompt,raidEngage,mapFleetFrame,
   TG_SEC_DIF,TG_W,TG_FX_SECS,DOCK_REP,
-  get flSel(){return flSel}, get sendChipSys(){return sendChipSys}, fleetDeselect,
+  get flSel(){return flSel}, get sendChipSys(){return sendChipSys}, fleetDeselect, mapViewReset, sysPrompt, sysAttack,
   fleetBarTap,openFleetCard,renderFleetBar,renderFleetMarkers,renderSysFleets,
   WEAPONS,WEPMAP,parDPS,parHP,parFleet,hardpoints,wepOwned,wepSlots,equipped,buyWeapon,equipWeapon,
   fleetEvade,repairCost,repairFleet,ammoCost,buyAmmo,AMMO_LOT,refDPS,refHP,PAR_BLEND,
@@ -90,7 +90,7 @@ window.__SD={get S(){return S},NEXUS,buyNex,openSite,SITE,siteSlots,
      while the tab is active, reached only from frame()/boot. See HANDOVER
      "telegraphed LIVE fleets, Stage 3" for the full scope note. */
   get LF(){return LF}, lfCdOf, lfClock, lfMaybeLaunch, lfLaunch,
-  lfCheckExpiry, lfOpenDefence, lfResolveOffline, lfOccupy, lfClear, lfSetDue,
+  lfCheckExpiry, lfOpenDefence, lfResolveOffline, lfOccupy, lfThreat, lfClear, lfSetDue,
   lfSettleMarkOnLoad, renderLiveFleet,
   /* FIX 1 (2026-09-06): the arrival-choice prompt */
   lfPromptChoice, lfClearPromptTimer, lfPromptTick, get lfPromptLive(){return lfPromptLive},
@@ -129,5 +129,5 @@ window.__SD={get S(){return S},NEXUS,buyNex,openSite,SITE,siteSlots,
   mktSvKinds,exoModal,exoEverBanked,exoEverBankedAny,
   renderSysBuild,
   /* PLAN-governors */
-  GOV_EVERY,GOV_SHARE,GOV_FIT_EVERY,GOV_FIT_MODULES,govSystems,govCount,govPickTier,govBuyStep,govFitStep,govTick,offlineGovCatchup,
+  GOV_EVERY,GOV_SHARE,GOV_FIT_EVERY,GOV_FIT_MODULES,govSystems,govCount,govCap,govPickTier,govBuyStep,govFitStep,govTick,offlineGovCatchup,
   govSetAppointed,renderSysGov};
