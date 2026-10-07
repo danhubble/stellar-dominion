@@ -92,6 +92,25 @@ const { chromium } = require('playwright-core');
  });
  ok('SEND chip: HERE on own node, SEND on another, and tapping SEND actually sends', g.t1==='HERE' && /SEND/.test(g.t2||'') && g.to==='kor', g);
 
+ // ---------- (3) the ASSAULT button sends a real fleet - never the old trip marker ----------
+ const asl=await p.evaluate(()=>{
+   const G=window.__SD;
+   G.fleetDeselect();
+   const f=G.S.fl[0]; f.at='home'; f.to=null; f.eta=0; f.from=null; f.tot=0; f.hp=1; G.S.trip=null;
+   if(!f.sh.some(n=>n>0))f.sh=[20,5,0];
+   G.S.msel='tan'; gotoTab('p-map'); dirty=true; render();
+   const btn=document.getElementById('sysWar');
+   const before={ label:btn.textContent, disabled:btn.disabled };
+   btn.click();
+   const sent={ to:f.to, trip:G.S.trip, marker:!!document.querySelector('#mapEdge .tripmark,#tripMarker') };
+   f.eta=0.05; G.tick(0.1); dirty=true; render();
+   const after=document.getElementById('sysWar');
+   return { before, sent, arrived:{ at:f.at, label:after&&after.textContent, disabled:after&&after.disabled } };
+ });
+ ok('ASSAULT names the fleet it will send and the travel time', /ASSAULT · SEND 1ST FLEET · \d+s/.test(asl.before.label||'') && !asl.before.disabled, asl);
+ ok('tapping it sends THAT fleet - no S.trip, no yellow marker from Sol Reach', asl.sent.to==='tan' && !asl.sent.trip && !asl.sent.marker, asl);
+ ok('when the fleet arrives the button becomes ENGAGE', asl.arrived.at==='tan' && /ENGAGE/.test(asl.arrived.label||'') && !asl.arrived.disabled, asl);
+
  ok('no page errors', errs.length===0, errs);
  console.log(out.join('\n'));
  console.log(out.filter(l=>l.startsWith('FAIL')).length+' failures');

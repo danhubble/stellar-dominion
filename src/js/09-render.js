@@ -2041,17 +2041,30 @@ function renderMap(){
          than launching a second trip from home on top. Countdown goes into a
          nested span, same no-churn idiom as #sysTripCd. */
       const inbound=fleetTravelingTo(s.id);
-      const can=canAssault(s)&&!otherTrip&&!inbound;
-      let why=sysOccupied(s.id)?"RETAKE SYSTEM":"ASSAULT GARRISON";   /* STAGE 2 */
-      if(level()<s.lvl)why="LOCKED \u00b7 LEVEL "+s.lvl;
-      else if(inbound)why=inbound.n.toUpperCase()+" INBOUND \u00b7 <span class=\"tripcd\"></span>";
-      else if(fleetDPS()<=0)why="NO FLEET \u00b7 BUILD WARSHIPS";
-      else if(curFleet().hp<0.15)why="FLEET TOO DAMAGED";
+      /* Owner: "rather than fleet 1 going, the yellow triangle came out from Sol Reach -
+         that's a bit of old code". It was: this button used to launch the pre-fleets
+         assault trip (launchAssault() / S.trip, the yellow marker). An assault is now a
+         real fleet's job - the button sends the nearest free fleet that can fight, and
+         the ENGAGE branch just above takes over when it arrives. launchAssault() and
+         S.trip stay only so a trip already under way in an older save still lands. */
+      const dest=sysPos(s.id);
+      const nf=fleets().filter(f=>!fleetBusy(f)&&fleetDPS(f)>0&&f.hp>=0.15)
+        .sort((a,b)=>travelSecsPos(fleetPos(a),dest)-travelSecsPos(fleetPos(b),dest))[0]||null;
+      const can=sysContested(s)&&level()>=s.lvl&&!!nf&&!otherTrip&&!inbound;
+      let why=(sysOccupied(s.id)?"RETAKE":"ASSAULT")+(nf?" · SEND "+nf.n.toUpperCase()+" · "+Math.round(travelSecsPos(fleetPos(nf),dest))+"s":"");   /* STAGE 2 */
+      if(level()<s.lvl)why="LOCKED · LEVEL "+s.lvl;
+      else if(inbound)why=inbound.n.toUpperCase()+" INBOUND · <span class=\"tripcd\"></span>";
+      else if(!fleets().some(f=>fleetDPS(f)>0))why="NO FLEET · BUILD WARSHIPS";
       else if(otherTrip)why="FLEET AWAY";
+      else if(!nf)why=fleets().some(f=>!fleetBusy(f)&&fleetDPS(f)>0)?"FLEET TOO DAMAGED":"ALL FLEETS BUSY";
       const ah=`<button class="foe" id="sysWar" ${can?"":"disabled"}>${why}</button>`;
       if(act.dataset.h!==ah){
         act.dataset.h=ah; act.innerHTML=ah;
-        $("#sysWar").onclick=()=>{ if(launchAssault(s)){ render(); save() } };
+        $("#sysWar").onclick=()=>{
+          const f=fleets().filter(x=>!fleetBusy(x)&&fleetDPS(x)>0&&x.hp>=0.15)
+            .sort((a,b)=>travelSecsPos(fleetPos(a),dest)-travelSecsPos(fleetPos(b),dest))[0];
+          if(f&&fleetSend(f,s.id)){ render(); save() }
+        };
       }
       if(inbound){ const cd=act.querySelector(".tripcd"); if(cd)cd.textContent=Math.max(0,Math.ceil(inbound.eta))+"s"; }
     }
