@@ -405,7 +405,8 @@ function frame(now){
     tick(dt);
     if(BT){ bUpdate(dt); bDraw(); bAdapt(rawMs); }
     if(DT){ defUpdate(dt); defDraw(); }
-    else if(!BT) mapFleetFrame();             /* PLAN-raidmap: fleets and contacts glide every frame, not at render()'s 11Hz */
+    else if(!BT) mapFleetFrame();
+    musicSync(dt);             /* PLAN-raidmap: fleets and contacts glide every frame, not at render()'s 11Hz */
     /* STAGE 3: telegraphed LIVE fleets - reached ONLY from here, i.e. ONLY from
        requestAnimationFrame(frame). csim4.js never calls frame(); it calls
        G.tick(1) directly, 500,000+ times, and never once reaches this line. */

@@ -114,7 +114,7 @@ const { chromium } = require('playwright-core');
    let badNum=false, iters=0;
    for(iters=0; iters<400 && G.BT && !G.BT.done; iters++){
      G.bUpdate(1/30);
-     if(G.BT.num.some(n=>n.v===0))badNum=true;
+     if(G.BT.num.some(n=>n.v===0&&!n.sy))badNum=true;   // labels (SHIELDS DOWN...) carry v:0 by design
    }
    return {
      shotCount:shots.length, nonzeroCount:nonzero.length,

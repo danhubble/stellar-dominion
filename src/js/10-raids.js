@@ -123,7 +123,7 @@ function engageTarget(t, idx, f){
       x:.13+.74*((i+.5)/t.en), y:.17+Math.random()*.34,
       px:Math.random()*6.28, py:Math.random()*6.28, sp:(.5+Math.random()*.6)*K.sp,
       rr:K.r, wa:Math.random()*6.28, ws:0.5+Math.random()*0.7,
-      shp:K.sh?hp*K.sh:0, shm:K.sh?hp*K.sh:0, rg:0,
+      shp:K.sh?hp*K.sh*(1+0.35*(K.shl||0))/(1+(K.shl||0)):0, shm:K.sh?hp*K.sh*(1+0.35*(K.shl||0))/(1+(K.shl||0)):0, shl:K.shl||0, rg:0,
       fz:K.fuse||0, fzm:K.fuse||0 });
   }
   /* turn mode derives its numbers from the same budget the live fight uses, so the

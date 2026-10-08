@@ -950,9 +950,9 @@ const WEAPONS=[
   t:"Standard issue. Charges fast, hits light, never lets you down."},
  {id:"rocket",n:"Rocket Pod",      mul:2.60, chg:5.0, acc:1.00, crit:0.18, cost:0, start:1, ammo:1, fx:"shell",
   t:"Hits like nothing else you own and never misses \u2014 but every shot spends a rocket."},
- {id:"burst", n:"Burst Laser",     mul:0.55, chg:3.0, shots:3, acc:0.85, crit:0.12, cost:15, fx:"bolt",
+ {id:"burst", n:"Burst Laser",     mul:0.55, chg:3.0, shots:3, gap:0.16, acc:0.85, crit:0.12, cost:15, fx:"bolt",
   t:"Three bolts a cycle. Accuracy suffers for the volume."},
- {id:"heavy", n:"Heavy Cannon",    mul:3.20, chg:6.5, acc:0.80, crit:0.22, cost:90, fx:"shell",
+ {id:"heavy", n:"Heavy Cannon",    mul:0.64, chg:6.5, shots:5, gap:0.085, cueOnce:1, acc:0.80, crit:0.22, cost:90, fx:"bolt", heavy:1,
   t:"Slow and brutal. When it connects, something stops existing."},
  {id:"ion",   n:"Ion Lance",       mul:1.40, chg:4.0, acc:1.00, crit:0.05, pierce:1, cost:170, fx:"beam",
   t:"Cuts straight through a screen. Never misses, never crits."},
@@ -990,17 +990,17 @@ const RAIDW=[40,25,22,9,4];
    nastier mix never silently changes how hard a raid hits overall. */
 const EK={
  grunt: {n:"Runner",   hp:1,    dps:1,    r:1.00, sp:1.0, ev:0.10, acc:0.80},
- shield:{n:"Bulwark",  hp:1.15, dps:0.90, r:1.06, sp:0.7, sh:0.55, ev:0.04, acc:0.86},
+ shield:{n:"Bulwark",  hp:1.15, dps:0.90, r:1.06, sp:0.7, sh:0.55, shl:1, ev:0.04, acc:0.86},
  swift: {n:"Lancer",   hp:0.50, dps:1.55, r:0.76, sp:2.3, ev:0.34, acc:0.92},
  bomber:{n:"Charger",  hp:0.80, dps:0.25, r:1.00, sp:0.9, fuse:7.0, blast:0.15, ev:0.14, acc:0.70},
  split: {n:"Hydra",    hp:1.10, dps:0.85, r:1.05, sp:0.9, split:2, ev:0.10, acc:0.78},
  heal:  {n:"Mender",   hp:0.90, dps:0.45, r:0.94, sp:0.8, heal:0.055, ev:0.08, acc:0.74},
- boss:  {n:"Flagship", hp:1,    dps:1,    r:2.30, sp:0.42, sh:0.42, boss:1, regen:9, ev:0, acc:0.95},
+ boss:  {n:"Flagship", hp:1,    dps:1,    r:2.30, sp:0.42, sh:0.42, shl:1, boss:1, regen:9, ev:0, acc:0.95},
  /* STAGE 1 archetype signature units (2026-09-05). Not raid-mix fodder - only
     drawn via ARCH[].mix for a garrison assigned that archetype. */
  /* Fortress: a Bulwark's shield share and a Mender's heal share, both weighted
     much harder, on one hull - outheals slow grinding, rewards burst or repair-first. */
- warden: {n:"Warden",  hp:1.35, dps:0.55, r:1.10, sp:0.60, sh:0.85, heal:0.09, ev:0.05, acc:0.80},
+ warden: {n:"Warden",  hp:1.35, dps:0.55, r:1.10, sp:0.60, sh:0.85, shl:2, heal:0.09, ev:0.05, acc:0.80},
  /* Ghost: sits right at the sysListFor(k) ev>=0.3 threshold so its engines are a
     real system (evadeOf below), then evEng is the big swing - hard to hit until
     the engines go down, not just somewhat harder. */

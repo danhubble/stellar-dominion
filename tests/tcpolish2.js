@@ -56,6 +56,7 @@ const { chromium } = require('playwright-core');
    const hpBefore=e.hp;
    G.fireWeapon(wi);
    Math.random=origRandom;
+   for(let i=0;i<30;i++)G.bFade(0.05);   // bolts fly now - damage lands when they arrive
    const hitLanded = e.hp<hpBefore || !e.alive;
    return {hasEng, hitLanded, allKindsHaveEng: G.sysListFor("grunt").includes("eng")
      && G.sysListFor("shield").includes("eng") && G.sysListFor("mender").includes("eng")

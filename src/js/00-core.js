@@ -83,7 +83,40 @@ function A(){
   if(AG)return AG;
   AC=new (window.AudioContext||window.webkitAudioContext)();
   AG=buildAudioGraph(AC);
+  loadSamples();
   return AG;
+}
+/* sampled cues (owner: the synth ones were too flat for the big moments): short OGG
+   clips (src/audio/sfx/*.ogg, made by tools/sfx.py from the owner's own recordings)
+   inlined by build.py, decoded
+   once the context exists. sfx() plays the sample when it is loaded and listed in
+   SAMPLE_VOL, else the synth cue as before - so nothing goes silent if a browser
+   cannot decode them. */
+const SAMPLES=@@SAMPLES@@;
+const SAMPLE_VOL={fireLaser:.16, fireBurst:.14, fireHeavy:.2, fireRocket:.22, boltHit:.34, boltShield:.16, rocketHit:.3, rocketShield:.26, foeDead:.34};
+const SAMPLE_ALIAS={fireBurst:"fireLaser", boltShield:"rocketShield"};   /* a cue that borrows another clip... */
+const SAMPLE_RATE={fireBurst:.86, boltShield:1.35};            /* ...played lower (owner: the burst a touch down) */
+const SAMPLE_PITCH={foeDead:14, boltHit:9};   /* +-% playback-rate spread per cue; the default is 5 (owner: the explosion at slightly different pitches) */   /* the owner's own clips; everything else stays synth */
+const SAMPLE_BUF={};
+function loadSamples(){
+  if(!AG)return;
+  for(const k in SAMPLES){
+    try{
+      const bin=atob(SAMPLES[k].split(",")[1]), buf=new Uint8Array(bin.length);
+      for(let i=0;i<bin.length;i++)buf[i]=bin.charCodeAt(i);
+      AG.ctx.decodeAudioData(buf.buffer).then(ab=>{ SAMPLE_BUF[k]=ab },audioWarn);
+    }catch(e){ audioWarn(e) }
+  }
+}
+function playSample(name,vol,delay){
+  const ab=SAMPLE_BUF[SAMPLE_ALIAS[name]||name]; if(!ab||!AG)return false;
+  try{
+    const ctx=AG.ctx, src=ctx.createBufferSource(), g=ctx.createGain();
+    src.buffer=ab; src.playbackRate.value=jit(SAMPLE_RATE[name]||1,SAMPLE_PITCH[name]||5);   /* never quite the same twice */
+    g.gain.value=vol*_trim;
+    src.connect(g); g.connect(AG.bus); g.connect(AG.delaySend); src.start(ctx.currentTime+(delay||0));
+  }catch(e){ audioWarn(e); return false }
+  return true;
 }
 /* autoplay policies start a fresh AudioContext suspended - resume it on the first
    tap/keypress, same as any other "needs a gesture" unlock */
@@ -282,6 +315,23 @@ const SFX={
    osc("sine",jit(2250,8),jit(2250,8),.06,{vol:jit(.022,15),env:{a:.002,d:.02,s:.001,r:.04},wet:true});
    noiseVoice(.01,{vol:jit(.015,15),filter:{type:"highpass",f0:5000},wet:true});
  },
+ rocketShield: ()=>{
+   /* harsh: a square-wave crack and a saw rumble under a wide burst of noise */
+   osc("sine",jit(1500,8),jit(1500,8),.08,{vol:jit(.025,15),env:{a:.002,d:.03,s:.001,r:.05},wet:true});
+   osc("square",jit(160,8),jit(40,8),.3,{vol:jit(.06,15),env:{a:.002,d:.12,s:.001,r:.18},wet:true});
+   osc("sawtooth",jit(70,8),jit(24,8),.42,{vol:jit(.08,15),env:{a:.003,d:.2,s:.001,r:.22},wet:true});
+   noiseVoice(.4,{vol:jit(.11,15),filter:{type:"lowpass",f0:2200},wet:true});
+   noiseVoice(.12,{vol:jit(.06,15),filter:{type:"bandpass",f0:3200},wet:true});
+ },
+ rocketHit: ()=>{
+   /* a rocket on bare hull: the same family, deeper and longer */
+   osc("square",jit(120,8),jit(30,8),.38,{vol:jit(.07,15),env:{a:.002,d:.16,s:.001,r:.22},wet:true});
+   osc("sawtooth",jit(55,8),jit(18,8),.5,{vol:jit(.09,15),env:{a:.003,d:.24,s:.001,r:.26},wet:true});
+   noiseVoice(.5,{vol:jit(.13,15),filter:{type:"lowpass",f0:1800},wet:true});
+   noiseVoice(.1,{vol:jit(.07,15),filter:{type:"highpass",f0:2800},wet:true});
+ },
+ shieldDown: ()=>SFX.shieldBlock(),
+ boltShield: ()=>SFX.shieldBlock(),
  shieldShatter: ()=>{
    osc("sine",jit(1800,8),jit(350,8),.35,{vol:jit(.045,15),wet:true});
    noiseVoice(.3,{vol:jit(.035,15),filter:{type:"bandpass",f0:3000,f1:400,q:4},wet:true});
@@ -345,12 +395,42 @@ const SFX={
    shared _trim multiplier env() reads - no per-layer vol numbers above changed. */
 const SFX_TRIM={
  fireLaser:1.00, fireBurst:0.84, fireRocket:1.19, fireLance:1.04, fireFlak:10.68,
- hitHull:0.73, foeShot:1.27, shieldBlock:3.00,
+ hitHull:0.73, foeShot:1.27, shieldBlock:3.00, rocketShield:1.25, rocketHit:1.25,
  crit:0.78, shieldShatter:1.28, sysDown:2.72, engOut:1.73,
  foeDead:0.87, sysDestroyed:0.78, waveIn:1.52, win:1.19, loss:2.02, playerHit:1.21,
 };
-function sfx(name){
+/* battle music (owner): one looping track under any fight the player flies
+   themselves - a manual battle or a defence - faded in and out by musicSync(), called
+   every frame. It is a separate file next to the page (build.py copies it to
+   dist/audio/), streamed rather than inlined, and routed through its own gain node so
+   the fade works on iOS too (an <audio> element's own volume is read-only there). */
+const MUSIC_SRC="audio/battle-music.mp3", MUSIC_VOL=0.32, MUSIC_FADE=1.2;
+let musicEl=null, musicGain=null;
+function musicSync(dt){
+  const want=!S.muted && !document.hidden && !!((BT&&!BT.auto)||DT);
+  if(want&&!musicEl){
+    try{
+      const G=A();
+      musicEl=new Audio(MUSIC_SRC); musicEl.loop=true; musicEl.preload="auto";
+      musicGain=G.ctx.createGain(); musicGain.gain.value=0;
+      G.ctx.createMediaElementSource(musicEl).connect(musicGain); musicGain.connect(G.ctx.destination);
+    }catch(e){ audioWarn(e); musicEl=null; return }
+  }
+  if(!musicEl||!musicGain)return;
+  const g=musicGain.gain, step=(dt||0.016)/MUSIC_FADE*MUSIC_VOL;
+  const v=want ? Math.min(MUSIC_VOL,g.value+step) : Math.max(0,g.value-step);
+  g.value=v;
+  if(want&&musicEl.paused)musicEl.play().catch(()=>{});
+  if(!want&&v<=0.0005&&!musicEl.paused){ musicEl.pause(); musicEl.currentTime=0; }
+}
+/* the frame loop stops while the tab is hidden, so the fade never runs - stop dead */
+document.addEventListener("visibilitychange",()=>{
+  if(document.hidden&&musicEl&&!musicEl.paused){ musicEl.pause(); if(musicGain)musicGain.gain.value=0; }
+});
+function sfx(name,delay){
   if(S.muted)return;
+  if(SAMPLE_VOL[name]!=null && playSample(name,SAMPLE_VOL[name],delay))return;
+  if(delay)return;                      /* a synth cue plays once, on the first shot */
   const f=SFX[name]; if(!f)return;
   const prevTrim=_trim;
   _trim=SFX_TRIM[name]!=null?SFX_TRIM[name]:1;
@@ -359,7 +439,7 @@ function sfx(name){
 /* fireWeapon() picks a cue by weapon id, not by D.fx alone - two shell weapons
    (rocket, heavy/mis) do not sound alike, and flak's "spray" fx gets its own cue. */
 function fireCueFor(D){
-  return ({pulse:"fireLaser",burst:"fireBurst",rocket:"fireRocket",ion:"fireLance",flak:"fireFlak"})[D&&D.id]
+  return ({pulse:"fireLaser",burst:"fireBurst",rocket:"fireRocket",ion:"fireLance",flak:"fireFlak",heavy:"fireHeavy"})[D&&D.id]
     || "fireLaser";
 }
 /* dev/test hook only, never called during play: renders one named cue through a

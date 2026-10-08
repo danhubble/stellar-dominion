@@ -870,18 +870,25 @@ function fireWeapon(i){
       /* engines down means a sitting target - the reward for aiming at them */
       const hit=(e.sys&&e.sys.some(x=>x.k==="eng")&&!sysUp(e,"eng")) ? true
         : Math.random() < D.acc*(1-evadeOf(e));
-      if(!hit){ BT.fx.push({t:"miss",x:e.x*BW,y:e.y*BH,a:1,n:1}); continue }
+      if(!hit){ missFx(D,e,s); continue }
+      /* owner: a rocket only works once the screen is down - against a screened
+         hostile it bursts on the screen and does nothing else */
+      if(D.ammo && e.shp>0){
+        const fx=fireFx(D, e, false, s);
+        if(fx){ fx.scr=1; fx.blkTarget=k; }
+        continue;
+      }
       const crit=Math.random()<D.crit*(1+0.14*rfl("crt"));
-      const dmg=fleetDPS(BT.f)*D.mul*(crit?2.4:1)*crewMul("gun");
+      const dmg=fleetDPS(BT.f)*D.mul*(crit?2.4:1)*crewMul("gun")*(D.ammo?1.5:1);   /* a rocket on bare hull hits hard (owner) */
       /* their screens block whole shots too, unless the gun pierces */
       if(!D.pierce && e.shd>0){
         const wasFinal=e.shd===1;
         e.shd--; e.shdT=0;
-        if((D.fx||"bolt")==="shell"){
+        if((D.fx||"bolt")==="shell"||(D.fx||"bolt")==="bolt"){
           /* patch557: a blocked shell still has to fly there - the block fx/sound
              pop when it LANDS (bFade), not at the muzzle, same as a shell that
              actually deals damage does. */
-          const fx=fireFx(D, e, crit);
+          const fx=fireFx(D, e, crit, s);
           if(fx){ fx.blk=1; fx.wasFinal=wasFinal?1:0; fx.blkTarget=k; }
         } else {
           /* beam/bolt/spray are instant - draw the shot now (it was never drawn at
@@ -891,10 +898,10 @@ function fireWeapon(i){
         }
         continue;
       }
-      if((D.fx||"bolt")==="shell"){
+      if((D.fx||"bolt")==="shell"||(D.fx||"bolt")==="bolt"){
         /* the shot is real (the roll above already happened) but the damage is not
-           applied until the shell actually lands - see bFade()'s "shell" branch */
-        const fx=fireFx(D, e, crit);
+           applied until the shell or bolt actually lands - see bFade()'s "shell" branch */
+        const fx=fireFx(D, e, crit, s);
         if(fx) fx.pend={k, dmg, crit:crit?1:0, aimSys};
         anyHit=true;
       } else {
@@ -905,7 +912,8 @@ function fireWeapon(i){
       }
     }
   }
-  sfx(fireCueFor(D));
+  { const cue=fireCueFor(D), n=D.cueOnce?1:(D.shots||1);
+    for(let s=0;s<n;s++)sfx(cue, s*(D.gap||0.14)); }
   if(anyHit){ BT.cmb++; BT.cmbT=0; BT.best=Math.max(BT.best||0,BT.cmb) }
   dirty=true; return true;
 }
@@ -933,9 +941,10 @@ function foeFire(e){
   if(!miss)BT.hpHold=Math.max(BT.hpHold||0,SHOT_T+0.05);
   sfx("foeShot");
 }
+const BOLT_SPEED=4.5;   /* pulse bolts: screen-heights per second (owner picked 4.5 on the mock) */
 /* each weapon draws itself. A shell actually travels, which is the whole reason the
    Rocket Pod looked like a laser before. */
-function fireFx(D,e,crit){
+function fireFx(D,e,crit,s){
   const ex=e.x*BW, ey=e.y*BH, sy=playerY(), sx=BW*0.5;
   const kind=D.fx||"bolt";
   let fx=null;
@@ -951,10 +960,26 @@ function fireFx(D,e,crit){
       BT.fx.push({t:"beam",x:ex+(Math.random()*36-18),y:ey+(Math.random()*30-15),
                   a:1,c:0});
   } else {
-    fx={t:"beam",x:ex,y:ey,a:1,c:crit?1:0};
+    /* owner: the pulse bolt is something you watch cross the screen, not an instant
+       line - it flies like a shell and lands like one (bFade). A burst of three
+       sets off a few frames apart so they read as three. */
+    const dist=Math.hypot(ex-sx,ey-sy), m=Math.min(BW,BH);
+    fx={t:"bolt",x:sx,y:sy-m*0.03,tx:ex,ty:ey,p:0,dur:Math.max(0.05,dist/((BOLT_SPEED*m)||1)),a:1,c:crit?1:0,w:(s||0)*(D.gap||0.14),big:D.heavy?1:0};
     BT.fx.push(fx);
   }
   return fx;
+}
+/* a shot that misses still flies: past the hostile, off to one side, and fizzles
+   there - a bolt as a beam that overshoots, a shell as a round that lands in empty
+   space. (owner: "the projectile should still show and actually look like it misses") */
+function missFx(D,e,s){
+  const ex=e.x*BW, ey=e.y*BH, sx=BW*0.5, sy=playerY(), m=Math.min(BW,BH);
+  let dx=ex-sx, dy=ey-sy; const L=Math.hypot(dx,dy)||1; dx/=L; dy/=L;
+  const side=(Math.random()<0.5?-1:1)*(0.07+Math.random()*0.05)*m;
+  const mx=ex+dx*0.14*m-dy*side, my=ey+dy*0.14*m+dx*side;
+  const fx=fireFx(D,{x:mx/BW,y:my/BH},false,s);
+  if(fx&&(fx.t==="shell"||fx.t==="bolt"))fx.miss=1;
+  else BT.fx.push({t:"miss",x:mx,y:my,a:1,n:1});
 }
 /* the shield-block flourish (fx + floating "BLOCKED" text + sound), shared by an
    instant block (beam/bolt/spray - resolves the moment the shot fires) and a shell's
@@ -992,7 +1017,7 @@ function finalHostileObj(k,hp,dps,i,n,boss){
     y: boss ? .16 : .18+Math.random()*.30,
     px:Math.random()*6.28, py:Math.random()*6.28, sp:(.5+Math.random()*.6)*K.sp,
     rr:K.r, wa:Math.random()*6.28, ws:0.5+Math.random()*0.7,
-    shp:K.sh?hp*K.sh:0, shm:K.sh?hp*K.sh:0, rg:0,
+    shp:K.sh?hp*K.sh*(1+0.35*(K.shl||0))/(1+(K.shl||0)):0, shm:K.sh?hp*K.sh*(1+0.35*(K.shl||0))/(1+(K.shl||0)):0, shl:K.shl||0, rg:0,
     fz:K.fuse||0, fzm:K.fuse||0,
     wcd:(K.fuse?(K.fuseS||FUSE_S)*0.8:EFIRE*(0.8+Math.random()*0.9)/Math.max(0.5,K.sp)),
     boss:!!boss };
@@ -1200,7 +1225,7 @@ function bUpdateWep(dt){
           x:.15+.7*Math.random(), y:.15+Math.random()*.10,
           px:Math.random()*6.28, py:Math.random()*6.28, sp:(.5+Math.random()*.6)*K.sp,
           rr:K.r, wa:Math.random()*6.28, ws:0.5+Math.random()*0.7,
-          shp:K.sh?hp*K.sh:0, shm:K.sh?hp*K.sh:0, rg:0,
+          shp:K.sh?hp*K.sh*(1+0.35*(K.shl||0))/(1+(K.shl||0)):0, shm:K.sh?hp*K.sh*(1+0.35*(K.shl||0))/(1+(K.shl||0)):0, shl:K.shl||0, rg:0,
           fz:K.fuse||0, fzm:K.fuse||0,
           wcd:(K.fuse?(K.fuseS||FUSE_S)*0.8:EFIRE*(0.8+Math.random()*0.9)/Math.max(0.5,K.sp)) });
       }
@@ -1262,7 +1287,7 @@ function evadeOf(e){
 /* ---------------- enemy systems ----------------
    Derived from the archetype rather than authored again: a Bulwark carries the screens,
    a Mender the repair bay, a Lancer the engines, a Flagship the lot. */
-const SYS_N={gun:"GUNS", shd:"SCREENS", eng:"ENGINES", rep:"REPAIR"};
+const SYS_N={gun:"GUNS", shd:"SHIELDS", eng:"ENGINES", rep:"REPAIR"};
 const SYS_COL={gun:"#ffd166", shd:"#48e2ff", eng:"#5ce6a5", rep:"#ff8fd0"};
 function sysListFor(k){
   const K=EK[k]||EK.grunt;
@@ -1424,13 +1449,22 @@ function hitEnemy(i,dmg,manual){
     e.shp-=to;
     const spill=Math.max(0,dmg-to);
     e.hp-=spill*0.35;                           /* a little bleeds through */
-    if(e.shp<=0){ e.shp=0; e.rg=0;
-      BT.fx.push({t:"shbreak",x:e.x*BW,y:e.y*BH,a:1,r:0});
-      sfx("shieldBlock"); shieldBroke=true; }
+    if(e.shp<=0){ e.rg=0;
+      if(e.shl>0){                                /* another layer behind it (owner: layered shields) */
+        e.shl--; e.shp=e.shm;
+        BT.fx.push({t:"shbreak",x:e.x*BW,y:e.y*BH,a:1,r:0});
+        BT.num.push({x:e.x*BW,y:e.y*BH,v:0,a:1,sy:"SHIELD DOWN · "+(e.shl+1)+" LEFT"});
+        sfx("shieldDown");
+      } else {
+        e.shp=0;
+        BT.fx.push({t:"shshatter",x:e.x*BW,y:e.y*BH,a:1,r:0});
+        BT.num.push({x:e.x*BW,y:e.y*BH,v:0,a:1,sy:"SHIELDS DOWN"});
+        sfx("shieldShatter"); shieldBroke=true;
+      } }
   } else e.hp-=dmg;
   if(manual){
     BT.num.push({x:e.x*BW,y:e.y*BH,v:shown,a:1,c:manual===2});
-    BT.fx.push({t:"beam",x:e.x*BW,y:e.y*BH,a:1,c:manual===2});
+    BT.fx.push({t:"zap",x:e.x*BW,y:e.y*BH,a:1,r:0,c:manual===2?1:0});
   }
   if(finalBossBreakCheck(e))return;   /* patch590 - before the kill check, never after */
   if(e.hp<=0){ e.alive=0; BT.kills++;
@@ -1604,15 +1638,29 @@ function bUpdateTurn(dt){
 function bFade(dt){
   /* bolts in flight: hold at full alpha until they land, then hand off to an impact */
   for(const f of BT.fx){
-    if(f.t==="shell"){
+    if(f.t==="shell"||f.t==="bolt"){
+      if(f.w>0){ f.w-=dt; continue }
       f.p=Math.min(1,f.p+dt/f.dur);
       if(f.p>=1&&!f.landed){ f.landed=1; f.a=0;
-        if(f.blk){
+        if(f.miss){
+          BT.fx.push({t:"miss",x:f.tx,y:f.ty,a:1,n:1});
+          blip(240,.12,"triangle",.05);
+        } else if(f.scr){
+          /* a rocket on a screen: the hex lights up, a fireball rolls off it, nothing
+             gets through */
+          const e=BT.en[f.blkTarget];
+          if(e&&e.alive){
+            BT.fx.push({t:"rburst",x:e.x*BW,y:e.y*BH,a:1,r:0});
+            BT.num.push({x:e.x*BW,y:e.y*BH,v:0,a:1,sy:"SHIELDED"});
+          }
+          sfx("rocketShield");
+        } else if(f.blk){
           /* patch557: a blocked shell pops its shield fx/sound on arrival, not at
              the muzzle - it never gets a "boom", nothing was actually breached. */
           const e=BT.en[f.blkTarget];
           if(e&&e.alive) shieldBlockFx(e, f.wasFinal);
         } else {
+          const shielded=!!(f.pend&&BT.en[f.pend.k]&&BT.en[f.pend.k].shp>0);
           if(f.pend){
             const e=BT.en[f.pend.k];
             if(e&&e.alive){
@@ -1621,8 +1669,10 @@ function bFade(dt){
               else hitEnemy(f.pend.k, dmg, crit);
             }
           }
-          BT.fx.push({t:"boom",x:f.tx,y:f.ty,a:1,r:0});
-          blip(f.big?150:300,.12,"sawtooth",.05);
+          if(f.t==="bolt"){ BT.fx.push({t:"zap",x:f.tx,y:f.ty,a:1,r:0,c:f.c});
+            sfx(shielded?"boltShield":"boltHit"); }   /* hull: the thump (owner); shield: a lighter, higher shield knock */   /* a laser on bare hull: the thump (owner) */
+          else if(f.big){ BT.fx.push({t:"rboom",x:f.tx,y:f.ty,a:1,r:0}); sfx("rocketHit"); }   /* a rocket on hull: a real explosion */
+          else { BT.fx.push({t:"boom",x:f.tx,y:f.ty,a:1,r:0}); blip(300,.12,"sawtooth",.05); }
         }
       }
       continue;
@@ -1664,11 +1714,14 @@ function bFade(dt){
     BT.hpShown += Math.abs(d)<BT.hpm*0.004 ? d : d*Math.min(1,dt*7);
   }
   for(const f of BT.fx){
-    if(f.t==="shot"||f.t==="shell")continue;
+    if(f.t==="shot"||f.t==="shell"||f.t==="bolt")continue;
     if(f.t==="lance")f.a-=dt*0.6;               /* a lance lingers */
+    if(f.t==="rboom")f.r+=dt*Math.min(BW,BH)*0.36;
+    if(f.t==="zap")f.r+=dt*Math.min(BW,BH)*0.5;
     if(f.t==="shblock")f.r+=dt*Math.min(BW,BH)*0.10;
     if(f.t==="sysbreak")f.r+=dt*Math.min(BW,BH)*0.16;
-    f.a-=dt*(f.t==="shblock"?2.6:f.t==="impact"?2.4:f.t==="boom"?1.6:f.t==="blast"?1.1:f.t==="shbreak"?2.2:f.t==="shshatter"?1.8:f.t==="inc"?1.9:f.t==="split"?2.4:5);
+    if(f.t==="rburst")f.r+=dt*Math.min(BW,BH)*0.42;
+    f.a-=dt*(f.t==="shblock"?2.6:f.t==="impact"?2.4:f.t==="boom"?1.6:f.t==="blast"?1.1:f.t==="shbreak"?2.2:f.t==="shshatter"?1.8:f.t==="rburst"?1.25:f.t==="rboom"?1.3:f.t==="inc"?1.9:f.t==="split"?2.4:5);
     if(f.t==="impact")f.r+=dt*Math.min(BW,BH)*0.30;
     if(f.t==="boom")f.r+=dt*Math.min(BW,BH)*0.16;
     if(f.t==="blast")f.r+=dt*Math.min(BW,BH)*0.55;
@@ -2038,6 +2091,29 @@ function finaleWon(){
 }
 function closeBattle(){ BT=null; $("#battle").classList.remove("on"); dirty=true; render(); save(); }
 
+/* scorch marks, an ember and a smoke trail on a hull. r: the hull size; hpf: hull
+   fraction (marks under .5, ember and smoke under .25); seed: a fixed pattern per
+   ship; t: the clock. Drawn in the hull's own translated frame, smoke drifting up
+   the screen. Shared by the player wedge and the hostiles. */
+function bDamageMarks(r,hpf,seed,t){
+  const D=devicePixelRatio, heavy=hpf<0.25;
+  bx.fillStyle="rgba(8,5,12,.78)";
+  for(let q=0;q<(heavy?3:2);q++){
+    const a=seed*1.7+q*2.1, d=r*(0.25+0.15*((seed+q)%3));
+    bx.beginPath(); bx.ellipse(Math.cos(a)*d,Math.sin(a)*d*0.6,r*(0.26+q*0.06),r*(0.16+q*0.04),a,0,6.2832); bx.fill();
+  }
+  if(!heavy)return;
+  const ex=r*0.3*Math.cos(seed*1.7), ey=r*0.18, fl=0.5+0.5*Math.sin(t*23+seed*3);
+  bx.fillStyle="rgba(255,150,60,"+(0.5+0.5*fl)+")";
+  bx.beginPath(); bx.arc(ex,ey,r*0.12*(0.8+0.4*fl),0,6.2832); bx.fill();
+  if(fl>0.85){ bx.strokeStyle="rgba(255,220,150,.9)"; bx.lineWidth=1.2*D;
+    bx.beginPath(); bx.moveTo(ex,ey); bx.lineTo(ex+Math.cos(t*31+seed)*r*0.5,ey-r*0.4); bx.stroke(); }
+  for(let q=0;q<3;q++){
+    const ph=((t*0.55+seed*0.37+q*0.33)%1);
+    bx.fillStyle="rgba(150,150,160,"+(0.32*(1-ph))+")";
+    bx.beginPath(); bx.arc(ex+Math.sin(t*2+q)*r*0.15*ph, ey-ph*r*2.2, r*(0.18+ph*0.42),0,6.2832); bx.fill();
+  }
+}
 function bDraw(){
   if(!BT)return;
   if(bx===null){ bResize(); if(bx)bStars(); }
@@ -2062,17 +2138,32 @@ function bDraw(){
   }
   bx.globalAlpha=1;
 
-  // player fleet
-  const n=Math.min(13,Math.max(1,fleetCount(BT.f))), fr=Math.min(BW,BH)*0.017;
+  // player fleet: the same hull language as the hostiles (a filled silhouette, dark
+  // cockpit, soft glow) in the fleet's own cyan, nose up the screen. A loose wedge of
+  // at most seven, the lead ship forward, each a little off its slot.
+  const n=Math.min(7,Math.max(1,fleetCount(BT.f))), fr=Math.min(BW,BH)*0.03, mid=(n-1)/2;
+  /* visible damage (owner): as the fleet hull drops below 60%, more of the ships carry
+     scorch marks; under 25% they smoke and spark too. A fixed spread, so the same
+     ships stay the damaged ones. */
+  const hf=BT.hpm>0?Math.max(0,(BT.hpShown!==undefined?BT.hpShown:BT.hp)/BT.hpm):1;
+  const dmgN=hf<0.6?Math.ceil((0.6-hf)/0.6*n):0;
   for(let i=0;i<n;i++){
-    const fx=BW*(0.5+((i-(n-1)/2)*0.058)), bob=Math.sin(BT.el*2+i)*fr*0.25;
-    bx.save(); bx.translate(fx,fy+bob);
-    bx.shadowColor="#48e2ff"; bx.shadowBlur=10*D;
-    bx.fillStyle="#9fe6ff";
-    bx.beginPath(); bx.moveTo(0,-fr*1.5); bx.lineTo(fr,fr*.9); bx.lineTo(0,fr*.35); bx.lineTo(-fr,fr*.9);
+    const k=i-mid, bob=Math.sin(BT.el*2+i)*fr*0.2;
+    const fx=BW*(0.5+k*0.095+Math.sin(i*2.7)*0.012);
+    const fyy=fy-(mid-Math.abs(k))*fr*0.6+Math.cos(i*1.9)*fr*0.3+bob;
+    bx.save(); bx.translate(fx,fyy);
+    bx.shadowColor="#48e2ff"; bx.shadowBlur=12*D;
+    bx.fillStyle="#7fdcff";
+    bx.beginPath();
+    bx.moveTo(0,-fr); bx.lineTo(fr*.55,-fr*.1); bx.lineTo(fr*1.05,fr*.5);
+    bx.lineTo(fr*.35,fr*.42); bx.lineTo(0,fr*.78); bx.lineTo(-fr*.35,fr*.42);
+    bx.lineTo(-fr*1.05,fr*.5); bx.lineTo(-fr*.55,-fr*.1);
     bx.closePath(); bx.fill(); bx.shadowBlur=0;
-    bx.fillStyle="rgba(120,220,255,.5)";
-    bx.fillRect(-fr*.22,fr*.9,fr*.44,fr*(.5+.4*Math.abs(Math.sin(BT.el*9+i))));
+    bx.fillStyle="rgba(4,6,16,.85)";
+    bx.beginPath(); bx.ellipse(0,-fr*.05,fr*.22,fr*.34,0,0,6.2832); bx.fill();
+    if(((i*5+2)%n)<dmgN)bDamageMarks(fr,Math.min(0.49,hf),i+11,BT.el);
+    bx.fillStyle="rgba(120,220,255,.55)";
+    bx.fillRect(-fr*.2,fr*.78,fr*.4,fr*(.4+.35*Math.abs(Math.sin(BT.el*9+i))));
     bx.restore();
   }
 
@@ -2148,6 +2239,8 @@ function bDraw(){
     bx.closePath(); bx.fill(); bx.shadowBlur=0;
     bx.fillStyle="rgba(4,6,16,.85)";
     bx.beginPath(); bx.ellipse(0,ER*.05,ER*.22,ER*.34,0,0,6.2832); bx.fill();
+    /* visible damage (owner): scorch marks under half hull, embers and smoke under a quarter */
+    { const hpf=Math.max(0,e.hp/e.max); if(hpf<0.5)bDamageMarks(ER,hpf,i+1,BT.el); }
     if(K.fuse){                                     /* charger core brightens as it winds up */
       const w=1-Math.max(0,e.fz)/e.fzm;
       bx.fillStyle="rgba(255,120,90,"+(0.35+0.65*w)+")";
@@ -2173,9 +2266,17 @@ function bDraw(){
       bx.globalAlpha=1;
     }
 
-    // shield screen
+    // shields: the live layer bright, any layers behind it as fainter hexes outside
     if(e.shp>0){
       const sp=e.shp/e.shm, SR=ER*1.95;
+      for(let j=1;j<=(e.shl||0);j++){
+        const LR=SR*(1+0.14*j);
+        bx.strokeStyle="rgba(120,200,255,"+(0.22-0.05*j)+")"; bx.lineWidth=1.6*D;
+        bx.beginPath();
+        for(let q=0;q<6;q++){ const a=q*1.0472-BT.el*0.25*j;
+          const px=x+Math.cos(a)*LR, py=y+Math.sin(a)*LR; q?bx.lineTo(px,py):bx.moveTo(px,py) }
+        bx.closePath(); bx.stroke();
+      }
       bx.strokeStyle="rgba(120,200,255,"+(0.30+0.5*sp)+")"; bx.lineWidth=2.4*D;
       bx.beginPath();
       for(let q=0;q<6;q++){ const a=q*1.0472+BT.el*0.4;
@@ -2311,6 +2412,60 @@ function bDraw(){
         const x1=f.x+Math.cos(a)*(f.r+len), y1=f.y+Math.sin(a)*(f.r+len);
         bx.beginPath(); bx.moveTo(x0,y0); bx.lineTo(x1,y1); bx.stroke();
       }
+    } else if(f.t==="rburst"){
+      /* a rocket bursting on a screen: the hex flares and a fireball rolls off its
+         near side */
+      const a=Math.max(0,f.a), SR=R*1.95;
+      bx.strokeStyle="rgba(127,216,255,"+(a*.95)+")"; bx.lineWidth=3*D;
+      bx.beginPath();
+      for(let q=0;q<6;q++){ const g=q*1.0472+BT.el*0.4;
+        const px=f.x+Math.cos(g)*SR, py=f.y+Math.sin(g)*SR; q?bx.lineTo(px,py):bx.moveTo(px,py) }
+      bx.closePath(); bx.stroke();
+      bx.fillStyle="rgba(127,216,255,"+(a*.22)+")"; bx.fill();
+      const by=f.y+SR*0.85, br=f.r+10*D;
+      /* the fireball: white-hot core, orange body, smoke-dark rim */
+      const grd=bx.createRadialGradient(f.x,by,0,f.x,by,br);
+      grd.addColorStop(0,"rgba(255,255,230,"+a+")"); grd.addColorStop(.3,"rgba(255,200,90,"+(a*.95)+")");
+      grd.addColorStop(.7,"rgba(255,110,40,"+(a*.7)+")"); grd.addColorStop(1,"rgba(120,40,20,0)");
+      bx.fillStyle=grd; bx.beginPath(); bx.arc(f.x,by,br,0,6.2832); bx.fill();
+      /* a flash over the whole hex on the first frames, then sparks flung outward */
+      if(a>0.75){ bx.fillStyle="rgba(255,235,200,"+((a-0.75)*2.4)+")"; bx.beginPath(); bx.arc(f.x,by,SR*1.3,0,6.2832); bx.fill(); }
+      bx.strokeStyle="rgba(255,210,120,"+a+")"; bx.lineWidth=2*D; bx.lineCap="round";
+      for(let q=0;q<9;q++){ const g=q*0.698+0.3, len=(6+q%3*4)*D;
+        const r0=f.r*1.3+8*D, x0=f.x+Math.cos(g)*r0, y0=by+Math.sin(g)*r0;
+        bx.beginPath(); bx.moveTo(x0,y0); bx.lineTo(x0+Math.cos(g)*len,y0+Math.sin(g)*len); bx.stroke(); }
+      bx.lineCap="butt";
+    } else if(f.t==="bolt"){
+      if(f.w>0)continue;
+      /* a short bright dash in flight, gold with a white core */
+      const px=f.x+(f.tx-f.x)*f.p, py=f.y+(f.ty-f.y)*f.p;
+      const q=Math.max(0,f.p-0.09);
+      const tx=f.x+(f.tx-f.x)*q, ty=f.y+(f.ty-f.y)*q;
+      bx.shadowColor=f.big?"#ffb45c":f.c?"#fff1b8":"#ffd166"; bx.shadowBlur=10*D;
+      bx.strokeStyle=f.big?"#ffb45c":f.c?"#fff8dc":"#ffd166"; bx.lineWidth=(f.big?5.5:f.c?5:3.2)*D; bx.lineCap="round";
+      bx.beginPath(); bx.moveTo(tx,ty); bx.lineTo(px,py); bx.stroke();
+      bx.strokeStyle="#fff"; bx.lineWidth=1.2*D;
+      bx.beginPath(); bx.moveTo(tx,ty); bx.lineTo(px,py); bx.stroke();
+      bx.lineCap="butt"; bx.shadowBlur=0;
+    } else if(f.t==="zap"){
+      /* a bolt landing: a quick gold ring and a white spark */
+      const a=Math.max(0,f.a);
+      bx.strokeStyle="rgba(255,241,184,"+a+")"; bx.lineWidth=2.4*D;
+      bx.beginPath(); bx.arc(f.x,f.y,4*D+f.r,0,6.2832); bx.stroke();
+      bx.fillStyle="rgba(255,255,255,"+(a*.9)+")"; bx.beginPath(); bx.arc(f.x,f.y,(f.c?6:4)*D,0,6.2832); bx.fill();
+    } else if(f.t==="rboom"){
+      /* a rocket on hull: fireball, a flash, sparks */
+      const a=Math.max(0,f.a), br=f.r+12*D;
+      const grd=bx.createRadialGradient(f.x,f.y,0,f.x,f.y,br);
+      grd.addColorStop(0,"rgba(255,255,230,"+a+")"); grd.addColorStop(.3,"rgba(255,190,80,"+(a*.95)+")");
+      grd.addColorStop(.7,"rgba(255,90,40,"+(a*.75)+")"); grd.addColorStop(1,"rgba(90,30,20,0)");
+      bx.fillStyle=grd; bx.beginPath(); bx.arc(f.x,f.y,br,0,6.2832); bx.fill();
+      if(a>0.78){ bx.fillStyle="rgba(255,235,200,"+((a-0.78)*2.2)+")"; bx.beginPath(); bx.arc(f.x,f.y,br*2.2,0,6.2832); bx.fill(); }
+      bx.strokeStyle="rgba(255,200,110,"+a+")"; bx.lineWidth=2*D; bx.lineCap="round";
+      for(let q=0;q<11;q++){ const g=q*0.571+0.2, len=(7+q%4*4)*D;
+        const r0=f.r*1.4+8*D, x0=f.x+Math.cos(g)*r0, y0=f.y+Math.sin(g)*r0;
+        bx.beginPath(); bx.moveTo(x0,y0); bx.lineTo(x0+Math.cos(g)*len,y0+Math.sin(g)*len); bx.stroke(); }
+      bx.lineCap="butt";
     } else if(f.t==="shup"){
       bx.strokeStyle="#7fd8ff"; bx.lineWidth=2.4*D;
       bx.beginPath(); bx.arc(f.x,f.y,Math.min(BW,BH)*0.07*(1.6-f.a),0,6.2832); bx.stroke();
