@@ -69,8 +69,9 @@ function adopt(o){
     /* tg (flying at a contact) and hold (sitting beside one) are target ids - checked
        against the contact list itself just below, once that has been sanitised */
     const tg=(!to&&fl&&Number.isFinite(fl.tg))?fl.tg:null;
-    const hold=(!to&&tg==null&&fl&&Number.isFinite(fl.hold))?fl.hold:null;
-    const moving=!!to||tg!=null;
+    const mv=(!to&&tg==null&&fl&&okPos(fl.mv))?{sec:fl.mv.sec,x:+fl.mv.x,y:+fl.mv.y}:null;   /* flying to open space */
+    const hold=(!to&&tg==null&&!mv&&fl&&Number.isFinite(fl.hold))?fl.hold:null;
+    const moving=!!to||tg!=null||!!mv;
     const eta=moving?Math.max(0,+((fl&&fl.eta))||0):0;
     const from=to?((fl&&typeof fl.from==="string"&&(fl.from==="home"||SYSMAP[fl.from]))?fl.from:at):null;
     const tot=moving?Math.max(eta,+((fl&&fl.tot))||0):0;
@@ -84,7 +85,7 @@ function adopt(o){
     /* sg: the enemy system this fleet was sent to attack from the attack prompt
        (sga: settle it on its own when it gets there) */
     const sg=(fl&&typeof fl.sg==="string"&&SYSMAP[fl.sg])?fl.sg:null, sga=sg&&fl.sga?1:0;
-    return {id,n,sh,hp,at,to,eta,from,tot,pos,tg,hold,o,sg,sga};
+    return {id,n,sh,hp,at,to,eta,from,tot,pos,tg,hold,o,sg,sga,mv};
   });
   if(f.flSel==null || !f.fl.some(fl=>fl.id===f.flSel))f.flSel=f.fl[0].id;
   /* run 3: the delivery queue (S.flQ, decision 6) - three non-negative counts,

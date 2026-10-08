@@ -113,54 +113,17 @@ const { chromium } = require('playwright-core');
  ok("scroll position survives a buy (the rebuild re-asserts it, not just \"didn't move\")",
     buy.scrollAfterBuy===40, buy);
 
- // ---------- LIST toggle: right rows, right styling ----------
+ // ---------- the LIST view is gone: the map is the only view ----------
  const list=await p.evaluate((save)=>{
    const G=window.__SD;
    G.adopt(save);
    G.gotoTab('p-map'); G.setMapZoom(null); G.S.msel=null;
    G.render();
-   document.querySelector('.rmbtn[data-mm="list"]').click();
-   const rowsHost=document.getElementById('mapList');
-   const rows=[...rowsHost.children];
-   const wrapHidden=document.getElementById('mapWrap').hidden;
-   const listHidden=rowsHost.hidden;
-   const expectIds=G.sysInSec(G.mapSec).map(s=>s.id);
-   const gotIds=rows.map(r=>r.querySelector('.sysname').textContent);
-   const expectNames=G.sysInSec(G.mapSec).map(s=>s.n);
-   const claimableRow=rows.find(r=>r.classList.contains('claimable'));
-   const lockedRow=rows.find(r=>r.classList.contains('locked'));
-   const heldRow=rows.find(r=>r.classList.contains('held'));
-   // tap a row - must behave exactly like a node tap: select it, and drop back to
-   // mapMode "map" (the invariant that keeps #mapMode safe to hide while zoomed).
-   if(heldRow)heldRow.click();
-   return {
-     toggleSwitched: !wrapHidden===false && wrapHidden===true,
-     wrapHidden, listHidden,
-     rowCount: rows.length, expectCount: expectIds.length,
-     namesMatch: JSON.stringify(gotIds)===JSON.stringify(expectNames),
-     hasClaimable: !!claimableRow, hasLocked: !!lockedRow, hasHeld: !!heldRow,
-     mselAfterTap: G.S.msel, mapModeAfterTap: document.querySelector('.rmbtn[data-mm].on').dataset.mm,
-   };
+   return { toggle:!!document.getElementById('mapMode'), list:!!document.getElementById('mapList'),
+     btn:!!document.querySelector('.rmbtn[data-mm]'), wrapHidden:document.getElementById('mapWrap').hidden };
  }, midGame());
- ok('switching to LIST hides the map square and shows the list', list.wrapHidden===true && list.listHidden===false, list);
- ok('LIST shows exactly sysInSec(mapSec), in order', list.rowCount===list.expectCount && list.namesMatch, list);
- ok('a claimable row and a locked row both render (mid-game save has both nearby)', list.hasClaimable && list.hasLocked, list);
- ok('a held row renders in the kind-tinted, non-expandable style', list.hasHeld, list);
- ok('tapping a row selects that system, same as a node tap', !!list.mselAfterTap, list.mselAfterTap);
- ok('tapping a row drops back to MAP mode (the toggle-hidden-while-zoomed invariant)', list.mapModeAfterTap==='map', list.mapModeAfterTap);
-
- // toggle hidden while zoomed (same rule as the sector chips)
- const zoomedToggle=await p.evaluate(()=>{
-   const G=window.__SD;
-   G.S.msel='dra'; G.setMapZoom('dra'); G.render();
-   const mm=document.getElementById('mapMode');
-   // patch628b: the #p-map.zoomed toggle is gone (dead since patch627 moved its
-   // one CSS reader to body.syspage; the coordinator's review caught it while
-   // reading setMapZoom() and asked for it to be deleted). __SD.mapZoom is the
-   // actual state that class used to mirror - check that directly instead.
-   return {display:getComputedStyle(mm).display, zoomedClass:!!window.__SD.mapZoom};
- });
- ok('the MAP | LIST toggle is hidden while zoomed into a system', zoomedToggle.zoomedClass && zoomedToggle.display==='none', zoomedToggle);
+ ok('the MAP | LIST toggle and the list view are gone - the map is the only view', !list.toggle && !list.list && !list.btn && !list.wrapHidden, list);
+ await p.evaluate(()=>{ const G=window.__SD; G.S.msel='dra'; G.setMapZoom('dra'); G.render(); });
 
  // ---------- site view: opening and closing ----------
  const site=await p.evaluate((save)=>{

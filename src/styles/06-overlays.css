@@ -142,14 +142,13 @@ body.syspage #toasts{bottom:calc(var(--sysbarh) + 8px + env(safe-area-inset-bott
   .loc{margin-left:0;font-size:11px;letter-spacing:.04em;padding:2px 5px 1px;opacity:.7}
   .gm,.gx{font-size:11px;letter-spacing:0}
   .gb{min-width:92px;padding:6px 8px}
-  .brand h1{font-size:12px;letter-spacing:.2em}
 }
 
 /* touch targets: the small header/nav controls keep their look but get an invisible
    hit area out to 44px tall, so a thumb does not have to be precise. Buy buttons are
    simply taller. Nothing here changes layout or spacing. */
-#runlbl,.icnbtn,#mapZoomBack,#noticeX,#noticeGo,.tab{position:relative}
-#runlbl::before,.icnbtn::before,#mapZoomBack::before,#noticeX::before,#noticeGo::before,.tab::before{
+#runlbl,#avatar,.icnbtn,#mapZoomBack,#noticeX,#noticeGo,.tab{position:relative}
+#runlbl::before,#avatar::before,.icnbtn::before,#mapZoomBack::before,#noticeX::before,#noticeGo::before,.tab::before{
   content:"";position:absolute;left:-4px;right:-4px;top:50%;height:max(100% + 8px,44px);
   transform:translateY(-50%)}
 .gb{min-height:44px}

@@ -131,11 +131,14 @@ header{
   backdrop-filter:blur(10px)
 }
 .brand{display:flex;align-items:center;gap:10px}
-.brand h1{
-  margin:0;font-size:15px;letter-spacing:.30em;font-weight:700;
-  background:linear-gradient(90deg,var(--cy),var(--vi) 60%,var(--gd));
-  -webkit-background-clip:text;background-clip:text;color:transparent;white-space:nowrap
-}
+/* the commander's mark, where the title used to be - same slab look as the fleet
+   buttons, sized to the level pill beside it */
+.avatar{flex:none;width:32px;height:32px;padding:4px;border-radius:50%;cursor:pointer;color:var(--cy);
+  border:1px solid var(--line2);background:linear-gradient(180deg,#141b38,#0c1126);
+  box-shadow:0 0 10px -3px rgba(72,226,255,.6);transition:border-color .15s;
+  -webkit-touch-callout:none;user-select:none;touch-action:manipulation}   /* long press = dev tools, no menu */
+.avatar svg{width:100%;height:100%;display:block}
+.avatar:hover{border-color:var(--cy)}
 #runlbl{border:1px solid var(--line);color:var(--dim);--p:0%;
   background:linear-gradient(90deg,rgba(255,209,102,.85) var(--p),rgba(255,255,255,.08) var(--p)) bottom/100% 2px no-repeat,
              rgba(255,255,255,.05);
@@ -413,82 +416,6 @@ button.ghost{background:transparent;border-color:var(--line);color:var(--mut)}
 .auto{position:absolute;top:6px;right:8px;font-size:11px;color:var(--dim);cursor:pointer;letter-spacing:.1em}
 .auto.on{color:var(--gr)}
 
-/* ---------- EMPIRE2: grouped system list ---------- */
-.sysrow2{
-  display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;
-  border:1px solid var(--line);border-radius:11px;padding:10px 12px;margin-bottom:7px;
-  background:var(--panel);cursor:pointer;transition:border-color .15s
-}
-.sysrow2.expanded{border-color:var(--line2)}
-.sysrow2.locked{opacity:.5}
-.sysrow2.claimable{box-shadow:inset 3px 0 0 var(--gr)}
-.sysrow2.contested{box-shadow:inset 3px 0 0 var(--rd)}
-.sysrow2.contested.occ{box-shadow:inset 3px 0 0 var(--rd),inset 0 0 0 1px rgba(255,107,138,.25)}  /* STAGE 2 */
-/* Held rows: full-card kind tint (patch443). --a/--a-wash/--a-wash-body/--a-border/
-   --a-text are set in JS (empSysRow) on the row's shared wrap, not on head alone, so
-   the expanded body - appended as wrap's second child, a sibling of head, not a
-   descendant of it - inherits the exact same per-kind values too. That's what keeps
-   header+body reading as one tinted object rather than two independently-colored
-   ones. .kindtint scopes all of this to real system rows: progRow() (Research tab
-   exotic-programme cards) also uses "sysrow2 held"/"sysbody" for its own accordion
-   styling but never sets these vars, so leaving it out of .kindtint keeps it on its
-   original plain-panel look, untouched by this patch.
-   Background is two layers, not a flat color: a fake solid tint (a flat two-stop
-   linear-gradient, since background-image is the only way to stack a color on top of
-   another background layer) over var(--panel) underneath - so it still reads as "the
-   card, tinted", with the panel's own depth intact, not a different flatter surface.
-   Border swaps var(--line) for the kind color at .55 alpha. See the --k-* comment in
-   :root for the tint/border opacity values and the WCAG contrast numbers behind
-   --a-text (the stat-text color, computed, not eyeballed, same method as --dim2). */
-.sysrow2.held.kindtint{
-  background:linear-gradient(var(--a-wash),var(--a-wash)),var(--panel);
-  border-color:var(--a-border);
-  box-shadow:inset 3px 0 0 var(--a)
-}
-.sysrow2.held.kindtint .sysrow2-stats{color:var(--a-text)}
-.rivalmark{font-size:12px;color:var(--a,var(--rd))}
-.sysrow2.beyond{justify-content:center;cursor:default;color:var(--dim);font-size:11.5px;opacity:.8}
-.sysrow2-main{display:flex;align-items:center;gap:8px;min-width:0}
-.sysname{font:600 13px/1.2 system-ui;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.lockicon{opacity:.75;font-size:12px}
-.kindbadge{
-  font:700 11px/1 system-ui;letter-spacing:.06em;text-transform:uppercase;padding:3px 6px 2px;
-  border-radius:5px;background:rgba(255,255,255,.08);color:var(--a,var(--mut));border:1px solid currentColor;opacity:.85
-}
-.sysrow2-stats{
-  display:flex;gap:12px;flex-wrap:wrap;justify-content:flex-end;
-  font:600 11px/1 ui-monospace,monospace;color:var(--mut)
-}
-.sysrow2-stats b{color:var(--txt);font-weight:700}
-.sysbody{margin:-1px 0 12px 4px}
-/* Body tint: same two-layer technique as the header (a flat wash layered via
-   linear-gradient over var(--panel), since background-image is the only way to stack
-   a color on top of another background layer) at roughly half the header's strength.
-   patch445: earlier this was a single var(--a-wash-body) layer with no panel base -
-   composited directly against the page's near-black --bg it was effectively
-   invisible. The panel base gives the same 6% wash something visible to tint.
-   Same left-edge inset stripe the header uses, so the accent is visually continuous
-   top-to-bottom instead of two disconnected treatments. margin-left/border-radius are
-   overridden (0, flush) only
-   for .kindtint so the accent stripe lines up exactly under the header's, in place of
-   the 4px indent plain .sysbody (progRow) still uses.
-   Everything inside (.g rows: buy button, price, tier count, greyed .next preview)
-   keeps its existing neutral colors untouched - checked against the *effective*
-   rendered color, not the tint alone: .g's own background is still var(--panel), but
-   panel is only 72% opaque, so 28% of this new tint bleeds through underneath every
-   buy row. Computed (WCAG luminance formula): --txt/--gr/--cy/--dim2 text all stay
-   comfortably >=4.5:1 against that composited color for all seven kinds (worst case
-   --dim2's "next tier" text: 4.80:1, kind gas). --dim (.gx "each/total", .gb i
-   "BUY xN") was already below AA (3.40:1) against the old flat panel before this
-   patch - untouched pre-existing condition, not something this patch broke - and
-   drops a further ~0.15-0.2 to ~3.2-3.3:1 from the same bleed-through; flagged, not
-   silently fixed, since raising it is a separate contrast pass outside this patch's
-   presentation-only scope. Full numbers are in the 2026-09-04 HANDOVER.md section. */
-.sysbody.kindtint{
-  margin-left:0;padding:8px 8px 1px 10px;border-radius:0 10px 10px 0;
-  background:linear-gradient(var(--a-wash-body),var(--a-wash-body)),var(--panel);
-  box-shadow:inset 3px 0 0 var(--a)
-}
 .g.next{border-style:dashed;border-color:var(--line2)}
 .g.next .gn{color:var(--dim2)}
 .g.next .gx{color:var(--dim)}
@@ -1466,16 +1393,9 @@ body.syspage #mapWrap.homeonly{height:24vh;max-height:24vh}
    #mapWrap.zoomed (see its own base rule) - "any page, planet or not" replaces
    that condition here rather than adding to it. */
 body.syspage #mapChips{display:none}
-body.syspage #mapMode{display:none}
 body.syspage #lfBanner{display:none}
 body.syspage #mapEdge{display:none}
 body.syspage #mapZoomBar{opacity:1;pointer-events:auto}
-#mapMode.rmode{margin-bottom:10px}
-/* patch614: LIST replaces the map square one-for-one, same vertical slot -
-   #mapWrap and #mapList are never both visible, syncMapMode() below toggles
-   [hidden] on whichever one isn't current. */
-#mapList{display:flex;flex-direction:column;margin-bottom:10px}
-#mapList[hidden]{display:none}
 .chip{flex:1 1 0;min-width:0;min-height:44px;text-align:center;padding:6px 1px;border-radius:9px;
   border:1px solid var(--line);background:rgba(255,255,255,.02);cursor:pointer;
   font:800 11px/1 system-ui;letter-spacing:.01em;color:var(--dim);white-space:nowrap;
@@ -1611,6 +1531,7 @@ body.syspage #sysSheet{display:block}
 .sysmeta{font:600 11px/1 system-ui;letter-spacing:.1em;color:var(--dim);margin-top:4px}
 .syshead{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:8px}
 .syshead .sysmeta{margin-top:0;font-weight:700}
+.syshead > :only-child{margin-left:auto}   /* home has no meta line - the stat keeps its right edge */
 .sysstat{font:600 12px/1 ui-monospace,monospace;color:var(--mut);white-space:nowrap}
 .sysstat b{color:var(--txt)}
 .sysd{font-size:11.5px;color:var(--mut);line-height:1.5;margin:8px 0 10px}
@@ -1727,6 +1648,8 @@ body.syspage #sysSheet{display:block}
 #flFind .fltxt span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #flFind button{min-height:44px;padding:0 14px;border-radius:8px;border:1px solid var(--fc,var(--cy));background:#123a52;
   color:var(--txt);font:800 12px/1 ui-monospace,monospace;letter-spacing:.06em;cursor:pointer}
+#flFind button.rc{border-color:var(--sv);background:rgba(169,188,212,.14);color:#eafcff}
+#flFind .flbtns{display:flex;gap:6px}
 @keyframes flFindIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
 @media(prefers-reduced-motion:reduce){#flFind{animation:none}}
 .fbtn{position:relative;overflow:hidden;min-width:0;min-height:64px;cursor:pointer;border:1px solid var(--line2);
@@ -1803,10 +1726,10 @@ body.syspage #sysSheet{display:block}
 #flHint[hidden],#flBanner[hidden]{display:none}
 #flHint span{flex:1;min-width:0}
 #flHint b{color:var(--fc)}
-#flRecall{position:relative;flex:none;min-height:30px;padding:0 10px;border-radius:7px;border:1px solid var(--sv);
-  cursor:pointer;background:rgba(169,188,212,.14);color:#eafcff;font:800 11px/1 system-ui;letter-spacing:.08em}
-#flRecall::before{content:"";position:absolute;inset:-7px -4px}     /* 44px tap target */
-#flRecall:focus-visible{outline:2px solid #eafcff;outline-offset:2px}
+#flX{position:relative;flex:none;width:30px;min-height:30px;border-radius:7px;border:1px solid var(--line2);
+  cursor:pointer;background:rgba(255,255,255,.05);color:var(--mut);font:800 12px/1 system-ui}
+#flX::before{content:"";position:absolute;inset:-7px -7px}     /* 44px tap target */
+#flX:focus-visible{outline:2px solid #eafcff;outline-offset:2px}
 #flBanner{position:absolute;left:8px;right:8px;bottom:8px;z-index:9;display:flex;align-items:center;gap:10px;
   padding:7px 7px 7px 12px;border-radius:10px;border:1px solid rgba(255,107,138,.6);background:rgba(30,8,16,.93);
   box-shadow:0 0 14px -3px rgba(255,107,138,.6)}
@@ -1985,14 +1908,13 @@ body.syspage #toasts{bottom:calc(var(--sysbarh) + 8px + env(safe-area-inset-bott
   .loc{margin-left:0;font-size:11px;letter-spacing:.04em;padding:2px 5px 1px;opacity:.7}
   .gm,.gx{font-size:11px;letter-spacing:0}
   .gb{min-width:92px;padding:6px 8px}
-  .brand h1{font-size:12px;letter-spacing:.2em}
 }
 
 /* touch targets: the small header/nav controls keep their look but get an invisible
    hit area out to 44px tall, so a thumb does not have to be precise. Buy buttons are
    simply taller. Nothing here changes layout or spacing. */
-#runlbl,.icnbtn,#mapZoomBack,#noticeX,#noticeGo,.tab{position:relative}
-#runlbl::before,.icnbtn::before,#mapZoomBack::before,#noticeX::before,#noticeGo::before,.tab::before{
+#runlbl,#avatar,.icnbtn,#mapZoomBack,#noticeX,#noticeGo,.tab{position:relative}
+#runlbl::before,#avatar::before,.icnbtn::before,#mapZoomBack::before,#noticeX::before,#noticeGo::before,.tab::before{
   content:"";position:absolute;left:-4px;right:-4px;top:50%;height:max(100% + 8px,44px);
   transform:translateY(-50%)}
 .gb{min-height:44px}
@@ -2032,7 +1954,9 @@ body.syspage #toasts{bottom:calc(var(--sysbarh) + 8px + env(safe-area-inset-bott
 <div id="app">
 <header>
   <div class="brand">
-    <h1>STELLAR DOMINION</h1>
+    <!-- owner: the title is gone from the top bar - the commander's own mark and the
+         level take its place. Both open the level summary. -->
+    <button type="button" id="avatar" class="avatar" title="Commander" aria-label="Commander"><svg viewBox="0 0 48 48" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"><circle cx="24" cy="17" r="9" fill="currentColor" fill-opacity=".18"/><path d="M16 16h16"/><path d="M8 43c2-9 8-14 16-14s14 5 16 14" fill="currentColor" fill-opacity=".18"/></g></svg></button>
     <button id="runlbl">Level 1</button>
     <span class="sp"></span>
     <button class="icnbtn" id="btnSave">SAVE</button>
@@ -2183,12 +2107,6 @@ body.syspage #toasts{bottom:calc(var(--sysbarh) + 8px + env(safe-area-inset-bott
              now instead, see exoModal(). -->
         <div id="lfBanner"></div>
         <div id="mapChips"></div>
-        <!-- patch614: session-only MAP | LIST sub-toggle, same .rmode/.rmbtn
-             pattern as #resMode/#raidMode - see mapMode/syncMapMode(). -->
-        <div id="mapMode" class="rmode">
-          <button class="rmbtn on" data-mm="map">MAP</button>
-          <button class="rmbtn" data-mm="list">LIST</button>
-        </div>
         <div id="mapWrap"><canvas id="mapBg" width="600" height="600"></canvas><svg id="mapLinks" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
           <canvas id="mapPl"></canvas>
           <div id="mapNodes"></div><div id="mapEdge"></div>
@@ -2207,7 +2125,6 @@ body.syspage #toasts{bottom:calc(var(--sysbarh) + 8px + env(safe-area-inset-bott
              render() right after renderMap(). -->
         <div id="fleetBar" hidden></div>
         <div id="flFind" hidden></div>
-        <div id="mapList" hidden></div>
         <div id="sysSheet">
           <div id="sysThreat" hidden></div>
           <div id="sysInfo"></div>
@@ -4191,7 +4108,7 @@ function curFleet(){
    (f.at===null, f.pos), flying to a system (f.to) or flying at a raid contact (f.tg,
    a target id). "Busy" is either kind of flight - every "is this fleet free" check
    goes through here rather than reading f.to alone. */
-function fleetBusy(f){ return !!(f&&(f.to||f.tg!=null)) }
+function fleetBusy(f){ return !!(f&&(f.to||f.tg!=null||f.mv)) }
 /* run 2: the first idle (not travelling) fleet sitting at sysId. */
 function fleetAtSys(sysId){ return fleets().find(f=>!fleetBusy(f)&&f.at===sysId)||null }
 /* run 3: every OTHER idle fleet sitting at f's own system - what TRANSFER needs to
@@ -4247,6 +4164,7 @@ function fleetPos(f){
 function fleetDestPos(f,now){
   if(f.tg!=null){ const t=tgById(f.tg); return t?tgPos(t,now):null }
   if(f.to)return sysPos(f.to);
+  if(f.mv)return {sec:f.mv.sec,x:f.mv.x,y:f.mv.y};
   return null;
 }
 /* where a fleet is on the map right now, flying or not: {sec,x,y,hd}. A flight is a
@@ -4285,7 +4203,7 @@ function fleetSend(f,toId){
   if(fleetBusy(f)){ toast(f.n+" is already en route","y"); return false }
   if(toId===f.at)return false;
   if(!SYSMAP[toId])return false;
-  f.sg=null; f.sga=0;                                    /* a plain SEND drops any attack order */
+  f.sg=null; f.sga=0; f.mv=null;                         /* a plain SEND drops any attack order */
   if(BT||DT){ toast("Not mid-fight","y"); return false }
   const o=fleetPos(f), eta=travelSecsPos(o,sysPos(toId));
   fleetRelease(f);
@@ -4306,7 +4224,7 @@ function fleetAttack(f,t,auto){
   if(f.hp<0.15){ toast("Fleet too damaged \u2014 recall it to repair."); return false }
   if(fleets().some(x=>x!==f&&(x.tg===t.id||x.hold===t.id))){ toast("Another fleet is already on it","y"); return false }
   if(f.hold===t.id){ t.auto=auto?1:0; dirty=true; return true }   /* already beside it */
-  f.sg=null; f.sga=0;
+  f.sg=null; f.sga=0; f.mv=null;
   const o=fleetPos(f), eta=travelSecsPos(o,tgPos(t));
   fleetRelease(f);
   f.o={sec:o.sec,x:o.x,y:o.y,sys:o.sys||null};
@@ -4327,9 +4245,25 @@ function fleetRecall(f){
   if(fleetBusy(f)){
     const p=fleetMapPos(f);
     f.pos={sec:p.sec,x:Math.max(2,Math.min(98,p.x)),y:Math.max(2,Math.min(98,p.y))};
-    f.at=null; f.to=null; f.tg=null; f.from=null; f.eta=0; f.tot=0; f.o=null;
+    f.at=null; f.to=null; f.tg=null; f.mv=null; f.from=null; f.eta=0; f.tot=0; f.o=null;
   }
   return fleetSend(f,"home");
+}
+/* owner: "when a fleet is selected and the player taps on the map, a MOVE button
+   appears" - fly to a patch of open space and hold there. Same shape as
+   fleetAttack()'s flight, with a fixed point (f.mv) for the destination. */
+function fleetMoveTo(f,p){
+  if(!f||!p||!SECTORS[p.sec])return false;
+  if(BT||DT){ toast("Not mid-fight","y"); return false }
+  if(fleetBusy(f)){ toast(f.n+" is already en route","y"); return false }
+  const o=fleetPos(f), dest={sec:p.sec,x:Math.max(3,Math.min(97,+p.x)),y:Math.max(3,Math.min(97,+p.y))};
+  const eta=travelSecsPos(o,dest);
+  fleetRelease(f);
+  f.o={sec:o.sec,x:o.x,y:o.y,sys:o.sys||null};
+  f.pos={sec:o.sec,x:o.x,y:o.y};
+  f.at=null; f.to=null; f.from=null; f.tg=null; f.sg=null; f.sga=0; f.mv=dest; f.eta=eta; f.tot=eta;
+  toast(f.n+" moving \u00b7 "+Math.round(eta)+"s","y");
+  dirty=true; return true;
 }
 /* run on the SAME clock thqTick(dt) already runs on (rvTick, called from tick()) -
    never csim's economy path, since csim never sends a fleet anywhere and so never
@@ -4359,6 +4293,17 @@ function fleetTravelTick(dt, quiet){
           flag("p-map");
         }
         dirty=true;
+      }
+      continue;
+    }
+    if(f.mv){
+      f.eta-=dt;
+      if(f.eta<=0){
+        f.pos={sec:f.mv.sec,x:f.mv.x,y:f.mv.y};
+        f.mv=null; f.at=null; f.eta=0; f.tot=0; f.o=null;
+        if(!quiet)toast(f.n+" holding position","g");
+        arrived.push(f.n+" is holding position");
+        flag("p-map"); dirty=true;
       }
       continue;
     }
@@ -7234,14 +7179,6 @@ function updateEmpBars(){
       const cap=b.querySelector(".gbc"), txt=gbCaption(sysId,gi,cost,xid,xc,can);
       if(cap&&cap.textContent!==txt)cap.textContent=txt; }
   }
-  /* patch614: same split as the .g rows above - the rebuild guard in
-     renderMapList() excludes S.ore, so the badge's own live affordability check
-     runs here, every frame, same as ladderTierRow()'s "ok" class just above. */
-  for(const {el,sysId,nextGi} of mapListEls){
-    if(!el.isConnected)continue;
-    const badge=el.querySelector(".ready");
-    if(badge)badge.hidden = !(nextGi!=null && ladderCost(sysId,nextGi,1)<=S.ore);
-  }
   /* PLAN-pacing: the Project's "you make R/h · ~T to go" line (and the Nexus slabs'
      LINK/NEED) - S.en ticks every frame outside of dirty, so nexLive() refreshes them
      in place on this unconditional pass; renderNex() only rebuilds on a real change. */
@@ -7591,8 +7528,8 @@ function buildMap(){
    fleet, then goes wherever they like and picks where it should go - a system
    (SEND chip) or a raid contact (the prompt). A fleet in flight can be selected
    too, which is what RECALL needs. */
-let flSel=null, sendChipSys=null;
-function fleetDeselect(){ flSel=null; sendChipSys=null; }
+let flSel=null, sendChipSys=null, moveChipPos=null;   /* moveChipPos: {sec,x,y} a tap on open space chose */
+function fleetDeselect(){ flSel=null; sendChipSys=null; moveChipPos=null; }
 /* a different save just replaced S (RESTART, LOAD CODE): drop the map's own view
    state, or the map stays on a sector the new save has not reached and shows
    nothing - not even Sol Reach. */
@@ -7600,13 +7537,14 @@ function mapViewReset(){ fleetDeselect(); mapSec=null; mapSecBuilt=-1; }
 function fleetBarTap(id){
   const f=fleet(id); if(!f)return;
   if(flSel===id){ openFleetCard(id); fleetDeselect(); }
-  else { flSel=id; sendChipSys=null; }
+  else { flSel=id; sendChipSys=null; moveChipPos=null; }
   dirty=true; render();
 }
 /* one line saying where a fleet is or what it is doing - the fleet bar, the fleet
    card and the Raids strip all read this */
 function fleetWhere(f){
   if(f.to)return "\u2192 "+((SYSMAP[f.to]||{}).n||f.to).toUpperCase()+" "+Math.max(0,Math.ceil(f.eta))+"s";
+  if(f.mv)return "MOVING "+Math.max(0,Math.ceil(f.eta))+"s";
   if(f.tg!=null)return "INTERCEPT "+Math.max(0,Math.ceil(f.eta))+"s";
   if(f.hold!=null){ const t=tgById(f.hold); if(t)return t.auto?"IN BATTLE":"IN POSITION"; }
   if(f.at){
@@ -7740,21 +7678,25 @@ function renderFleetBar(){
 }
 /* owner: "when the player clicks on one of their fleets, can a pop up below appear to
    locate it?" - a small callout under the selected button: where the fleet is, which
-   sector, and LOCATE (switch the map to that sector and bring the map into view; the
-   marker itself already pulses while selected). Rebuilt only when its text changes. */
+   sector, RECALL and LOCATE (switch the map to that sector and bring the map into
+   view; the marker itself already pulses while selected). Rebuilt only when its
+   text changes. */
 function renderFleetLoc(){
   const el=$("#flFind"); if(!el)return;
   const f=flSel!=null&&!S.msel?fleet(flSel):null;
   if(!f){ if(!el.hidden){ el.hidden=true; el.dataset.h=""; el.innerHTML=""; } return; }
   const sec=SECTORS[fleetMapPos(f).sec]||SECTORS[0];
   const where=fleetCount(f)?fleetWhere(f):"NO SHIPS";
-  const key=f.id+"|"+where+"|"+sec.tag;
+  const canRecall=!(f.to==="home")&&!(!fleetBusy(f)&&f.at==="home");   /* home to Sol Reach, where it mends fast */
+  const key=f.id+"|"+where+"|"+sec.tag+"|"+canRecall;
   if(el.dataset.h!==key){
     el.dataset.h=key;
     el.style.setProperty("--i",f.id-1);
     el.style.setProperty("--fc",FLEET_COL[f.id-1]||FLEET_COL[0]);
-    el.innerHTML=`<div class="fltxt"><b>${f.n.toUpperCase()}</b><span>${where} · ${sec.chip||sec.tag}</span></div>
-      <button type="button" id="flFindGo">LOCATE</button>`;
+    el.innerHTML=`<div class="fltxt"><b>${f.n.toUpperCase()}</b><span>${where} \u00b7 ${sec.chip||sec.tag}</span></div>
+      <div class="flbtns">${canRecall?`<button type="button" id="flRecall" class="rc">RECALL</button>`:""}<button type="button" id="flFindGo">LOCATE</button></div>`;
+    const rb=el.querySelector("#flRecall");
+    if(rb)rb.onclick=()=>{ const ff=flSel!=null?fleet(flSel):null; if(ff)fleetRecall(ff); fleetDeselect(); dirty=true; render(); };
     el.querySelector("#flFindGo").onclick=()=>{
       const ff=flSel!=null?fleet(flSel):null; if(!ff)return;
       setMapSec(fleetMapPos(ff).sec);
@@ -7920,14 +7862,16 @@ function mapFleetFrame(){
 function renderSendChip(){
   const host=$("#fleetMarkers"); if(!host)return;
   let chip=host.querySelector(".sendchip");
-  const node=sendChipSys?SYSMAP[sendChipSys]:null;
+  /* one chip, two jobs: SEND on a tapped system, MOVE on a tapped patch of open
+     space (owner: "a button should appear that says move") */
+  const tgt=sendChipSys?sysPos(sendChipSys):moveChipPos;
   const f=flSel!=null?fleet(flSel):null;
-  if(flSel==null || !node || node.sec!==mapSec || !f){
+  if(flSel==null || !tgt || tgt.sec!==mapSec || !f){
     if(chip)chip.remove();
     return;
   }
-  const here = !fleetBusy(f) && f.at===sendChipSys;
-  const text = fleetBusy(f) ? "EN ROUTE" : here ? "HERE" : "SEND \u00b7 "+Math.round(travelSecsPos(fleetPos(f),sysPos(sendChipSys)))+"s";
+  const here = !!sendChipSys && !fleetBusy(f) && f.at===sendChipSys;
+  const text = fleetBusy(f) ? "EN ROUTE" : here ? "HERE" : (sendChipSys?"SEND":"MOVE")+" \u00b7 "+Math.round(travelSecsPos(fleetPos(f),tgt))+"s";
   if(!chip){
     chip=document.createElement("div"); chip.className="sendchip";
     /* b646: decide "already here" at tap time, not from the render that first
@@ -7935,32 +7879,32 @@ function renderSendChip(){
        make SEND a silent no-op (the "fleet won't move" bug). */
     chip.onclick=()=>{
       const ff=flSel!=null?fleet(flSel):null;
-      const hereNow=!!(ff&&!fleetBusy(ff)&&ff.at===sendChipSys);
+      const hereNow=!!(ff&&sendChipSys&&!fleetBusy(ff)&&ff.at===sendChipSys);
       if(ff && sendChipSys && !hereNow)fleetSend(ff, sendChipSys);
+      else if(ff && moveChipPos)fleetMoveTo(ff, moveChipPos);
       fleetDeselect(); dirty=true; render();
     };
     host.appendChild(chip);
   }
-  chip.style.left=node.sx+"%"; chip.style.top=node.sy+"%";
+  chip.style.left=tgt.x+"%"; chip.style.top=tgt.y+"%";
   if(chip.textContent!==text)chip.textContent=text;
 }
-/* the strip across the top of the map while a fleet is selected: what to do next, and
-   RECALL (home to Sol Reach, where it mends fast). Rebuilt only when its text or
-   whether RECALL applies changes. */
+/* the strip across the top of the map while a fleet is selected: what to do next.
+   Rebuilt only when the fleet changes. */
 function renderFleetHint(){
   const el=$("#flHint"); if(!el)return;
   const f=flSel!=null?fleet(flSel):null;
   const wrap=$("#mapWrap"); if(wrap)wrap.classList.toggle("flsel",!!f);
   if(!f){ if(!el.hidden){ el.hidden=true; el.dataset.h=""; } return; }
-  const canRecall=!(f.to==="home")&&!(!fleetBusy(f)&&f.at==="home");
-  const key=f.id+"|"+canRecall;
+  /* RECALL moved down to the locate callout (owner: "next to the Locate button");
+     a tap on open space now places a MOVE chip instead of deselecting, so the
+     strip carries the one plain way out. */
+  const key=""+f.id;
   if(el.dataset.h!==key){
     el.dataset.h=key;
     el.style.setProperty("--fc",FLEET_COL[f.id-1]||FLEET_COL[0]);
-    el.innerHTML=`<span><b>${f.n.toUpperCase()}</b> \u00b7 TAP A SYSTEM OR AN ENEMY</span>`
-      +(canRecall?`<button type="button" id="flRecall">RECALL</button>`:"");
-    const rb=el.querySelector("#flRecall");
-    if(rb)rb.onclick=e=>{ e.stopPropagation(); const ff=flSel!=null?fleet(flSel):null; if(ff)fleetRecall(ff); fleetDeselect(); dirty=true; render(); };
+    el.innerHTML=`<span><b>${f.n.toUpperCase()}</b> \u00b7 TAP WHERE IT SHOULD GO</span><button type="button" id="flX" aria-label="Done">\u2715</button>`;
+    el.querySelector("#flX").onclick=e=>{ e.stopPropagation(); fleetDeselect(); dirty=true; render(); };
   }
   el.hidden=false;
 }
@@ -8848,115 +8792,6 @@ function hanModalWire(sysId){
    now (see #mapWrap's own CSS comment) that the page content flows below, never
    over, so the planet always gets the whole thing - see drawSysScene()'s own
    comment and draw()'s zoom branch. */
-/* patch614: rows for the LIST sub-view - sysInSec(mapSec), unheld branch recovered
-   verbatim from patch612.py's own deleted empSysRow() (see this file's header
-   note), held branch a new non-expandable variant of the same row (no accordion -
-   "a tap is the same as tapping the node", never mind that empSysRow()'s accordion
-   is gone anyway). Every row's tap does exactly what a map-node tap does
-   (buildMap()'s own b.onclick, unchanged) plus drops back to mapMode="map", so
-   #mapMode being hidden while zoomed can never strand the player in list mode -
-   the only way INTO list mode is the toggle itself, and the only way it flips to
-   list also clears any zoom (see the button wiring at the bottom of the file). */
-function mapNodeTapEquivalent(id){
-  S.msel=id; mapMode="map"; syncMapMode();  /* patch627: the derivation zooms it */
-  dirty=true; render();
-}
-/* claimable / contested / locked row - patch612.py's empSysRow(), unheld branch,
-   verbatim (DOM-construction style kept as-is), only the onclick swapped for the
-   node-tap-equivalent above (the original called gotoTab("p-map") because it lived
-   on the old Empire tab; LIST is already on the map, so there is nowhere to go). */
-function listOpenRow(s){
-  const id=s.id;
-  const claimable=sysOpen(s);
-  const contested=sysContested(s) && level()>=s.lvl;
-  const el=document.createElement("div");
-  if(claimable){
-    el.className="sysrow2 claimable";
-    el.innerHTML=`<div class="sysrow2-main">
-        <span class="sysname">${s.n}</span>
-        <span class="kindbadge" style="--a:var(--gr)">CLAIM READY</span></div>
-      <div class="sysrow2-stats"><span>LEVEL ${s.lvl}</span><span><b>${fmt(s.cost)}</b> ORE</span></div>`;
-  } else if(contested){
-    const rv=RIVALMAP[sysOwner(s)], at=assaultTarget(s);
-    const occ=sysOccupied(id), weak=occ&&occWeakMul(id)<1;
-    el.className="sysrow2 contested"+(occ?" occ":"");
-    el.innerHTML=`<div class="sysrow2-main">
-        <span class="rivalmark" style="--a:${rv.col}" title="${rv.n}">${occ?"\u26e8":"\u2694"}</span>
-        <span class="sysname">${s.n}</span>
-        <span class="kindbadge" style="--a:var(--rd)">${occ?"RETAKE":"INVADE"}</span></div>
-      <div class="sysrow2-stats"><span>LEVEL ${s.lvl}</span>
-        <span style="color:${rv.col}">${rv.n.toUpperCase()}</span>
-        <span><b>${at.en}</b> SHIPS \u00b7 \u00d7${fmt(s.def)}${weak?" \u00b7 WEAKENED":""}</span></div>`;
-  } else {
-    el.className="sysrow2 locked";
-    el.innerHTML=`<div class="sysrow2-main"><span class="lockicon">\ud83d\udd12</span>
-        <span class="sysname">${s.n}</span></div>
-      <div class="sysrow2-stats"><span>LEVEL ${s.lvl}</span><span>${fmt(s.cost)} ORE</span></div>`;
-  }
-  el.onclick=()=>mapNodeTapEquivalent(id);
-  return el;
-}
-/* held row - kind-tinted, NOT expandable (see header note). New markup, not a
-   port: the original empSysRow() held branch built an accordion header
-   (empOpen/empAccordionTap, both gone) - only its stat line and the five --a-*
-   custom properties (KIND_INFO tinting, same as the sheet's own held-row CSS
-   comment) are reused, plus a NEXT TIER READY badge the original never had. */
-let mapListEls=[];
-function listHeldRow(s){
-  const id=s.id;
-  const kind=KIND_INFO[s.kind]||KIND_INFO.mixed;
-  const ladder=sysLadder(id);
-  const owned=ladder.filter(gi=>sysTierCount(id,gi)>0).length;
-  const ex=s.res?exoDef(s.res):null;
-  const nextGi=sysNextGi(id);
-  const el=document.createElement("div");
-  el.className="sysrow2 held kindtint";
-  el.style.setProperty("--a",kind.col);
-  el.style.setProperty("--a-wash","rgba("+kind.rgb+",.12)");
-  el.style.setProperty("--a-wash-body","rgba("+kind.rgb+",.06)");
-  el.style.setProperty("--a-border","rgba("+kind.rgb+",.55)");
-  el.style.setProperty("--a-text",kind.txt);
-  const gov=sysState(id)&&sysState(id).gov;
-  el.innerHTML=`<div class="sysrow2-main">
-      <span class="sysname">${s.n}${gov?' <span class="govmark" title="Governed">\u25c6</span>':''}</span>
-      <span class="kindbadge" style="--a:${kind.col}">${kind.n}</span>
-      <span class="kindbadge ready" style="--a:var(--gr)" hidden>\u25cf NEXT TIER READY</span></div>
-    <div class="sysrow2-stats">
-      <span>${ex?ex.n.toUpperCase():"\u2014"}</span>
-      <span><b>${owned}/${ladder.length}</b> TIERS</span>
-      <span><b>${fmt(sysOreRate(id))}</b> ORE/S</span>
-      ${ex?`<span><b>${fmt(sysExoRate(id))}</b> ${ex.n.toUpperCase()}/S</span>`:""}
-    </div>`;
-  el.onclick=()=>mapNodeTapEquivalent(id);
-  mapListEls.push({el,sysId:id,nextGi});
-  return el;
-}
-function listSysRow(s){ return (s.home||sysHeld(s.id)) ? listHeldRow(s) : listOpenRow(s); }
-/* patch614: rebuilt only when the key actually changes - same dataset.h idiom as
-   every other rebuild-guarded block in this file (renderSysBuild, renderMapChips,
-   ...). Deliberately excludes S.ore (which changes every frame) - the live NEXT
-   TIER READY affordability check is updated separately, per row, from
-   updateEmpBars() (mapListEls), the same split renderSysBuild()/ladderTierRow()
-   already use for their own "can afford" state. */
-function renderMapList(){
-  const host=$("#mapList"); if(!host)return;
-  if(mapMode!=="list")return;
-  const list=sysInSec(mapSec);
-  const key=mapSec+"|"+list.map(s=>{
-    if(s.home||sysHeld(s.id)){
-      const ladder=sysLadder(s.id);
-      const gov=sysState(s.id)&&sysState(s.id).gov?1:0;
-      return s.id+"h"+ladder.map(gi=>sysTierCount(s.id,gi)>0?1:0).join("")+"g"+gov;
-    }
-    const claimable=sysOpen(s), contested=sysContested(s)&&level()>=s.lvl;
-    return s.id+(claimable?"c":contested?"w"+(sysOccupied(s.id)?1:0):"l");
-  }).join("|");
-  if(host.dataset.h===key)return;
-  host.dataset.h=key;
-  mapListEls=[];
-  host.innerHTML="";
-  for(const s of list)host.appendChild(listSysRow(s));
-}
 function renderMap(){
   initMapSec();
   /* patch618: class toggle only, on the one persistent #mapWrap element - never
@@ -8969,7 +8804,6 @@ function renderMap(){
      a sector change already gets. */
   if(!mapBuilt||mapSecBuilt!==mapSec||mapRevealBuilt!==(level()>=unlockLv("p-map")))buildMap();
   renderMapChips();
-  renderMapList();
   const nodeInfo=[], laneInfo=[], laneSeen={};
   for(const s of sysInSec(mapSec)){
     const el=$$("#mapNodes .mnode").find(x=>x.dataset.s===s.id); if(!el)continue;
@@ -9118,8 +8952,8 @@ function renderMap(){
   }
   const rvid=sysOwner(s), rv=rvid?RIVALMAP[rvid]:null;
   const owner = rv ? ("HELD BY "+rv.n) : (held?"Yours":(s.owner?"Driven off \u2014 unclaimed":"Unclaimed"));
-  const ih=`<div class="syshead"><div class="sysmeta" style="color:${rv?rv.col:(e?e.col:"var(--gr)")}">${
-      s.home?"HOME SYSTEM":"RING "+s.ring} \u00b7 ${owner.toUpperCase()}</div>${stat}</div>
+  /* owner: no "HOME SYSTEM / YOURS" line on Sol Reach - the stat keeps the row */
+  const ih=`<div class="syshead">${s.home?"":`<div class="sysmeta" style="color:${rv?rv.col:(e?e.col:"var(--gr)")}">RING ${s.ring} \u00b7 ${owner.toUpperCase()}</div>`}${stat}</div>
     ${held?"":`<div class="sysd">${s.d}${rv?" <b style=\"color:"+rv.col+"\">"+rv.t+"</b>":""}</div>`}${rows}`;
   if(info.dataset.h!==ih){ info.dataset.h=ih; info.innerHTML=ih }
   if(s.home||!act){
@@ -9374,30 +9208,17 @@ function exoModal(){
 let raidMode="fleet";         /* which sub-tab of the Raids tab is showing. Session-only,
                                   same reasoning as resMode above. PLAN-raidmap: there is
                                   no "targets" sub-tab any more - contacts are on the map. */
-let mapMode="map";            /* patch614: "map" or "list" - which half of the Map tab is
-                                  showing. Session-only, same reasoning as resMode/raidMode -
-                                  never saved, always opens on the map itself. */
 let mktBuy=25;                /* patch636: which SELL chip is selected on the Market page -
                                   its own state so the Market's choice never fights the
                                   buildings/Nexus chips' S.buy, or vice versa. Market
                                   refresh: a PERCENT of each card's surplus now (10, 25,
                                   50 or 100 = SURPLUS - see mktAmount()), no longer a fixed
                                   amount or MAX. Session-only, same reasoning as resMode/
-                                  raidMode/mapMode above - never saved, always opens on 25%. */
+                                  raidMode above - never saved, always opens on 25%. */
 const RAID_PANES={fleet:"#rpFleet",loadout:"#rpLoadout",crew:"#rpCrew"};
 function syncRaidMode(){
   $$(".rmbtn[data-rd]").forEach(x=>x.classList.toggle("on",x.dataset.rd===raidMode));
   for(const k in RAID_PANES){ const el=$(RAID_PANES[k]); if(el)el.hidden=(k!==raidMode); }
-}
-/* patch614: mirrors syncResMode()/syncRaidMode() - toggles the two buttons plus which
-   of #mapWrap/#mapList is visible. Rows themselves are renderMapList()'s job, called
-   from renderMap() every pass (own key-guard, see there) - this just decides which
-   panel is on screen. */
-function syncMapMode(){
-  $$(".rmbtn[data-mm]").forEach(x=>x.classList.toggle("on",x.dataset.mm===mapMode));
-  const wrap=$("#mapWrap"), list=$("#mapList");
-  if(wrap)wrap.hidden = mapMode==="list";
-  if(list)list.hidden = mapMode!=="list";
 }
 function resCost(r,l){ return r.c*Math.pow(r.cg,l) }
 /* Which currency a branch is bought with. Everything historic is crystal; the war branch
@@ -12778,6 +12599,7 @@ function renderRaids(){
   const loc=$("#flLoc");
   if(loc)loc.textContent = cf.to
     ? "→ "+((SYSMAP[cf.to]||{}).n||cf.to).toUpperCase()+" · "+Math.max(0,Math.ceil(cf.eta))+"s"
+    : cf.mv ? "MOVING · "+Math.max(0,Math.ceil(cf.eta))+"s"
     : fleetWhere(cf);
   const hp=cf.hp, bar=$(".fl-hp");
   bar.classList.toggle("hurt",hp<=.6&&hp>.3); bar.classList.toggle("crit",hp<=.3);
@@ -13045,8 +12867,9 @@ function adopt(o){
     /* tg (flying at a contact) and hold (sitting beside one) are target ids - checked
        against the contact list itself just below, once that has been sanitised */
     const tg=(!to&&fl&&Number.isFinite(fl.tg))?fl.tg:null;
-    const hold=(!to&&tg==null&&fl&&Number.isFinite(fl.hold))?fl.hold:null;
-    const moving=!!to||tg!=null;
+    const mv=(!to&&tg==null&&fl&&okPos(fl.mv))?{sec:fl.mv.sec,x:+fl.mv.x,y:+fl.mv.y}:null;   /* flying to open space */
+    const hold=(!to&&tg==null&&!mv&&fl&&Number.isFinite(fl.hold))?fl.hold:null;
+    const moving=!!to||tg!=null||!!mv;
     const eta=moving?Math.max(0,+((fl&&fl.eta))||0):0;
     const from=to?((fl&&typeof fl.from==="string"&&(fl.from==="home"||SYSMAP[fl.from]))?fl.from:at):null;
     const tot=moving?Math.max(eta,+((fl&&fl.tot))||0):0;
@@ -13060,7 +12883,7 @@ function adopt(o){
     /* sg: the enemy system this fleet was sent to attack from the attack prompt
        (sga: settle it on its own when it gets there) */
     const sg=(fl&&typeof fl.sg==="string"&&SYSMAP[fl.sg])?fl.sg:null, sga=sg&&fl.sga?1:0;
-    return {id,n,sh,hp,at,to,eta,from,tot,pos,tg,hold,o,sg,sga};
+    return {id,n,sh,hp,at,to,eta,from,tot,pos,tg,hold,o,sg,sga,mv};
   });
   if(f.flSel==null || !f.fl.some(fl=>fl.id===f.flSel))f.flSel=f.fl[0].id;
   /* run 3: the delivery queue (S.flQ, decision 6) - three non-negative counts,
@@ -14804,19 +14627,23 @@ function hscroll(el){
     if(flSel==null)return;
     e.stopPropagation();
     if(!btn)return;
-    sendChipSys=btn.dataset.s;
+    sendChipSys=btn.dataset.s; moveChipPos=null;
     dirty=true; render();
   }, true);
 })();
-/* tapping the map anywhere else (background, not a node or the chip itself)
-   deselects - the sector chips/swipe are untouched, they are not inside
-   #mapNodes/.sendchip so this never intercepts them either. */
+/* tapping open space with a fleet selected puts a MOVE chip there (owner's ask) -
+   the strip's own close button deselects. The sector chips/swipe are untouched,
+   they are not inside #mapWrap so this never intercepts them either. */
 (function(){
   const wrap=document.querySelector("#mapWrap"); if(!wrap)return;
   wrap.addEventListener("click", e=>{
     if(flSel==null)return;
     if(e.target.closest(".mnode")||e.target.closest(".sendchip")||e.target.closest(".enmark")||e.target.closest("#flHint")||e.target.closest("#flBanner"))return;
-    fleetDeselect(); dirty=true; render();
+    const r=wrap.getBoundingClientRect(); if(!r.width||!r.height)return;
+    const x=(e.clientX-r.left)/r.width*100, y=(e.clientY-r.top)/r.height*100;
+    if(!isFinite(x)||!isFinite(y)||x<0||x>100||y<0||y>100)return;
+    moveChipPos={sec:mapSec,x,y}; sendChipSys=null;
+    dirty=true; render();
   });
 })();
 /* patch627 (PLAN-page.md): map background tap-to-close (patch595) is deleted
@@ -14900,16 +14727,6 @@ $$(".tab").forEach(t=>t.onclick=()=>{
 $$(".rmbtn[data-rd]").forEach(b=>b.onclick=()=>{
   raidMode=b.dataset.rd; syncRaidMode(); dirty=true; render();
 });
-/* patch614: mapNodeTapEquivalent() above always sets mapMode back to "map" on a
-   tap, so list mode never survives selecting a system. patch627: the explicit
-   setMapZoom(null) that used to live here is deleted - list mode is only
-   reachable while #mapMode is visible, which body.syspage already hides
-   whenever a page (zoomed or not) is open, so S.msel is already null in every
-   case this runs. */
-$$(".rmbtn[data-mm]").forEach(b=>b.onclick=()=>{
-  mapMode=b.dataset.mm;
-  syncMapMode(); dirty=true; render();
-});
 $$(".chip[data-b]").forEach(c=>c.onclick=()=>{
   S.buy = c.dataset.b==="max"?"max":parseInt(c.dataset.b,10);
   syncChips(); dirty=true; render();
@@ -14936,6 +14753,7 @@ function syncMktChips(){
     x.classList.toggle("on",on); x.setAttribute("aria-pressed",on?"true":"false"); });
 }
 $("#runlbl").onclick=()=>{ if(pendingLevels()>0)lvModal(); else lvSummary(); };
+$("#avatar").onclick=$("#runlbl").onclick;
 $("#scan").addEventListener("click",e=>doScan(e));
 $("#sshScan").addEventListener("click",e=>doScan(e));
 addEventListener("keydown",e=>{
@@ -15047,7 +14865,7 @@ document.addEventListener("visibilitychange",()=>{
 
 /* ============================ dev tools ============================
    Session only - never written to the save, so it cannot leak into a save code. */
-let devOn=false, devTaps=0, devTapT=0;
+let devOn=false;
 function devGrantLevels(k){
   S.xpn=Math.max(S.xpn||0, xpNeed(level()+k));
   /* PLAN-polish batch B item 2: a dev cheat means to jump instantly - bypass the
@@ -15211,13 +15029,18 @@ $$("#devp .dvb").forEach(b=>b.onclick=()=>devAction(b.dataset.dev));
   };
 })();
 
-/* five taps on the title: works on touch, and nobody hits it by accident */
-$(".brand h1").addEventListener("click",()=>{
-  const t=Date.now();
-  if(t-devTapT>1200)devTaps=0;
-  devTapT=t; devTaps++;
-  if(devTaps>=5){ devTaps=0; devToggle(!devOn) }
-});
+/* the title is gone (owner): a long press on the commander mark opens dev tools.
+   A plain tap on it still opens the level summary, so the two never collide, and
+   nobody holds a header button for a second by accident. */
+(function(){
+  const av=$("#avatar"); if(!av)return;
+  let timer=null, held=false;
+  const arm=()=>{ held=false; clearTimeout(timer); timer=setTimeout(()=>{ held=true; devToggle(!devOn) },900); };
+  const disarm=()=>{ clearTimeout(timer); timer=null; };
+  av.addEventListener("pointerdown",arm);
+  ["pointerup","pointerleave","pointercancel"].forEach(ev=>av.addEventListener(ev,disarm));
+  av.addEventListener("click",e=>{ if(held){ held=false; e.stopImmediatePropagation(); e.preventDefault(); } },true);
+})();
 
 /* ============================ boot ============================ */
 const had=load();
@@ -15251,7 +15074,7 @@ window.__SD={get S(){return S},NEXUS,buyNex,openSite,SITE,siteSlots,
   fleetBusy,fleetPos,fleetMapPos,travelSecsPos,fleetAttack,fleetRecall,fleetRelease,fleetWhere,
   tgById,tgPos,tgCap,tgMaxSec,tgRand,raidAutoResolve,raidPrompt,raidEngage,mapFleetFrame,
   TG_SEC_DIF,TG_W,TG_FX_SECS,DOCK_REP,
-  get flSel(){return flSel}, get sendChipSys(){return sendChipSys}, fleetDeselect, mapViewReset, sysPrompt, sysAttack,
+  get flSel(){return flSel}, get sendChipSys(){return sendChipSys}, get moveChipPos(){return moveChipPos}, fleetDeselect, mapViewReset, sysPrompt, sysAttack, fleetMoveTo,
   fleetBarTap,openFleetCard,renderFleetBar,renderFleetMarkers,renderSysFleets,
   WEAPONS,WEPMAP,parDPS,parHP,parFleet,hardpoints,wepOwned,wepSlots,equipped,buyWeapon,equipWeapon,
   fleetEvade,repairCost,repairFleet,ammoCost,buyAmmo,AMMO_LOT,refDPS,refHP,PAR_BLEND,
@@ -15295,7 +15118,6 @@ window.__SD={get S(){return S},NEXUS,buyNex,openSite,SITE,siteSlots,
   drawTerritory,refreshTerritory,sysLost,buildMap,closeBattle,paneNeedsTop,
   SECTORS,SEC_LANES,SEC_EXIT,secOf,sysInSec,get mapSec(){return mapSec},setMapSec,
   get mapZoom(){return mapZoom},setMapZoom,drawSysScene,sprite,
-  get mapMode(){return mapMode},syncMapMode,renderMapList,
   get mapSite(){return mapSite},drawSite,
   RVACT,RVBEH,RV_MAX,RV_GRACE,RV_MINGAP,RV_EXPAND,RV_FREEMIN,DEFLV,
   freeSystems,ambientSystems,rivalHeldSystems,rvExpandTarget,rvMaybeExpand,rvExpandAway,

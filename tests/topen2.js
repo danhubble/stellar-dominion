@@ -289,16 +289,15 @@ const URL=GAME_URL;
  await p.waitForTimeout(150);
  const listSwitch=await p.evaluate(()=>{
    const G=window.__SD;
-   const homeName=G.SYS.find(s=>s.home).n;
-   document.querySelector('.rmbtn[data-mm="list"]').click();
-   const homeRow=[...document.getElementById('mapList').children]
-     .find(r=>{ const nm=r.querySelector('.sysname'); return nm&&nm.textContent===homeName; });
-   if(homeRow)homeRow.click();
-   return { foundRow:!!homeRow, msel:G.S.msel, scrollTop:document.getElementById('view').scrollTop };
+   /* the LIST view is gone - a node tap (hidden under the open page, but still
+      wired) is the way to switch pages now */
+   const homeNode=document.querySelector('.mnode[data-s="home"]');
+   if(homeNode)homeNode.click();
+   return { foundRow:!!homeNode, msel:G.S.msel, scrollTop:document.getElementById('view').scrollTop };
  });
  await p.waitForTimeout(300);
  const listSwitchScroll=await p.evaluate(()=>document.getElementById('view').scrollTop);
- ok('patch628b: switching to a DIFFERENT held system\'s page via a LIST row tap resets scroll to 0',
+ ok('patch628b: switching to a DIFFERENT held system\'s page via a node tap resets scroll to 0',
     listSwitch.foundRow && listSwitch.msel==='home' && listSwitchScroll===0, {...listSwitch, listSwitchScroll});
 
  // ---- a page open on the Research tab must NOT hide #left or pad #view; back on

@@ -117,7 +117,7 @@ const { chromium } = require('playwright-core');
    return r;
  });
  ok('selecting a fleet does NOT move the map to the fleet\'s sector', bar.before===0 && bar.after===0 && bar.sel===2, bar);
- ok('...and the map says what to do next', !bar.hintHidden && /2ND FLEET/.test(bar.hint) && /TAP A SYSTEM OR AN ENEMY/.test(bar.hint), bar);
+ ok('...and the map says what to do next', !bar.hintHidden && /2ND FLEET/.test(bar.hint) && /TAP WHERE IT SHOULD GO/.test(bar.hint), bar);
  ok('a fleet button carries a ship picture and a hull bar', bar.ship && bar.hp==='50%' && bar.hpCls==='hurt', bar);
  ok('the fleet bar is hidden on a system page', bar.onPage==='none', bar);
 

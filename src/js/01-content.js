@@ -1440,7 +1440,7 @@ function curFleet(){
    (f.at===null, f.pos), flying to a system (f.to) or flying at a raid contact (f.tg,
    a target id). "Busy" is either kind of flight - every "is this fleet free" check
    goes through here rather than reading f.to alone. */
-function fleetBusy(f){ return !!(f&&(f.to||f.tg!=null)) }
+function fleetBusy(f){ return !!(f&&(f.to||f.tg!=null||f.mv)) }
 /* run 2: the first idle (not travelling) fleet sitting at sysId. */
 function fleetAtSys(sysId){ return fleets().find(f=>!fleetBusy(f)&&f.at===sysId)||null }
 /* run 3: every OTHER idle fleet sitting at f's own system - what TRANSFER needs to
@@ -1496,6 +1496,7 @@ function fleetPos(f){
 function fleetDestPos(f,now){
   if(f.tg!=null){ const t=tgById(f.tg); return t?tgPos(t,now):null }
   if(f.to)return sysPos(f.to);
+  if(f.mv)return {sec:f.mv.sec,x:f.mv.x,y:f.mv.y};
   return null;
 }
 /* where a fleet is on the map right now, flying or not: {sec,x,y,hd}. A flight is a
@@ -1534,7 +1535,7 @@ function fleetSend(f,toId){
   if(fleetBusy(f)){ toast(f.n+" is already en route","y"); return false }
   if(toId===f.at)return false;
   if(!SYSMAP[toId])return false;
-  f.sg=null; f.sga=0;                                    /* a plain SEND drops any attack order */
+  f.sg=null; f.sga=0; f.mv=null;                         /* a plain SEND drops any attack order */
   if(BT||DT){ toast("Not mid-fight","y"); return false }
   const o=fleetPos(f), eta=travelSecsPos(o,sysPos(toId));
   fleetRelease(f);
@@ -1555,7 +1556,7 @@ function fleetAttack(f,t,auto){
   if(f.hp<0.15){ toast("Fleet too damaged \u2014 recall it to repair."); return false }
   if(fleets().some(x=>x!==f&&(x.tg===t.id||x.hold===t.id))){ toast("Another fleet is already on it","y"); return false }
   if(f.hold===t.id){ t.auto=auto?1:0; dirty=true; return true }   /* already beside it */
-  f.sg=null; f.sga=0;
+  f.sg=null; f.sga=0; f.mv=null;
   const o=fleetPos(f), eta=travelSecsPos(o,tgPos(t));
   fleetRelease(f);
   f.o={sec:o.sec,x:o.x,y:o.y,sys:o.sys||null};
@@ -1576,9 +1577,25 @@ function fleetRecall(f){
   if(fleetBusy(f)){
     const p=fleetMapPos(f);
     f.pos={sec:p.sec,x:Math.max(2,Math.min(98,p.x)),y:Math.max(2,Math.min(98,p.y))};
-    f.at=null; f.to=null; f.tg=null; f.from=null; f.eta=0; f.tot=0; f.o=null;
+    f.at=null; f.to=null; f.tg=null; f.mv=null; f.from=null; f.eta=0; f.tot=0; f.o=null;
   }
   return fleetSend(f,"home");
+}
+/* owner: "when a fleet is selected and the player taps on the map, a MOVE button
+   appears" - fly to a patch of open space and hold there. Same shape as
+   fleetAttack()'s flight, with a fixed point (f.mv) for the destination. */
+function fleetMoveTo(f,p){
+  if(!f||!p||!SECTORS[p.sec])return false;
+  if(BT||DT){ toast("Not mid-fight","y"); return false }
+  if(fleetBusy(f)){ toast(f.n+" is already en route","y"); return false }
+  const o=fleetPos(f), dest={sec:p.sec,x:Math.max(3,Math.min(97,+p.x)),y:Math.max(3,Math.min(97,+p.y))};
+  const eta=travelSecsPos(o,dest);
+  fleetRelease(f);
+  f.o={sec:o.sec,x:o.x,y:o.y,sys:o.sys||null};
+  f.pos={sec:o.sec,x:o.x,y:o.y};
+  f.at=null; f.to=null; f.from=null; f.tg=null; f.sg=null; f.sga=0; f.mv=dest; f.eta=eta; f.tot=eta;
+  toast(f.n+" moving \u00b7 "+Math.round(eta)+"s","y");
+  dirty=true; return true;
 }
 /* run on the SAME clock thqTick(dt) already runs on (rvTick, called from tick()) -
    never csim's economy path, since csim never sends a fleet anywhere and so never
@@ -1608,6 +1625,17 @@ function fleetTravelTick(dt, quiet){
           flag("p-map");
         }
         dirty=true;
+      }
+      continue;
+    }
+    if(f.mv){
+      f.eta-=dt;
+      if(f.eta<=0){
+        f.pos={sec:f.mv.sec,x:f.mv.x,y:f.mv.y};
+        f.mv=null; f.at=null; f.eta=0; f.tot=0; f.o=null;
+        if(!quiet)toast(f.n+" holding position","g");
+        arrived.push(f.n+" is holding position");
+        flag("p-map"); dirty=true;
       }
       continue;
     }

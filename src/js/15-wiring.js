@@ -63,19 +63,23 @@ function hscroll(el){
     if(flSel==null)return;
     e.stopPropagation();
     if(!btn)return;
-    sendChipSys=btn.dataset.s;
+    sendChipSys=btn.dataset.s; moveChipPos=null;
     dirty=true; render();
   }, true);
 })();
-/* tapping the map anywhere else (background, not a node or the chip itself)
-   deselects - the sector chips/swipe are untouched, they are not inside
-   #mapNodes/.sendchip so this never intercepts them either. */
+/* tapping open space with a fleet selected puts a MOVE chip there (owner's ask) -
+   the strip's own close button deselects. The sector chips/swipe are untouched,
+   they are not inside #mapWrap so this never intercepts them either. */
 (function(){
   const wrap=document.querySelector("#mapWrap"); if(!wrap)return;
   wrap.addEventListener("click", e=>{
     if(flSel==null)return;
     if(e.target.closest(".mnode")||e.target.closest(".sendchip")||e.target.closest(".enmark")||e.target.closest("#flHint")||e.target.closest("#flBanner"))return;
-    fleetDeselect(); dirty=true; render();
+    const r=wrap.getBoundingClientRect(); if(!r.width||!r.height)return;
+    const x=(e.clientX-r.left)/r.width*100, y=(e.clientY-r.top)/r.height*100;
+    if(!isFinite(x)||!isFinite(y)||x<0||x>100||y<0||y>100)return;
+    moveChipPos={sec:mapSec,x,y}; sendChipSys=null;
+    dirty=true; render();
   });
 })();
 /* patch627 (PLAN-page.md): map background tap-to-close (patch595) is deleted
@@ -159,16 +163,6 @@ $$(".tab").forEach(t=>t.onclick=()=>{
 $$(".rmbtn[data-rd]").forEach(b=>b.onclick=()=>{
   raidMode=b.dataset.rd; syncRaidMode(); dirty=true; render();
 });
-/* patch614: mapNodeTapEquivalent() above always sets mapMode back to "map" on a
-   tap, so list mode never survives selecting a system. patch627: the explicit
-   setMapZoom(null) that used to live here is deleted - list mode is only
-   reachable while #mapMode is visible, which body.syspage already hides
-   whenever a page (zoomed or not) is open, so S.msel is already null in every
-   case this runs. */
-$$(".rmbtn[data-mm]").forEach(b=>b.onclick=()=>{
-  mapMode=b.dataset.mm;
-  syncMapMode(); dirty=true; render();
-});
 $$(".chip[data-b]").forEach(c=>c.onclick=()=>{
   S.buy = c.dataset.b==="max"?"max":parseInt(c.dataset.b,10);
   syncChips(); dirty=true; render();
@@ -195,6 +189,7 @@ function syncMktChips(){
     x.classList.toggle("on",on); x.setAttribute("aria-pressed",on?"true":"false"); });
 }
 $("#runlbl").onclick=()=>{ if(pendingLevels()>0)lvModal(); else lvSummary(); };
+$("#avatar").onclick=$("#runlbl").onclick;
 $("#scan").addEventListener("click",e=>doScan(e));
 $("#sshScan").addEventListener("click",e=>doScan(e));
 addEventListener("keydown",e=>{

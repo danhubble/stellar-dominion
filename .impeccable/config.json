@@ -1,3 +1,18 @@
 {
-  "buildPath": "code"
+  "buildPath": "code",
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": [
+          "src/styles/00-base.css"
+        ],
+        "createdAt": "2026-10-08T10:13:52.481Z",
+        "reason": "Agent: pre-existing (commit 7b5aa59) SCAN SECTOR slab button bottom edge, the game's chunky pressed-button look, not a side accent"
+      }
+    ]
+  }
 }

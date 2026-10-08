@@ -2636,6 +2636,7 @@ function renderRaids(){
   const loc=$("#flLoc");
   if(loc)loc.textContent = cf.to
     ? "→ "+((SYSMAP[cf.to]||{}).n||cf.to).toUpperCase()+" · "+Math.max(0,Math.ceil(cf.eta))+"s"
+    : cf.mv ? "MOVING · "+Math.max(0,Math.ceil(cf.eta))+"s"
     : fleetWhere(cf);
   const hp=cf.hp, bar=$(".fl-hp");
   bar.classList.toggle("hurt",hp<=.6&&hp>.3); bar.classList.toggle("crit",hp<=.3);

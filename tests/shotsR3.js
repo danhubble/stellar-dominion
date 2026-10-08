@@ -24,21 +24,19 @@ const { chromium } = require('playwright-core');
  await p.waitForTimeout(300);
 
  // ---------- (a) LIST view, mid-game ----------
- await p.evaluate(()=>{ document.querySelector('.rmbtn[data-mm="list"]').click(); });
  await p.waitForTimeout(300);
  await p.screenshot({path:SHOTS+'unify-r3-a-list-midgame.png'});
 
  // ---------- (b) LIST view with a claimable and a locked row visible ----------
  // already the same view (vel claimable, tan/mir locked, all in sector 0) - scroll to
  // the top so every row including the unheld ones is in frame.
- await p.evaluate(()=>{ document.getElementById('mapList').scrollIntoView(); window.scrollTo(0,0); });
+ await p.evaluate(()=>{ document.getElementById('mapWrap').scrollIntoView(); window.scrollTo(0,0); });
  await p.waitForTimeout(200);
  await p.screenshot({path:SHOTS+'unify-r3-b-list-claimable-locked.png'});
 
  // ---------- (c) site view open on an ore tier ----------
  await p.evaluate(()=>{
    const G=window.__SD;
-   document.querySelector('.rmbtn[data-mm="map"]').click();
    G.S.msel='dra'; G.setMapZoom('dra'); G.render();
  });
  await p.waitForTimeout(300);
@@ -51,7 +49,7 @@ const { chromium } = require('playwright-core');
 
  // ---------- (d) map zoomed, toggle correctly hidden ----------
  const zoomState=await p.evaluate(()=>({
-   toggleHidden: getComputedStyle(document.getElementById('mapMode')).display==='none',
+   toggleHidden: !document.getElementById('mapMode'),   /* the toggle is gone outright now */
    chipsHidden: getComputedStyle(document.getElementById('mapChips')).display==='none',
  }));
  console.log('zoomed state (toggle/chips should both be hidden):', JSON.stringify(zoomState));

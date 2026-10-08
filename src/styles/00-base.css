@@ -119,11 +119,14 @@ header{
   backdrop-filter:blur(10px)
 }
 .brand{display:flex;align-items:center;gap:10px}
-.brand h1{
-  margin:0;font-size:15px;letter-spacing:.30em;font-weight:700;
-  background:linear-gradient(90deg,var(--cy),var(--vi) 60%,var(--gd));
-  -webkit-background-clip:text;background-clip:text;color:transparent;white-space:nowrap
-}
+/* the commander's mark, where the title used to be - same slab look as the fleet
+   buttons, sized to the level pill beside it */
+.avatar{flex:none;width:32px;height:32px;padding:4px;border-radius:50%;cursor:pointer;color:var(--cy);
+  border:1px solid var(--line2);background:linear-gradient(180deg,#141b38,#0c1126);
+  box-shadow:0 0 10px -3px rgba(72,226,255,.6);transition:border-color .15s;
+  -webkit-touch-callout:none;user-select:none;touch-action:manipulation}   /* long press = dev tools, no menu */
+.avatar svg{width:100%;height:100%;display:block}
+.avatar:hover{border-color:var(--cy)}
 #runlbl{border:1px solid var(--line);color:var(--dim);--p:0%;
   background:linear-gradient(90deg,rgba(255,209,102,.85) var(--p),rgba(255,255,255,.08) var(--p)) bottom/100% 2px no-repeat,
              rgba(255,255,255,.05);

@@ -205,14 +205,6 @@ function updateEmpBars(){
       const cap=b.querySelector(".gbc"), txt=gbCaption(sysId,gi,cost,xid,xc,can);
       if(cap&&cap.textContent!==txt)cap.textContent=txt; }
   }
-  /* patch614: same split as the .g rows above - the rebuild guard in
-     renderMapList() excludes S.ore, so the badge's own live affordability check
-     runs here, every frame, same as ladderTierRow()'s "ok" class just above. */
-  for(const {el,sysId,nextGi} of mapListEls){
-    if(!el.isConnected)continue;
-    const badge=el.querySelector(".ready");
-    if(badge)badge.hidden = !(nextGi!=null && ladderCost(sysId,nextGi,1)<=S.ore);
-  }
   /* PLAN-pacing: the Project's "you make R/h · ~T to go" line (and the Nexus slabs'
      LINK/NEED) - S.en ticks every frame outside of dirty, so nexLive() refreshes them
      in place on this unconditional pass; renderNex() only rebuilds on a real change. */
@@ -562,8 +554,8 @@ function buildMap(){
    fleet, then goes wherever they like and picks where it should go - a system
    (SEND chip) or a raid contact (the prompt). A fleet in flight can be selected
    too, which is what RECALL needs. */
-let flSel=null, sendChipSys=null;
-function fleetDeselect(){ flSel=null; sendChipSys=null; }
+let flSel=null, sendChipSys=null, moveChipPos=null;   /* moveChipPos: {sec,x,y} a tap on open space chose */
+function fleetDeselect(){ flSel=null; sendChipSys=null; moveChipPos=null; }
 /* a different save just replaced S (RESTART, LOAD CODE): drop the map's own view
    state, or the map stays on a sector the new save has not reached and shows
    nothing - not even Sol Reach. */
@@ -571,13 +563,14 @@ function mapViewReset(){ fleetDeselect(); mapSec=null; mapSecBuilt=-1; }
 function fleetBarTap(id){
   const f=fleet(id); if(!f)return;
   if(flSel===id){ openFleetCard(id); fleetDeselect(); }
-  else { flSel=id; sendChipSys=null; }
+  else { flSel=id; sendChipSys=null; moveChipPos=null; }
   dirty=true; render();
 }
 /* one line saying where a fleet is or what it is doing - the fleet bar, the fleet
    card and the Raids strip all read this */
 function fleetWhere(f){
   if(f.to)return "\u2192 "+((SYSMAP[f.to]||{}).n||f.to).toUpperCase()+" "+Math.max(0,Math.ceil(f.eta))+"s";
+  if(f.mv)return "MOVING "+Math.max(0,Math.ceil(f.eta))+"s";
   if(f.tg!=null)return "INTERCEPT "+Math.max(0,Math.ceil(f.eta))+"s";
   if(f.hold!=null){ const t=tgById(f.hold); if(t)return t.auto?"IN BATTLE":"IN POSITION"; }
   if(f.at){
@@ -711,21 +704,25 @@ function renderFleetBar(){
 }
 /* owner: "when the player clicks on one of their fleets, can a pop up below appear to
    locate it?" - a small callout under the selected button: where the fleet is, which
-   sector, and LOCATE (switch the map to that sector and bring the map into view; the
-   marker itself already pulses while selected). Rebuilt only when its text changes. */
+   sector, RECALL and LOCATE (switch the map to that sector and bring the map into
+   view; the marker itself already pulses while selected). Rebuilt only when its
+   text changes. */
 function renderFleetLoc(){
   const el=$("#flFind"); if(!el)return;
   const f=flSel!=null&&!S.msel?fleet(flSel):null;
   if(!f){ if(!el.hidden){ el.hidden=true; el.dataset.h=""; el.innerHTML=""; } return; }
   const sec=SECTORS[fleetMapPos(f).sec]||SECTORS[0];
   const where=fleetCount(f)?fleetWhere(f):"NO SHIPS";
-  const key=f.id+"|"+where+"|"+sec.tag;
+  const canRecall=!(f.to==="home")&&!(!fleetBusy(f)&&f.at==="home");   /* home to Sol Reach, where it mends fast */
+  const key=f.id+"|"+where+"|"+sec.tag+"|"+canRecall;
   if(el.dataset.h!==key){
     el.dataset.h=key;
     el.style.setProperty("--i",f.id-1);
     el.style.setProperty("--fc",FLEET_COL[f.id-1]||FLEET_COL[0]);
-    el.innerHTML=`<div class="fltxt"><b>${f.n.toUpperCase()}</b><span>${where} · ${sec.chip||sec.tag}</span></div>
-      <button type="button" id="flFindGo">LOCATE</button>`;
+    el.innerHTML=`<div class="fltxt"><b>${f.n.toUpperCase()}</b><span>${where} \u00b7 ${sec.chip||sec.tag}</span></div>
+      <div class="flbtns">${canRecall?`<button type="button" id="flRecall" class="rc">RECALL</button>`:""}<button type="button" id="flFindGo">LOCATE</button></div>`;
+    const rb=el.querySelector("#flRecall");
+    if(rb)rb.onclick=()=>{ const ff=flSel!=null?fleet(flSel):null; if(ff)fleetRecall(ff); fleetDeselect(); dirty=true; render(); };
     el.querySelector("#flFindGo").onclick=()=>{
       const ff=flSel!=null?fleet(flSel):null; if(!ff)return;
       setMapSec(fleetMapPos(ff).sec);
@@ -891,14 +888,16 @@ function mapFleetFrame(){
 function renderSendChip(){
   const host=$("#fleetMarkers"); if(!host)return;
   let chip=host.querySelector(".sendchip");
-  const node=sendChipSys?SYSMAP[sendChipSys]:null;
+  /* one chip, two jobs: SEND on a tapped system, MOVE on a tapped patch of open
+     space (owner: "a button should appear that says move") */
+  const tgt=sendChipSys?sysPos(sendChipSys):moveChipPos;
   const f=flSel!=null?fleet(flSel):null;
-  if(flSel==null || !node || node.sec!==mapSec || !f){
+  if(flSel==null || !tgt || tgt.sec!==mapSec || !f){
     if(chip)chip.remove();
     return;
   }
-  const here = !fleetBusy(f) && f.at===sendChipSys;
-  const text = fleetBusy(f) ? "EN ROUTE" : here ? "HERE" : "SEND \u00b7 "+Math.round(travelSecsPos(fleetPos(f),sysPos(sendChipSys)))+"s";
+  const here = !!sendChipSys && !fleetBusy(f) && f.at===sendChipSys;
+  const text = fleetBusy(f) ? "EN ROUTE" : here ? "HERE" : (sendChipSys?"SEND":"MOVE")+" \u00b7 "+Math.round(travelSecsPos(fleetPos(f),tgt))+"s";
   if(!chip){
     chip=document.createElement("div"); chip.className="sendchip";
     /* b646: decide "already here" at tap time, not from the render that first
@@ -906,32 +905,32 @@ function renderSendChip(){
        make SEND a silent no-op (the "fleet won't move" bug). */
     chip.onclick=()=>{
       const ff=flSel!=null?fleet(flSel):null;
-      const hereNow=!!(ff&&!fleetBusy(ff)&&ff.at===sendChipSys);
+      const hereNow=!!(ff&&sendChipSys&&!fleetBusy(ff)&&ff.at===sendChipSys);
       if(ff && sendChipSys && !hereNow)fleetSend(ff, sendChipSys);
+      else if(ff && moveChipPos)fleetMoveTo(ff, moveChipPos);
       fleetDeselect(); dirty=true; render();
     };
     host.appendChild(chip);
   }
-  chip.style.left=node.sx+"%"; chip.style.top=node.sy+"%";
+  chip.style.left=tgt.x+"%"; chip.style.top=tgt.y+"%";
   if(chip.textContent!==text)chip.textContent=text;
 }
-/* the strip across the top of the map while a fleet is selected: what to do next, and
-   RECALL (home to Sol Reach, where it mends fast). Rebuilt only when its text or
-   whether RECALL applies changes. */
+/* the strip across the top of the map while a fleet is selected: what to do next.
+   Rebuilt only when the fleet changes. */
 function renderFleetHint(){
   const el=$("#flHint"); if(!el)return;
   const f=flSel!=null?fleet(flSel):null;
   const wrap=$("#mapWrap"); if(wrap)wrap.classList.toggle("flsel",!!f);
   if(!f){ if(!el.hidden){ el.hidden=true; el.dataset.h=""; } return; }
-  const canRecall=!(f.to==="home")&&!(!fleetBusy(f)&&f.at==="home");
-  const key=f.id+"|"+canRecall;
+  /* RECALL moved down to the locate callout (owner: "next to the Locate button");
+     a tap on open space now places a MOVE chip instead of deselecting, so the
+     strip carries the one plain way out. */
+  const key=""+f.id;
   if(el.dataset.h!==key){
     el.dataset.h=key;
     el.style.setProperty("--fc",FLEET_COL[f.id-1]||FLEET_COL[0]);
-    el.innerHTML=`<span><b>${f.n.toUpperCase()}</b> \u00b7 TAP A SYSTEM OR AN ENEMY</span>`
-      +(canRecall?`<button type="button" id="flRecall">RECALL</button>`:"");
-    const rb=el.querySelector("#flRecall");
-    if(rb)rb.onclick=e=>{ e.stopPropagation(); const ff=flSel!=null?fleet(flSel):null; if(ff)fleetRecall(ff); fleetDeselect(); dirty=true; render(); };
+    el.innerHTML=`<span><b>${f.n.toUpperCase()}</b> \u00b7 TAP WHERE IT SHOULD GO</span><button type="button" id="flX" aria-label="Done">\u2715</button>`;
+    el.querySelector("#flX").onclick=e=>{ e.stopPropagation(); fleetDeselect(); dirty=true; render(); };
   }
   el.hidden=false;
 }
@@ -1819,115 +1818,6 @@ function hanModalWire(sysId){
    now (see #mapWrap's own CSS comment) that the page content flows below, never
    over, so the planet always gets the whole thing - see drawSysScene()'s own
    comment and draw()'s zoom branch. */
-/* patch614: rows for the LIST sub-view - sysInSec(mapSec), unheld branch recovered
-   verbatim from patch612.py's own deleted empSysRow() (see this file's header
-   note), held branch a new non-expandable variant of the same row (no accordion -
-   "a tap is the same as tapping the node", never mind that empSysRow()'s accordion
-   is gone anyway). Every row's tap does exactly what a map-node tap does
-   (buildMap()'s own b.onclick, unchanged) plus drops back to mapMode="map", so
-   #mapMode being hidden while zoomed can never strand the player in list mode -
-   the only way INTO list mode is the toggle itself, and the only way it flips to
-   list also clears any zoom (see the button wiring at the bottom of the file). */
-function mapNodeTapEquivalent(id){
-  S.msel=id; mapMode="map"; syncMapMode();  /* patch627: the derivation zooms it */
-  dirty=true; render();
-}
-/* claimable / contested / locked row - patch612.py's empSysRow(), unheld branch,
-   verbatim (DOM-construction style kept as-is), only the onclick swapped for the
-   node-tap-equivalent above (the original called gotoTab("p-map") because it lived
-   on the old Empire tab; LIST is already on the map, so there is nowhere to go). */
-function listOpenRow(s){
-  const id=s.id;
-  const claimable=sysOpen(s);
-  const contested=sysContested(s) && level()>=s.lvl;
-  const el=document.createElement("div");
-  if(claimable){
-    el.className="sysrow2 claimable";
-    el.innerHTML=`<div class="sysrow2-main">
-        <span class="sysname">${s.n}</span>
-        <span class="kindbadge" style="--a:var(--gr)">CLAIM READY</span></div>
-      <div class="sysrow2-stats"><span>LEVEL ${s.lvl}</span><span><b>${fmt(s.cost)}</b> ORE</span></div>`;
-  } else if(contested){
-    const rv=RIVALMAP[sysOwner(s)], at=assaultTarget(s);
-    const occ=sysOccupied(id), weak=occ&&occWeakMul(id)<1;
-    el.className="sysrow2 contested"+(occ?" occ":"");
-    el.innerHTML=`<div class="sysrow2-main">
-        <span class="rivalmark" style="--a:${rv.col}" title="${rv.n}">${occ?"\u26e8":"\u2694"}</span>
-        <span class="sysname">${s.n}</span>
-        <span class="kindbadge" style="--a:var(--rd)">${occ?"RETAKE":"INVADE"}</span></div>
-      <div class="sysrow2-stats"><span>LEVEL ${s.lvl}</span>
-        <span style="color:${rv.col}">${rv.n.toUpperCase()}</span>
-        <span><b>${at.en}</b> SHIPS \u00b7 \u00d7${fmt(s.def)}${weak?" \u00b7 WEAKENED":""}</span></div>`;
-  } else {
-    el.className="sysrow2 locked";
-    el.innerHTML=`<div class="sysrow2-main"><span class="lockicon">\ud83d\udd12</span>
-        <span class="sysname">${s.n}</span></div>
-      <div class="sysrow2-stats"><span>LEVEL ${s.lvl}</span><span>${fmt(s.cost)} ORE</span></div>`;
-  }
-  el.onclick=()=>mapNodeTapEquivalent(id);
-  return el;
-}
-/* held row - kind-tinted, NOT expandable (see header note). New markup, not a
-   port: the original empSysRow() held branch built an accordion header
-   (empOpen/empAccordionTap, both gone) - only its stat line and the five --a-*
-   custom properties (KIND_INFO tinting, same as the sheet's own held-row CSS
-   comment) are reused, plus a NEXT TIER READY badge the original never had. */
-let mapListEls=[];
-function listHeldRow(s){
-  const id=s.id;
-  const kind=KIND_INFO[s.kind]||KIND_INFO.mixed;
-  const ladder=sysLadder(id);
-  const owned=ladder.filter(gi=>sysTierCount(id,gi)>0).length;
-  const ex=s.res?exoDef(s.res):null;
-  const nextGi=sysNextGi(id);
-  const el=document.createElement("div");
-  el.className="sysrow2 held kindtint";
-  el.style.setProperty("--a",kind.col);
-  el.style.setProperty("--a-wash","rgba("+kind.rgb+",.12)");
-  el.style.setProperty("--a-wash-body","rgba("+kind.rgb+",.06)");
-  el.style.setProperty("--a-border","rgba("+kind.rgb+",.55)");
-  el.style.setProperty("--a-text",kind.txt);
-  const gov=sysState(id)&&sysState(id).gov;
-  el.innerHTML=`<div class="sysrow2-main">
-      <span class="sysname">${s.n}${gov?' <span class="govmark" title="Governed">\u25c6</span>':''}</span>
-      <span class="kindbadge" style="--a:${kind.col}">${kind.n}</span>
-      <span class="kindbadge ready" style="--a:var(--gr)" hidden>\u25cf NEXT TIER READY</span></div>
-    <div class="sysrow2-stats">
-      <span>${ex?ex.n.toUpperCase():"\u2014"}</span>
-      <span><b>${owned}/${ladder.length}</b> TIERS</span>
-      <span><b>${fmt(sysOreRate(id))}</b> ORE/S</span>
-      ${ex?`<span><b>${fmt(sysExoRate(id))}</b> ${ex.n.toUpperCase()}/S</span>`:""}
-    </div>`;
-  el.onclick=()=>mapNodeTapEquivalent(id);
-  mapListEls.push({el,sysId:id,nextGi});
-  return el;
-}
-function listSysRow(s){ return (s.home||sysHeld(s.id)) ? listHeldRow(s) : listOpenRow(s); }
-/* patch614: rebuilt only when the key actually changes - same dataset.h idiom as
-   every other rebuild-guarded block in this file (renderSysBuild, renderMapChips,
-   ...). Deliberately excludes S.ore (which changes every frame) - the live NEXT
-   TIER READY affordability check is updated separately, per row, from
-   updateEmpBars() (mapListEls), the same split renderSysBuild()/ladderTierRow()
-   already use for their own "can afford" state. */
-function renderMapList(){
-  const host=$("#mapList"); if(!host)return;
-  if(mapMode!=="list")return;
-  const list=sysInSec(mapSec);
-  const key=mapSec+"|"+list.map(s=>{
-    if(s.home||sysHeld(s.id)){
-      const ladder=sysLadder(s.id);
-      const gov=sysState(s.id)&&sysState(s.id).gov?1:0;
-      return s.id+"h"+ladder.map(gi=>sysTierCount(s.id,gi)>0?1:0).join("")+"g"+gov;
-    }
-    const claimable=sysOpen(s), contested=sysContested(s)&&level()>=s.lvl;
-    return s.id+(claimable?"c":contested?"w"+(sysOccupied(s.id)?1:0):"l");
-  }).join("|");
-  if(host.dataset.h===key)return;
-  host.dataset.h=key;
-  mapListEls=[];
-  host.innerHTML="";
-  for(const s of list)host.appendChild(listSysRow(s));
-}
 function renderMap(){
   initMapSec();
   /* patch618: class toggle only, on the one persistent #mapWrap element - never
@@ -1940,7 +1830,6 @@ function renderMap(){
      a sector change already gets. */
   if(!mapBuilt||mapSecBuilt!==mapSec||mapRevealBuilt!==(level()>=unlockLv("p-map")))buildMap();
   renderMapChips();
-  renderMapList();
   const nodeInfo=[], laneInfo=[], laneSeen={};
   for(const s of sysInSec(mapSec)){
     const el=$$("#mapNodes .mnode").find(x=>x.dataset.s===s.id); if(!el)continue;
@@ -2089,8 +1978,8 @@ function renderMap(){
   }
   const rvid=sysOwner(s), rv=rvid?RIVALMAP[rvid]:null;
   const owner = rv ? ("HELD BY "+rv.n) : (held?"Yours":(s.owner?"Driven off \u2014 unclaimed":"Unclaimed"));
-  const ih=`<div class="syshead"><div class="sysmeta" style="color:${rv?rv.col:(e?e.col:"var(--gr)")}">${
-      s.home?"HOME SYSTEM":"RING "+s.ring} \u00b7 ${owner.toUpperCase()}</div>${stat}</div>
+  /* owner: no "HOME SYSTEM / YOURS" line on Sol Reach - the stat keeps the row */
+  const ih=`<div class="syshead">${s.home?"":`<div class="sysmeta" style="color:${rv?rv.col:(e?e.col:"var(--gr)")}">RING ${s.ring} \u00b7 ${owner.toUpperCase()}</div>`}${stat}</div>
     ${held?"":`<div class="sysd">${s.d}${rv?" <b style=\"color:"+rv.col+"\">"+rv.t+"</b>":""}</div>`}${rows}`;
   if(info.dataset.h!==ih){ info.dataset.h=ih; info.innerHTML=ih }
   if(s.home||!act){
@@ -2345,30 +2234,17 @@ function exoModal(){
 let raidMode="fleet";         /* which sub-tab of the Raids tab is showing. Session-only,
                                   same reasoning as resMode above. PLAN-raidmap: there is
                                   no "targets" sub-tab any more - contacts are on the map. */
-let mapMode="map";            /* patch614: "map" or "list" - which half of the Map tab is
-                                  showing. Session-only, same reasoning as resMode/raidMode -
-                                  never saved, always opens on the map itself. */
 let mktBuy=25;                /* patch636: which SELL chip is selected on the Market page -
                                   its own state so the Market's choice never fights the
                                   buildings/Nexus chips' S.buy, or vice versa. Market
                                   refresh: a PERCENT of each card's surplus now (10, 25,
                                   50 or 100 = SURPLUS - see mktAmount()), no longer a fixed
                                   amount or MAX. Session-only, same reasoning as resMode/
-                                  raidMode/mapMode above - never saved, always opens on 25%. */
+                                  raidMode above - never saved, always opens on 25%. */
 const RAID_PANES={fleet:"#rpFleet",loadout:"#rpLoadout",crew:"#rpCrew"};
 function syncRaidMode(){
   $$(".rmbtn[data-rd]").forEach(x=>x.classList.toggle("on",x.dataset.rd===raidMode));
   for(const k in RAID_PANES){ const el=$(RAID_PANES[k]); if(el)el.hidden=(k!==raidMode); }
-}
-/* patch614: mirrors syncResMode()/syncRaidMode() - toggles the two buttons plus which
-   of #mapWrap/#mapList is visible. Rows themselves are renderMapList()'s job, called
-   from renderMap() every pass (own key-guard, see there) - this just decides which
-   panel is on screen. */
-function syncMapMode(){
-  $$(".rmbtn[data-mm]").forEach(x=>x.classList.toggle("on",x.dataset.mm===mapMode));
-  const wrap=$("#mapWrap"), list=$("#mapList");
-  if(wrap)wrap.hidden = mapMode==="list";
-  if(list)list.hidden = mapMode!=="list";
 }
 function resCost(r,l){ return r.c*Math.pow(r.cg,l) }
 /* Which currency a branch is bought with. Everything historic is crystal; the war branch

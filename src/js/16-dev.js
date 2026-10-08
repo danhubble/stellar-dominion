@@ -1,6 +1,6 @@
 /* ============================ dev tools ============================
    Session only - never written to the save, so it cannot leak into a save code. */
-let devOn=false, devTaps=0, devTapT=0;
+let devOn=false;
 function devGrantLevels(k){
   S.xpn=Math.max(S.xpn||0, xpNeed(level()+k));
   /* PLAN-polish batch B item 2: a dev cheat means to jump instantly - bypass the
@@ -164,11 +164,16 @@ $$("#devp .dvb").forEach(b=>b.onclick=()=>devAction(b.dataset.dev));
   };
 })();
 
-/* five taps on the title: works on touch, and nobody hits it by accident */
-$(".brand h1").addEventListener("click",()=>{
-  const t=Date.now();
-  if(t-devTapT>1200)devTaps=0;
-  devTapT=t; devTaps++;
-  if(devTaps>=5){ devTaps=0; devToggle(!devOn) }
-});
+/* the title is gone (owner): a long press on the commander mark opens dev tools.
+   A plain tap on it still opens the level summary, so the two never collide, and
+   nobody holds a header button for a second by accident. */
+(function(){
+  const av=$("#avatar"); if(!av)return;
+  let timer=null, held=false;
+  const arm=()=>{ held=false; clearTimeout(timer); timer=setTimeout(()=>{ held=true; devToggle(!devOn) },900); };
+  const disarm=()=>{ clearTimeout(timer); timer=null; };
+  av.addEventListener("pointerdown",arm);
+  ["pointerup","pointerleave","pointercancel"].forEach(ev=>av.addEventListener(ev,disarm));
+  av.addEventListener("click",e=>{ if(held){ held=false; e.stopImmediatePropagation(); e.preventDefault(); } },true);
+})();
 
