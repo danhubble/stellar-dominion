@@ -166,21 +166,21 @@ const { chromium } = require('playwright-core');
  ok('travelSecs(): crossing sectors is TRAVEL_BASE + TRAVEL_PER_RING*|ring delta| (distance ignored)',
    travel.crossSec && Math.abs(travel.crossSecExpected-travel.crossSecGot)<1e-9, travel);
 
- // ---------------- fleetSend()/fleetTravelTick(): send, refuse, land ----------------
+ // ---------------- fleetSend()/fleetTravelTick(): send, change course, land ----------------
  const send=await p.evaluate(()=>{
    const G=window.__SD;
    G.adopt({...G.fresh(), lvl:14, lvSeen:14});
    const f=G.S.fl[0];
    const sent=G.fleetSend(f,'kor');
    const to1=f.to, from1=f.from, eta1=f.eta, tot1=f.tot;
-   const sentAgain=G.fleetSend(f,'dra');          // refused - already travelling
+   const sentAgain=G.fleetSend(f,'dra');          // changes course mid-flight (owner: re-route allowed)
    G.fleetTravelTick(f.eta+1);
    return { sent, to1, from1, eta1, tot1, sentAgain,
      at2:f.at, to2:f.to, eta2:f.eta, from2:f.from };
  });
  ok('fleetSend() sets to/from/eta/tot', send.sent && send.to1==='kor' && send.from1==='home' && send.eta1>0 && send.tot1===send.eta1, send);
- ok('fleetSend() refuses a fleet that is already travelling', send.sentAgain===false, send);
- ok('fleetTravelTick(eta+1) lands the fleet: at=dest, to/from=null, eta=0', send.at2==='kor' && send.to2===null && send.from2===null && send.eta2===0, send);
+ ok('fleetSend() on a travelling fleet changes its course', send.sentAgain===true, send);
+ ok('fleetTravelTick(eta+1) lands the fleet at its NEW destination: at=dest, to/from=null, eta=0', send.at2==='dra' && send.to2===null && send.from2===null && send.eta2===0, send);
 
  // PLAN-raidmap: a raid contact is no longer "near a system" - it roams open space
  // on the sector map, and the fleet that fights it is the one holding beside it

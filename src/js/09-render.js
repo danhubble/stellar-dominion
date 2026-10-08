@@ -720,7 +720,8 @@ function renderFleetLoc(){
     el.style.setProperty("--i",f.id-1);
     el.style.setProperty("--fc",FLEET_COL[f.id-1]||FLEET_COL[0]);
     el.innerHTML=`<div class="fltxt"><b>${f.n.toUpperCase()}</b><span>${where} \u00b7 ${sec.chip||sec.tag}</span></div>
-      <div class="flbtns">${canRecall?`<button type="button" id="flRecall" class="rc">RECALL</button>`:""}<button type="button" id="flFindGo">LOCATE</button></div>`;
+      <div class="flbtns">${canRecall?`<button type="button" id="flRecall" class="rc">RECALL</button>`:""}<button type="button" id="flFindGo">LOCATE</button><button type="button" id="flX" class="x" aria-label="Done">\u2715</button></div>`;
+    el.querySelector("#flX").onclick=()=>{ fleetDeselect(); dirty=true; render(); };
     const rb=el.querySelector("#flRecall");
     if(rb)rb.onclick=()=>{ const ff=flSel!=null?fleet(flSel):null; if(ff)fleetRecall(ff); fleetDeselect(); dirty=true; render(); };
     el.querySelector("#flFindGo").onclick=()=>{
@@ -809,7 +810,7 @@ function renderFleetMarkers(){
     E.m.classList.toggle("pinned",t.fz!=null);
   });
   renderSendChip();
-  renderFleetHint();
+  { const w=$("#mapWrap"); if(w)w.classList.toggle("flsel",flSel!=null&&!!fleet(flSel)); }
   renderFleetBanner();
   mapFleetFrame();
 }
@@ -897,7 +898,7 @@ function renderSendChip(){
     return;
   }
   const here = !!sendChipSys && !fleetBusy(f) && f.at===sendChipSys;
-  const text = fleetBusy(f) ? "EN ROUTE" : here ? "HERE" : (sendChipSys?"SEND":"MOVE")+" \u00b7 "+Math.round(travelSecsPos(fleetPos(f),tgt))+"s";
+  const text = here ? "HERE" : (sendChipSys?"SEND":"MOVE")+" \u00b7 "+Math.round(travelSecsPos(fleetMapPos(f),tgt))+"s";   /* a flying fleet changes course from where it is */
   if(!chip){
     chip=document.createElement("div"); chip.className="sendchip";
     /* b646: decide "already here" at tap time, not from the render that first
@@ -914,25 +915,6 @@ function renderSendChip(){
   }
   chip.style.left=tgt.x+"%"; chip.style.top=tgt.y+"%";
   if(chip.textContent!==text)chip.textContent=text;
-}
-/* the strip across the top of the map while a fleet is selected: what to do next.
-   Rebuilt only when the fleet changes. */
-function renderFleetHint(){
-  const el=$("#flHint"); if(!el)return;
-  const f=flSel!=null?fleet(flSel):null;
-  const wrap=$("#mapWrap"); if(wrap)wrap.classList.toggle("flsel",!!f);
-  if(!f){ if(!el.hidden){ el.hidden=true; el.dataset.h=""; } return; }
-  /* RECALL moved down to the locate callout (owner: "next to the Locate button");
-     a tap on open space now places a MOVE chip instead of deselecting, so the
-     strip carries the one plain way out. */
-  const key=""+f.id;
-  if(el.dataset.h!==key){
-    el.dataset.h=key;
-    el.style.setProperty("--fc",FLEET_COL[f.id-1]||FLEET_COL[0]);
-    el.innerHTML=`<span><b>${f.n.toUpperCase()}</b> \u00b7 TAP WHERE IT SHOULD GO</span><button type="button" id="flX" aria-label="Done">\u2715</button>`;
-    el.querySelector("#flX").onclick=e=>{ e.stopPropagation(); fleetDeselect(); dirty=true; render(); };
-  }
-  el.hidden=false;
 }
 /* a fleet waiting beside a contact for the player to fight it: one banner along the
    bottom of the map, ENGAGE opens the battle. Auto-resolved raids never show this. */
@@ -973,9 +955,11 @@ function raidPrompt(tid){
     rw.m?`<b class="rw-m">${fmt(rw.m)}</b> ${RI('dm')}`:null, `<b class="rw-s">~${svEst}</b> ${RI('sv')}`].filter(Boolean).join(" \u00b7 ");
   const holder=fleets().find(f=>f.hold===t.id), coming=fleets().find(f=>f.tg===t.id);
   const here=tgPos(t);
-  const eta=f=>Math.round(travelSecsPos(fleetPos(f),here));
-  const idle=fleets().filter(f=>!fleetBusy(f)&&fleetCount(f)>0);
-  /* the fleet picked on the bar, else whichever free fleet gets there soonest */
+  const eta=f=>Math.round(travelSecsPos(fleetMapPos(f),here));
+  /* any fleet with ships, flying or not (owner: a fleet already on its way can be
+     given a new target) - only one already on THIS contact is left out */
+  const idle=fleets().filter(f=>fleetCount(f)>0&&f!==holder&&f!==coming);
+  /* the fleet picked on the bar, else whichever fleet gets there soonest */
   let pick=(flSel!=null&&idle.find(f=>f.id===flSel))||idle.slice().sort((a,b)=>eta(a)-eta(b))[0]||null;
   const judge=()=>holder||coming||pick||tgJudge();
   const acts=()=>{
@@ -1035,14 +1019,14 @@ function sysPrompt(sysId){
   const s=SYSMAP[sysId]; if(!s||!sysContested(s))return;
   const gt=assaultTarget(s), rv=RIVALMAP[sysOwner(s)], dest=sysPos(s.id);
   const verb=sysOccupied(s.id)?"RETAKE":"ATTACK";
-  const eta=f=>(!fleetBusy(f)&&f.at===s.id)?0:Math.round(travelSecsPos(fleetPos(f),dest));
+  const eta=f=>(!fleetBusy(f)&&f.at===s.id)?0:Math.round(travelSecsPos(fleetMapPos(f),dest));
   const coming=fleetTravelingTo(s.id);
-  const idle=fleets().filter(f=>!fleetBusy(f)&&fleetCount(f)>0);
+  const idle=fleets().filter(f=>fleetCount(f)>0&&f!==coming);   /* flying fleets can be re-targeted */
   /* a fleet already there, else the one picked on the bar, else the soonest free one */
   let pick=idle.find(f=>f.at===s.id)||(flSel!=null&&idle.find(f=>f.id===flSel))||idle.slice().sort((a,b)=>eta(a)-eta(b))[0]||null;
   const acts=()=>{
     if(level()<s.lvl)return `<button class="raidgo" disabled>LOCKED<b>· LEVEL ${s.lvl}</b></button>`;
-    if(coming&&!idle.some(f=>f.at===s.id))return `<button class="raidgo" disabled>${coming.n.toUpperCase()} EN ROUTE<b>· ${Math.max(0,Math.ceil(coming.eta))}s</b></button>`;
+    if(coming&&!pick)return `<button class="raidgo" disabled>${coming.n.toUpperCase()} EN ROUTE<b>· ${Math.max(0,Math.ceil(coming.eta))}s</b></button>`;
     if(!pick)return `<button class="raidgo" disabled>${fleets().some(f=>fleetCount(f)>0)?"ALL FLEETS BUSY":"NO WARSHIPS"}</button>`
       +(fleets().some(f=>fleetCount(f)>0)?"":`<div class="rpwarn">Build warships on the Raids tab first.</div>`);
     const chips=idle.length>1?`<div class="rppick">${idle.map(f=>`<button type="button" data-fl="${f.id}" class="${f===pick?"on":""}" style="--fc:${FLEET_COL[f.id-1]||FLEET_COL[0]}"><b>${f.id}</b>${eta(f)?eta(f)+"s":"HERE"}</button>`).join("")}</div>`:"";
@@ -2031,21 +2015,21 @@ function renderMap(){
          the ENGAGE branch just above takes over when it arrives. launchAssault() and
          S.trip stay only so a trip already under way in an older save still lands. */
       const dest=sysPos(s.id);
-      const nf=fleets().filter(f=>!fleetBusy(f)&&fleetDPS(f)>0&&f.hp>=0.15)
-        .sort((a,b)=>travelSecsPos(fleetPos(a),dest)-travelSecsPos(fleetPos(b),dest))[0]||null;
+      const nf=fleets().filter(f=>fleetDPS(f)>0&&f.hp>=0.15)
+        .sort((a,b)=>travelSecsPos(fleetMapPos(a),dest)-travelSecsPos(fleetMapPos(b),dest))[0]||null;
       const can=sysContested(s)&&level()>=s.lvl&&!!nf&&!otherTrip&&!inbound;
-      let why=(sysOccupied(s.id)?"RETAKE":"ASSAULT")+(nf?" · SEND "+nf.n.toUpperCase()+" · "+Math.round(travelSecsPos(fleetPos(nf),dest))+"s":"");   /* STAGE 2 */
+      let why=(sysOccupied(s.id)?"RETAKE":"ASSAULT")+(nf?" · SEND "+nf.n.toUpperCase()+" · "+Math.round(travelSecsPos(fleetMapPos(nf),dest))+"s":"");   /* STAGE 2 */
       if(level()<s.lvl)why="LOCKED · LEVEL "+s.lvl;
       else if(inbound)why=inbound.n.toUpperCase()+" INBOUND · <span class=\"tripcd\"></span>";
       else if(!fleets().some(f=>fleetDPS(f)>0))why="NO FLEET · BUILD WARSHIPS";
       else if(otherTrip)why="FLEET AWAY";
-      else if(!nf)why=fleets().some(f=>!fleetBusy(f)&&fleetDPS(f)>0)?"FLEET TOO DAMAGED":"ALL FLEETS BUSY";
+      else if(!nf)why="FLEET TOO DAMAGED";
       const ah=`<button class="foe" id="sysWar" ${can?"":"disabled"}>${why}</button>`;
       if(act.dataset.h!==ah){
         act.dataset.h=ah; act.innerHTML=ah;
         $("#sysWar").onclick=()=>{
-          const f=fleets().filter(x=>!fleetBusy(x)&&fleetDPS(x)>0&&x.hp>=0.15)
-            .sort((a,b)=>travelSecsPos(fleetPos(a),dest)-travelSecsPos(fleetPos(b),dest))[0];
+          const f=fleets().filter(x=>fleetDPS(x)>0&&x.hp>=0.15)
+            .sort((a,b)=>travelSecsPos(fleetMapPos(a),dest)-travelSecsPos(fleetMapPos(b),dest))[0];
           if(f&&fleetSend(f,s.id)){ render(); save() }
         };
       }

@@ -110,14 +110,14 @@ const { chromium } = require('playwright-core');
    const r={ before, after:G.mapSec, sel:G.flSel,
      ship:!!btn.querySelector('svg.fship path'), hp:btn.querySelector('.fhp i').style.width,
      hpCls:btn.querySelector('.fhp i').className,
-     hint:document.getElementById('flHint').textContent, hintHidden:document.getElementById('flHint').hidden };
+     glow:document.getElementById('mapWrap').classList.contains('flsel') };
    G.fleetDeselect(); G.S.msel='kor'; G.dirty=true; G.render();
    r.onPage=getComputedStyle(document.getElementById('fleetBar')).display;
    G.S.msel=null; G.dirty=true; G.render();
    return r;
  });
  ok('selecting a fleet does NOT move the map to the fleet\'s sector', bar.before===0 && bar.after===0 && bar.sel===2, bar);
- ok('...and the map says what to do next', !bar.hintHidden && /2ND FLEET/.test(bar.hint) && /TAP WHERE IT SHOULD GO/.test(bar.hint), bar);
+ ok('...and the map shows it is waiting for a destination', bar.glow, bar);
  ok('a fleet button carries a ship picture and a hull bar', bar.ship && bar.hp==='50%' && bar.hpCls==='hurt', bar);
  ok('the fleet bar is hidden on a system page', bar.onPage==='none', bar);
 
@@ -219,7 +219,7 @@ const { chromium } = require('playwright-core');
    return { empty, hurt, first, second, again };
  });
  ok('fleetAttack() refuses a fleet with no ships, and one under 15% hull', no.empty===false && no.hurt===false, no);
- ok('...and a second fleet on the same contact, and a fleet already in flight', no.first===true && no.second===false && no.again===false, no);
+ ok('...and a second fleet on the same contact; the fleet already flying at it just keeps its order', no.first===true && no.second===false && no.again===true, no);
 
  // ---------------- send to a system from open space; RECALL ----------------
  const rec=await p.evaluate(()=>{

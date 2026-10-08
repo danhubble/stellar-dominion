@@ -7,7 +7,7 @@ const GAME_URL='file://'+require('path').resolve(__dirname,'../dist/stellar-domi
 //     and launchAssault() refuses in both cases.
 // (2) The SEND chip decides "already here" at tap time - tapping a fleet's own
 //     node first, then another node, then SEND must actually send.
-// (3) fleetSend() on a travelling fleet toasts instead of a silent no-op.
+// (3) fleetSend() on a travelling fleet changes its course from where it is.
 // (4) Hidden-tab catch-up: a fleet mid-flight lands after a visibility gap.
 const { chromium } = require('playwright-core');
 (async()=>{
@@ -62,7 +62,7 @@ const { chromium } = require('playwright-core');
    const toastEl=document.querySelector('#toasts,.toasts,#toast');
    return { again, to:f.to, toastText:toastEl?toastEl.textContent:'' };
  });
- ok('fleetSend() on a travelling fleet is refused and says so', d.again===false && d.to==='tan' && /en route/i.test(d.toastText), d);
+ ok('fleetSend() on a travelling fleet changes course mid-flight', d.again===true && d.to==='kor' && /departing/i.test(d.toastText), d);
 
  // ---------- (4) hidden-tab catch-up lands the fleet ----------
  const e=await p.evaluate(async()=>{
@@ -75,7 +75,7 @@ const { chromium } = require('playwright-core');
    document.dispatchEvent(new Event('visibilitychange'));
    return { etaBefore, etaAfter:f.eta, to:f.to, at:f.at };
  });
- ok('30s hidden gap is replayed: eta drops by ~30s (or the fleet lands)', (e.to===null&&e.at==='tan') || (e.etaBefore-e.etaAfter>=29), e);
+ ok('30s hidden gap is replayed: eta drops by ~30s (or the fleet lands)', (e.to===null&&e.at==='kor') || (e.etaBefore-e.etaAfter>=29), e);
 
  // ---------- (2) SEND chip: own node first, then another node, then SEND ----------
  const g=await p.evaluate(()=>{

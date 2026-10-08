@@ -74,7 +74,7 @@ function hscroll(el){
   const wrap=document.querySelector("#mapWrap"); if(!wrap)return;
   wrap.addEventListener("click", e=>{
     if(flSel==null)return;
-    if(e.target.closest(".mnode")||e.target.closest(".sendchip")||e.target.closest(".enmark")||e.target.closest("#flHint")||e.target.closest("#flBanner"))return;
+    if(e.target.closest(".mnode")||e.target.closest(".sendchip")||e.target.closest(".enmark")||e.target.closest("#flBanner"))return;
     const r=wrap.getBoundingClientRect(); if(!r.width||!r.height)return;
     const x=(e.clientX-r.left)/r.width*100, y=(e.clientY-r.top)/r.height*100;
     if(!isFinite(x)||!isFinite(y)||x<0||x>100||y<0||y>100)return;

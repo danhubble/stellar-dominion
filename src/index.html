@@ -205,10 +205,9 @@
           <div id="mapNodes"></div><div id="mapEdge"></div>
           <svg id="fleetLines" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
           <div id="fleetMarkers"></div>
-          <!-- PLAN-raidmap: the selected-fleet strip (what to tap next, RECALL) and the
-               "in position" banner (ENGAGE) - both sit over the map, never in the flow,
-               so neither moves the page when it appears -->
-          <div id="flHint" hidden></div><div id="flBanner" hidden></div>
+          <!-- PLAN-raidmap: the "in position" banner (ENGAGE) sits over the map, never
+               in the flow, so it never moves the page when it appears -->
+          <div id="flBanner" hidden></div>
           <canvas id="mapZoom"></canvas>
           <div id="mapZoomBar"><button type="button" id="mapZoomBack">&lsaquo; MAP</button><div id="mapZoomName"></div></div></div>
         <!-- PLAN-fleets run 2 (decision 5): the fleet bar - three full-width buttons,

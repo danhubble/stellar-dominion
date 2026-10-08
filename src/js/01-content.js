@@ -1529,14 +1529,22 @@ function fleetRelease(f){
    or might be, in it). f.at is left alone while travelling from a system - it is
    still where the fleet departed; fleetAtSys()'s own fleetBusy() guard already
    excludes it from anything that cares "is a fleet actually here right now". */
+/* owner: "it should allow you mid journey to change course" - a fleet already
+   flying is cut loose where it is right now and the new order starts from there.
+   fleetRecall() always worked this way; now every order does. */
+function fleetCutFlight(f){
+  if(!fleetBusy(f))return;
+  const p=fleetMapPos(f);
+  f.pos={sec:p.sec,x:Math.max(2,Math.min(98,p.x)),y:Math.max(2,Math.min(98,p.y))};
+  f.at=null; f.to=null; f.tg=null; f.mv=null; f.from=null; f.eta=0; f.tot=0; f.o=null;
+}
 function fleetSend(f,toId){
   if(!f)return false;
-  /* b646: say why, instead of a silent no-op the player reads as "stuck" */
-  if(fleetBusy(f)){ toast(f.n+" is already en route","y"); return false }
-  if(toId===f.at)return false;
+  if(!fleetBusy(f)&&toId===f.at)return false;
   if(!SYSMAP[toId])return false;
-  f.sg=null; f.sga=0; f.mv=null;                         /* a plain SEND drops any attack order */
   if(BT||DT){ toast("Not mid-fight","y"); return false }
+  fleetCutFlight(f);
+  f.sg=null; f.sga=0;                                    /* a plain SEND drops any attack order */
   const o=fleetPos(f), eta=travelSecsPos(o,sysPos(toId));
   fleetRelease(f);
   f.o={sec:o.sec,x:o.x,y:o.y,sys:o.sys||null};
@@ -1551,12 +1559,12 @@ function fleetSend(f,toId){
 function fleetAttack(f,t,auto){
   if(!f||!t)return false;
   if(BT||DT){ toast("Not mid-fight","y"); return false }
-  if(fleetBusy(f)){ toast(f.n+" is already en route","y"); return false }
   if(fleetDPS(f)<=0){ toast("Build warships before you engage."); return false }
   if(f.hp<0.15){ toast("Fleet too damaged \u2014 recall it to repair."); return false }
   if(fleets().some(x=>x!==f&&(x.tg===t.id||x.hold===t.id))){ toast("Another fleet is already on it","y"); return false }
-  if(f.hold===t.id){ t.auto=auto?1:0; dirty=true; return true }   /* already beside it */
-  f.sg=null; f.sga=0; f.mv=null;
+  if(f.hold===t.id||f.tg===t.id){ t.auto=auto?1:0; dirty=true; return true }   /* already on it */
+  fleetCutFlight(f);
+  f.sg=null; f.sga=0;
   const o=fleetPos(f), eta=travelSecsPos(o,tgPos(t));
   fleetRelease(f);
   f.o={sec:o.sec,x:o.x,y:o.y,sys:o.sys||null};
@@ -1574,11 +1582,6 @@ function fleetRecall(f){
   if(BT||DT){ toast("Not mid-fight","y"); return false }
   if(f.to==="home")return false;
   if(!fleetBusy(f)&&f.at==="home")return false;
-  if(fleetBusy(f)){
-    const p=fleetMapPos(f);
-    f.pos={sec:p.sec,x:Math.max(2,Math.min(98,p.x)),y:Math.max(2,Math.min(98,p.y))};
-    f.at=null; f.to=null; f.tg=null; f.mv=null; f.from=null; f.eta=0; f.tot=0; f.o=null;
-  }
   return fleetSend(f,"home");
 }
 /* owner: "when a fleet is selected and the player taps on the map, a MOVE button
@@ -1587,7 +1590,7 @@ function fleetRecall(f){
 function fleetMoveTo(f,p){
   if(!f||!p||!SECTORS[p.sec])return false;
   if(BT||DT){ toast("Not mid-fight","y"); return false }
-  if(fleetBusy(f)){ toast(f.n+" is already en route","y"); return false }
+  fleetCutFlight(f);
   const o=fleetPos(f), dest={sec:p.sec,x:Math.max(3,Math.min(97,+p.x)),y:Math.max(3,Math.min(97,+p.y))};
   const eta=travelSecsPos(o,dest);
   fleetRelease(f);

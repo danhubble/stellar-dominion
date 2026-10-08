@@ -5,8 +5,9 @@ const GAME_URL='file://'+require('path').resolve(__dirname,'../dist/stellar-domi
 //     the level summary.
 // (2) The MAP | LIST toggle and the list view are gone; the map is the only view.
 // (3) Sol Reach's page has no "HOME SYSTEM · YOURS" line (other systems keep theirs).
-// (4) RECALL sits in the locate callout beside LOCATE, not on the map strip; the
-//     strip has a close button that deselects.
+// (4) RECALL sits in the locate callout beside LOCATE; the strip over the map is
+//     gone, and the callout has a close button that deselects.
+// (6) A fleet already flying can be given a new course or a new target.
 // (5) With a fleet selected, a tap on open space shows a MOVE chip there; tapping
 //     it flies the fleet to that spot, where it holds. The order survives a save.
 const { chromium } = require('playwright-core');
@@ -60,23 +61,23 @@ const { chromium } = require('playwright-core');
    const G=window.__SD; __go();
    const f=G.S.fl[0]; f.at='kor'; f.to=null;
    G.fleetBarTap(1); dirty=true; render();
-   const find=document.getElementById('flFind'), hint=document.getElementById('flHint');
+   const find=document.getElementById('flFind');
    const rb=find.querySelector('#flRecall'), lb=find.querySelector('#flFindGo');
    const r={ inCallout:!!rb, besideLocate:!!(rb&&lb&&rb.parentElement===lb.parentElement&&rb.nextElementSibling===lb),
-     onStrip:!!hint.querySelector('#flRecall'), close:!!hint.querySelector('#flX'), hintText:hint.textContent };
+     strip:!!document.getElementById('flHint'), close:!!find.querySelector('#flX'), glow:document.getElementById('mapWrap').classList.contains('flsel') };
    rb.click();
    r.sentHome=f.to==='home'; r.deselected=G.flSel===null;
    f.to=null; f.at='home'; f.eta=0; f.tot=0; f.o=null; f.from=null;
    G.fleetBarTap(1); dirty=true; render();
    r.noRecallAtHome=!document.querySelector('#flFind #flRecall');
    document.getElementById('flX').click();
-   r.closedSel=G.flSel; r.hintHidden=document.getElementById('flHint').hidden; r.findHidden=document.getElementById('flFind').hidden;
+   r.closedSel=G.flSel; r.findHidden=document.getElementById('flFind').hidden; r.glowAfter=document.getElementById('mapWrap').classList.contains('flsel');
    return r;
  });
- ok('RECALL is in the locate callout, right beside LOCATE, and gone from the map strip',
-    rc.inCallout && rc.besideLocate && !rc.onStrip, rc);
+ ok('RECALL is in the locate callout, right beside LOCATE; the strip over the map is gone',
+    rc.inCallout && rc.besideLocate && !rc.strip && rc.glow, rc);
  ok('...it still recalls the fleet to Sol Reach and deselects; a fleet at home gets no RECALL', rc.sentHome && rc.deselected && rc.noRecallAtHome, rc);
- ok('the strip says where to tap, and its close button deselects', /WHERE IT SHOULD GO/.test(rc.hintText) && rc.close && rc.closedSel===null && rc.hintHidden && rc.findHidden, rc);
+ ok('the callout close button deselects', rc.close && rc.closedSel===null && rc.findHidden && !rc.glowAfter, rc);
 
  // ---------- (5) MOVE: tap open space, chip, flight, hold, save ----------
  const mv=await p.evaluate(()=>{
@@ -99,13 +100,25 @@ const { chromium } = require('playwright-core');
    const mid=G.fleetMapPos(f);
    f.eta=0.05; G.tick(0.1); dirty=true; render();
    const held={ mv:f.mv, at:f.at, pos:f.pos, busy:G.fleetBusy(f), bar:document.querySelector('#fleetBar [data-fl="1"] .fstat').textContent };
+   /* (6) change course mid-flight: select again, tap elsewhere, MOVE */
+   G.fleetMoveTo(f,{sec:0,x:50,y:20}); f.eta=f.tot/2;
+   G.fleetBarTap(1); dirty=true; render();
+   const midPos=G.fleetMapPos(f);
+   tap(0.3,0.5);
+   const rechip=document.querySelector('.sendchip').textContent;
+   document.querySelector('.sendchip').click();
+   const rerouted={ chip:rechip, mv:f.mv, ox:f.o&&f.o.x, midx:midPos.x, busy:G.fleetBusy(f) };
+   /* ...and a flying fleet can still be given a new target */
+   G.sysPrompt('tan');
+   const retarget={ btn:!!document.querySelector('#rpAtk,#rpMan'), text:(document.querySelector('#rpActs')||{}).textContent };
+   hideModal();
    /* the order survives a save */
    G.fleetMoveTo(f,{sec:0,x:50,y:20});
    const before=JSON.parse(JSON.stringify(G.S));
    G.adopt(before);
    const back=G.S.fl[0];
    const saved={ mv:back.mv, busy:G.fleetBusy(back), eta:back.eta>0 };
-   return { shown, moved, node, sent, mid, held, saved };
+   return { shown, moved, node, sent, mid, held, saved, rerouted, retarget };
  });
  ok('tapping open space with a fleet selected shows a MOVE chip at that spot, fleet still selected',
     mv.shown.pos && Math.abs(mv.shown.pos.x-70)<1 && Math.abs(mv.shown.pos.y-30)<1 && /^MOVE · \d+s$/.test(mv.shown.text||'') && Math.abs(parseFloat(mv.shown.left)-70)<1 && mv.shown.stillSel, mv.shown);
@@ -114,6 +127,8 @@ const { chromium } = require('playwright-core');
     mv.sent.mv && Math.abs(mv.sent.mv.x-70)<1 && mv.sent.at===null && mv.sent.busy && mv.sent.sel===null && !mv.sent.chip && /^MOVING \d+s$/.test(mv.sent.bar), mv.sent);
  ok('...and on arrival it holds that spot in open space', mv.held.mv===null && mv.held.at===null && mv.held.pos && Math.abs(mv.held.pos.x-70)<1 && Math.abs(mv.held.pos.y-30)<1 && !mv.held.busy && /CORE/.test(mv.held.bar), mv.held);
  ok('a move order survives a save', mv.saved.mv && mv.saved.mv.x===50 && mv.saved.busy && mv.saved.eta, mv.saved);
+ ok('a fleet already flying takes a new course from where it is', /^MOVE/.test(mv.rerouted.chip) && mv.rerouted.mv && Math.abs(mv.rerouted.mv.x-30)<1 && Math.abs(mv.rerouted.ox-mv.rerouted.midx)<0.5 && mv.rerouted.busy, mv.rerouted);
+ ok('...and can be given a new target instead of ALL FLEETS BUSY', mv.retarget.btn && !/ALL FLEETS BUSY/.test(mv.retarget.text), mv.retarget);
 
  ok('no page errors', errs.length===0, errs);
  console.log(out.join('\n'));
