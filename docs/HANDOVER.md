@@ -12054,3 +12054,34 @@ fleet already there; (2) fleets sometimes "stuck", unmovable.
   travel first of all) used to freeze for the absence = "stuck".
 - New `tests/tfleetfix2.js` (7 assertions). Suite clean, sim byte-identical.
   Shot: `tools/shots/b646.js` → `shots/b646-engage.png`.
+
+## release b647 — raids replace occupation (rivals can never take a system)
+
+Dan's call (28 Oct 2026): coming back after weeks away and having to reconquer old
+ground was tedious enough that the story's end never got reached. So a held system
+can no longer change hands. Every path that used to `occupySystem()` now calls
+`raidSystem()` (03-defence.js): a `LOSS_STEAL` (0.15, 01-content.js, tuning-pending)
+share of the banked ore AND crystal leaves with the rival and nothing else moves -
+no `S.occ` mark, buildings/garrison/stockpile untouched, production never pauses,
+nothing to retake. The home sabotage rule (`SAB_STEAL` of Nodes) is unchanged.
+
+- Callers: `endDefence()` (player-flown loss), `holdResolve()` offline branch,
+  `rvMoveAway()` (action-budget catch-up; `thrRep` entries are `{raid:true, loot}`
+  now), `lfRaid()` (was `lfOccupy`). The "never the player's last system" guards went
+  with them - nothing changes hands, so there was nothing left to protect.
+- `adopt()` clears `S.occ`/`S.occAt` outright: an older save's occupied systems come
+  straight back on load. The fields and their readers (`sysOccupied`, `applyPeace`,
+  the map's HELD BY/weakened-garrison branches) stay, nothing writes them.
+- Return report: "Raided while you were away" (was "Occupied ..."), fought rows say
+  "raided" not "occupied", both notes name what was taken via `raidLootText()`.
+  VEGA's firstLoss line reworded.
+- Deliberately NOT done: the offline `rvMoveAway` raid is still unconditional (no
+  garrison roll), exactly as the occupation it replaced was. Next tweak if raids feel
+  unfair while away: roll `holdOdds()` there too.
+- Tests: tdef2, thangar2, trivals2, ttelegraph2, tending2 updated to the raid reading
+  (the retake section of trivals2 is gone - nothing to retake). Suite clean, sim
+  byte-identical (ignoring CRLF).
+- Windows note: the suite ran here with `SD_CHROME` pointed at Edge
+  (`C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe`) and `NODE_PATH`
+  at a playwright-core install outside the repo; `cmp` against the sim baseline needs
+  `diff --strip-trailing-cr` on a CRLF checkout.

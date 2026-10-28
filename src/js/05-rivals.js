@@ -318,13 +318,14 @@ function rvMoveAway(secs){
     r.mv=Math.min(RIVAL_MOVE_CAP, r.mv+secs/RIVAL_MOVE_SECS);
     const b=RVBEH[id];
     while(r.mv>=1 && r.p>=RV_MAX){
-      if(heldSystems().length<=1)break;         /* never the player's last system */
       const s=rvFrontierTargetFor(id); if(!s)break;
       r.mv-=1;
-      occupySystem(s.id, id);
+      /* b647: a raid on the bank, not an occupation - the system stays held, so the
+         "never the player's last system" guard that sat here had nothing left to protect */
+      const loot=raidSystem(s.id, id);
       r.cd=Math.max(r.cd, b.cool*0.8);
       if(!Array.isArray(S.thrRep))S.thrRep=[];
-      S.thrRep.push({occ:true, sys:s.n, rv:id});
+      S.thrRep.push({raid:true, loot, sys:s.n, rv:id});
       S.thrRep=S.thrRep.slice(-8);
       moves++; dirty=true;
     }

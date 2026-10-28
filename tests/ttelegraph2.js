@@ -202,7 +202,7 @@ ok('the only mentions of offlineReport() in csim4.js are comments describing its
  ok('the defence fight targets the right system and rival', pressDefend.defenceSysId===pressDefend.sysId && pressDefend.defenceRv===pressDefend.rid, pressDefend);
  ok('the system is NOT instantly occupied - it has to be fought for real', pressDefend.notInstantlyOccupied, pressDefend);
 
- // ---------------- losing that fight occupies the system, buildings/stockpile untouched ----------------
+ // ---------------- losing that fight raids the bank (b647), buildings/stockpile/system untouched ----------------
  const loseFight = await p.evaluate(()=>{
    const G=window.__SD;
    G.lfClear(); if(G.DT)G.closeDefence();   // isolate each scenario from any runtime state a previous one left
@@ -224,19 +224,20 @@ ok('the only mentions of offlineReport() in csim4.js are comments describing its
      exoAfter: G.S.exo.ir,
      occ: G.sysOccupied(sysId),
      held: G.sysHeld(sysId),
+     ore: G.S.ore,
      defenceClosedOrDone: !G.DT || G.DT.done===1,
      sysId,
    };
  });
- ok('a lost live-fleet fight occupies the system (not destroys it)', loseFight.occ==='hel', loseFight);
+ ok('a lost live-fleet fight raids the bank and never occupies (b647)', loseFight.occ===null && loseFight.ore<1e30, loseFight);
  ok('the system\'s building data survives the loss completely untouched', loseFight.before.b===loseFight.bAfter, loseFight);
  ok('the exotic stockpile is never touched by a lost live-fleet fight', loseFight.exoAfter===1000, loseFight);
- ok('the system no longer counts as held once occupied', loseFight.held===false, loseFight);
+ ok('the system still counts as held after the loss', loseFight.held===true, loseFight);
 
  // ---------------- FIX 1: pressing LET DEFENCES HOLD resolves via the exact same
  // lfResolveOffline() path as an offline arrival. That path now rolls the system's
  // defences (holdResolve/holdOdds - tplaylist2.js covers the hold side); from here
- // on the roll is pinned to a loss so these checks stay about the occupation road. ----------------
+ // on the roll is pinned to a loss so these checks stay about the raid road (b647). ----------------
  await p.evaluate(()=>{ Math.random=()=>0.999; });
  const pressHold = await p.evaluate(()=>{
    const G=window.__SD;
@@ -253,11 +254,11 @@ ok('the only mentions of offlineReport() in csim4.js are comments describing its
    document.querySelector('#lfHoldBtn').click();
    return {
      before, bAfter: JSON.stringify(G.S.sys[sysId].b), exoAfter: G.S.exo.ir,
-     occ: G.sysOccupied(sysId), lfCleared: G.LF===null,
+     occ: G.sysOccupied(sysId), ore: G.S.ore, lfCleared: G.LF===null,
      modalClosed: !document.querySelector('#mask').classList.contains('on'),
    };
  });
- ok('LET DEFENCES HOLD, roll lost: the system is occupied', pressHold.occ==='hel', pressHold);
+ ok('LET DEFENCES HOLD, roll lost: the bank is raided and the system stays (b647)', pressHold.occ===null && pressHold.ore<1e30, pressHold);
  ok('...buildings survive it untouched, same as any other live-fleet resolution', pressHold.before.b===pressHold.bAfter, pressHold);
  ok('...the exotic stockpile is never touched by it either', pressHold.exoAfter===1000, pressHold);
  ok('LET DEFENCES HOLD clears the live fleet record', pressHold.lfCleared, pressHold);
@@ -281,12 +282,12 @@ ok('the only mentions of offlineReport() in csim4.js are comments describing its
    await new Promise(r=>setTimeout(r, 15600));   // the 15s auto-timeout, plus slack
    return {
      modalOnBefore,
-     occ: G.sysOccupied(sysId), lfCleared: G.LF===null,
+     occ: G.sysOccupied(sysId), ore: G.S.ore, lfCleared: G.LF===null,
      modalClosedAfter: !document.querySelector('#mask').classList.contains('on'),
    };
  });
  ok('the modal is up right after expiry', autoTimeout.modalOnBefore, autoTimeout);
- ok('~15s of no answer auto-resolves it (occupation, same as LET DEFENCES HOLD)', autoTimeout.occ==='hel', autoTimeout);
+ ok('~15s of no answer auto-resolves it (a raid, same as LET DEFENCES HOLD)', autoTimeout.occ===null && autoTimeout.ore<1e30, autoTimeout);
  ok('...and clears the live fleet record', autoTimeout.lfCleared, autoTimeout);
  ok('...and closes the modal it opened', autoTimeout.modalClosedAfter, autoTimeout);
 
@@ -307,15 +308,15 @@ ok('the only mentions of offlineReport() in csim4.js are comments describing its
    const promptedBefore = G.LF && G.LF.prompted;
    Object.defineProperty(document, 'hidden', { value:true, configurable:true });
    G.lfCheckExpiry();                 // simulates frame() still getting a tick while hidden
-   const out = { promptedBefore, occ: G.sysOccupied(sysId), lfCleared: G.LF===null };
+   const out = { promptedBefore, occ: G.sysOccupied(sysId), ore: G.S.ore, lfCleared: G.LF===null };
    Object.defineProperty(document, 'hidden', { value:false, configurable:true });
    return out;
  });
  ok('the prompt was genuinely up before backgrounding', hiddenWhilePrompted.promptedBefore, hiddenWhilePrompted);
- ok('backgrounding while the prompt is unanswered still resolves it (occupation), not stuck', hiddenWhilePrompted.occ==='hel', hiddenWhilePrompted);
+ ok('backgrounding while the prompt is unanswered still resolves it (a raid), not stuck', hiddenWhilePrompted.occ===null && hiddenWhilePrompted.ore<1e30, hiddenWhilePrompted);
  ok('...and clears the live fleet record', hiddenWhilePrompted.lfCleared, hiddenWhilePrompted);
 
- // ---------------- expiring while the tab is hidden resolves straight to occupation ----------------
+ // ---------------- expiring while the tab is hidden resolves straight to a raid ----------------
  const expireHidden = await p.evaluate(()=>{
    const G=window.__SD;
    G.lfClear(); if(G.DT)G.closeDefence();   // isolate each scenario from any runtime state a previous one left
@@ -330,13 +331,13 @@ ok('the only mentions of offlineReport() in csim4.js are comments describing its
    G.lfCheckExpiry();
    const out = {
      before, bAfter: JSON.stringify(G.S.sys[sysId].b), exoAfter: G.S.exo.ir,
-     occ: G.sysOccupied(sysId), defenceOpened: !!G.DT, lfCleared: G.LF===null,
+     occ: G.sysOccupied(sysId), ore: G.S.ore, defenceOpened: !!G.DT, lfCleared: G.LF===null,
    };
    Object.defineProperty(document, 'hidden', { value:false, configurable:true });
    return out;
  });
  ok('expiry while the tab is hidden does NOT open the defence overlay', !expireHidden.defenceOpened, expireHidden);
- ok('...it resolves straight to occupation instead, per 2C', expireHidden.occ==='hel', expireHidden);
+ ok('...it resolves straight to a raid instead (b647)', expireHidden.occ===null && expireHidden.ore<1e30, expireHidden);
  ok('buildings survive an offline-while-hidden arrival untouched', expireHidden.before.b===expireHidden.bAfter, expireHidden);
  ok('the exotic stockpile is never touched by a hidden-tab arrival', expireHidden.exoAfter===1000, expireHidden);
  ok('the live fleet record is cleared afterwards', expireHidden.lfCleared, expireHidden);
@@ -356,7 +357,7 @@ ok('the only mentions of offlineReport() in csim4.js are comments describing its
  ok('a marker whose ETA has not passed yet is restored as a live countdown on load', reloadTicking.restored && reloadTicking.sysId==='dra', reloadTicking);
  ok('the restored countdown keeps the exact due time it had before reload', reloadTicking.dueAt===reloadTicking.expected, reloadTicking);
 
- // ---------------- a marker whose ETA already passed resolves to occupation on load, not vanishing ----------------
+ // ---------------- a marker whose ETA already passed resolves to a raid on load, not vanishing ----------------
  const reloadExpired = await p.evaluate(()=>{
    const G=window.__SD;
    G.lfClear(); if(G.DT)G.closeDefence();   // isolate each scenario from any runtime state a previous one left
@@ -364,10 +365,10 @@ ok('the only mentions of offlineReport() in csim4.js are comments describing its
      sys:{ home:{b:{}}, dra:{b:{0:5}}, kor:{b:{0:3}} }, exo:{ir:1000},
      lfMark:{ sysId:'dra', rv:'hel', dueAt: Date.now()-5000 } });
    G.lfSettleMarkOnLoad();
-   return { occ: G.sysOccupied('dra'), markCleared: G.S.lfMark===null, lfStillNull: G.LF===null,
+   return { occ: G.sysOccupied('dra'), ore: G.S.ore, markCleared: G.S.lfMark===null, lfStillNull: G.LF===null,
             exoAfter: G.S.exo.ir };
  });
- ok('a marker that expired before this load resolves to occupation, not vanishing', reloadExpired.occ==='hel', reloadExpired);
+ ok('a marker that expired before this load resolves to a raid, not vanishing', reloadExpired.occ===null && reloadExpired.ore<1e30, reloadExpired);
  ok('the marker is cleared once settled', reloadExpired.markCleared, reloadExpired);
  ok('no live in-memory fleet is created for an already-expired marker', reloadExpired.lfStillNull, reloadExpired);
  ok('the exotic stockpile is untouched by a boot-time settle too', reloadExpired.exoAfter===1000, reloadExpired);

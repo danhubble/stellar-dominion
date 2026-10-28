@@ -66,13 +66,13 @@ function ok(label, cond, extra){ out.push((cond?'PASS ':'FAIL ')+label+(extra!==
    // an absurdly long absence - months of real time
    const moves = G.rvMoveAway(400*24*3600);
    out.moves = moves;
-   out.occCount = Object.keys(G.S.occ||{}).length;
+   out.occCount = (G.S.thrRep||[]).filter(f=>f.raid).length;   // b647: raids, not occupations
    out.mvAfter = { hel:G.rvOf('hel').mv, cov:G.rvOf('cov').mv };
    // immediately again, with only a few minutes more - the drained bucket
    // should grant essentially nothing more
    const moves2 = G.rvMoveAway(300);
    out.moves2 = moves2;
-   out.occCountAfter2 = Object.keys(G.S.occ||{}).length;
+   out.occCountAfter2 = (G.S.thrRep||[]).filter(f=>f.raid).length;
    return out;
  });
  ok('a long absence never grants more than RIVAL_MOVE_CAP moves per rival',
@@ -82,7 +82,7 @@ function ok(label, cond, extra){ out.push((cond?'PASS ':'FAIL ')+label+(extra!==
  ok('the bucket is drained after spending it - a short follow-up gap grants nothing',
     budget.moves2===0 && budget.occCountAfter2===budget.occCount, budget);
 
- // ---------------- occupying a system preserves its building data untouched ----------------
+ // ---------------- raiding a system (b647) takes from the bank and touches nothing else ----------------
  // dra ("Draskhold") is kind:"ore", so - like home - it shares the ore ladder
  // rate() actually sums; a "rock"/"gas"/etc-kind system's ladder feeds
  // sysExoRate() instead, not rate(), so ore-kind is the simplest honest choice
@@ -94,53 +94,23 @@ function ok(label, cond, extra){ out.push((cond?'PASS ':'FAIL ')+label+(extra!==
      sys:{ home:{b:{}}, dra:{b:{...buildB}} } });
    const before = JSON.stringify(G.S.sys.dra);
    const rateBefore = G.rate();
-   const ok1 = G.occupySystem('dra','hel');
+   const oreBefore = G.S.ore;
+   const ok1 = G.raidSystem('dra','hel');
    const after = JSON.stringify(G.S.sys.dra);
    return { ok1, before, after, unchanged: before===after,
             occupiedNow: G.sysOccupied('dra'), heldNow: G.sysHeld('dra'),
+            oreBefore, oreAfter: G.S.ore, LOSS_STEAL: G.LOSS_STEAL,
             rateBefore, rateAfter: G.rate() };
  });
- ok('occupySystem() reports success', preserve.ok1===true, preserve);
- ok('the occupied system\'s building data (S.sys[id].b) is byte-identical after occupation', preserve.unchanged, preserve);
- ok('the system is marked occupied by the right rival', preserve.occupiedNow==='hel', preserve);
- ok('the system no longer counts as held (production-wise) once occupied', preserve.heldNow===false, preserve);
- ok('overall production rate drops once a producing system is occupied', preserve.rateAfter<preserve.rateBefore, preserve);
+ ok('raidSystem() reports what it took', !!preserve.ok1 && preserve.ok1.ore>0, preserve);
+ ok('the raided system\'s building data (S.sys[id].b) is byte-identical after the raid', preserve.unchanged, preserve);
+ ok('the system is never marked occupied (b647: raids replaced occupation)', preserve.occupiedNow===null, preserve);
+ ok('the system still counts as held after a raid', preserve.heldNow===true, preserve);
+ ok('production is untouched by a raid', preserve.rateAfter===preserve.rateBefore, preserve);
+ ok('a raid takes exactly LOSS_STEAL of the banked ore', preserve.oreAfter===preserve.oreBefore-Math.floor(preserve.LOSS_STEAL*preserve.oreBefore), preserve);
 
- // ---------------- retaking an occupied system restores production instantly ----------------
- const retake = await p.evaluate(()=>{
-   const G=window.__SD;
-   G.adopt({...G.fresh(), lvl:99, lvSeen:99, all:1e30, ore:1e30, sh:[500,300,150], fhp:1,
-     cmode:"wep", tg:[], rf:{gun:10,arm:10}, nx:{war:15}, xp:{casc:15,core:20},
-     sys:{ home:{b:{}}, dra:{b:{0:5}} } });
-   G.occupySystem('dra','hel');
-   const out={};
-   out.heldWhileOccupied = G.sysHeld('dra');
-   out.tierCountWhileOccupied = G.sysTierCount('dra',0);   // building data still there
-   out.rateWhileOccupied = G.rate();
-   const t = G.assaultTarget(G.SYSMAP.dra);
-   out.canAuto = G.canAutoResolve(t);
-   const resolved = G.autoResolveTarget(t,-1);
-   out.resolved = resolved;
-   // patch633: the retake no longer lands the same tick - autoResolveTarget() now
-   // arms a ~2.5s scripted clip (BT.cine); drive it to completion (same fixed-dt
-   // pattern tclip2.js uses) before reading anything the win is supposed to change.
-   for(let i=0;i<400 && G.BT && !G.BT.done;i++)G.bUpdate(1/30);
-   out.occAfter = G.sysOccupied('dra');
-   out.heldAfter = G.sysHeld('dra');
-   out.tierCountAfter = G.sysTierCount('dra',0);   // untouched by the whole round trip
-   out.rateAfter = G.rate();
-   return out;
- });
- ok('an occupied system\'s building data is readable throughout (never wiped)', retake.tierCountWhileOccupied===5, retake);
- ok('it does not count as held (no production) while occupied', retake.heldWhileOccupied===false, retake);
- ok('a strong fleet can auto-resolve the retake', retake.canAuto===true, retake);
- ok('the retake battle actually resolves', retake.resolved!==false, retake);
- ok('S.occ is cleared on a successful retake', retake.occAfter===null, retake);
- ok('the system counts as held again immediately after retaking', retake.heldAfter===true, retake);
- ok('building data is exactly what it was before occupation - "restored" because nothing ever changed', retake.tierCountAfter===5, retake);
- ok('production resumes the instant it is retaken (no separate rebuild/claim step)', retake.rateAfter>retake.rateWhileOccupied, retake);
 
- // ---------------- an offline fleet arrival resolves to occupation, not destruction ----------------
+ // ---------------- an offline fleet arrival resolves to a raid (b647), not occupation ----------------
  const offlineArrival = await p.evaluate(()=>{
    const G=window.__SD;
    G.adopt({...G.fresh(), lvl:99, lvSeen:99, all:1e30, ore:1e30,
@@ -160,13 +130,13 @@ function ok(label, cond, extra){ out.push((cond?'PASS ':'FAIL ')+label+(extra!==
      held: G.sysHeld('kor'),
    };
  });
- ok('an offline-resolved loss reports occ:true, not a win', offlineArrival.res && offlineArrival.res.occ===true && offlineArrival.res.won===false, offlineArrival);
+ ok('an offline-resolved loss reports loot, not a win and not occupation', offlineArrival.res && !!offlineArrival.res.loot && offlineArrival.res.loot.ore>0 && offlineArrival.res.occ===false && offlineArrival.res.won===false, offlineArrival);
  ok('the system\'s buildings survive an offline arrival completely untouched', offlineArrival.before.b===offlineArrival.bAfter, offlineArrival);
  ok('the exotic stockpile is never touched by an offline arrival', offlineArrival.exoAfter===1000, offlineArrival);
- ok('the system ends up occupied by the attacking rival', offlineArrival.occ==='hel', offlineArrival);
- ok('an occupied system no longer counts as held', offlineArrival.held===false, offlineArrival);
+ ok('the system is never occupied (b647)', offlineArrival.occ===null, offlineArrival);
+ ok('the system still counts as held after an offline raid', offlineArrival.held===true, offlineArrival);
 
- // never the player's last system, even offline
+ // the player's only system can be raided but, like any other, never taken
  const lastSystem = await p.evaluate(()=>{
    const G=window.__SD;
    G.adopt({...G.fresh(), lvl:99, lvSeen:99, all:1e30, ore:1e30,
@@ -175,7 +145,7 @@ function ok(label, cond, extra){ out.push((cond?'PASS ':'FAIL ')+label+(extra!==
    const res = G.holdResolve(th, true, true, true);
    return { res, occ: G.sysOccupied('kor'), held: G.sysHeld('kor') };
  });
- ok('the player\'s last system is never occupied, even by a guaranteed offline arrival',
+ ok('the player\'s only system is never occupied, even by an offline arrival (it is raided at most)',
     lastSystem.occ===null && lastSystem.held===true, lastSystem);
 
  // ---------------- offlineReport() end-to-end: the return report itself ----------------
@@ -189,12 +159,13 @@ function ok(label, cond, extra){ out.push((cond?'PASS ':'FAIL ')+label+(extra!==
    G.offlineReport();
    const modalOn = document.querySelector('#mask').classList.contains('on');
    const html = document.querySelector('#modal').innerHTML;
-   return { modalOn, mentionsOccupied: html.includes('Occupied while you were away'),
-            occCount: Object.keys(G.S.occ||{}).length };
+   return { modalOn, mentionsRaided: html.includes('Raided while you were away'),
+            mentionsOccupied: html.includes('Occupied while you were away'),
+            occCount: Object.keys(G.S.occ||{}).length, oreAfter: G.S.ore };
  });
  ok('the return report opens after a long, eventful absence', report.modalOn, report);
- ok('it surfaces occupied systems as their own section (2D)', report.mentionsOccupied, report);
- ok('systems were actually occupied by the action-budget catch-up', report.occCount>0, report);
+ ok('it surfaces raids as their own section (b647; was the occupied section, 2D)', report.mentionsRaided && !report.mentionsOccupied, report);
+ ok('the action-budget catch-up raided the bank and occupied nothing', report.occCount===0 && report.oreAfter<1e30, report);
 
  console.log(out.join('\n'));
  console.log(out.filter(l=>l.startsWith('FAIL')).length+' failures');

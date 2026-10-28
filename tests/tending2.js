@@ -1050,17 +1050,22 @@ const { chromium } = require('playwright-core');
  ok('claimSystem() succeeds at exactly the ore cost + level gate, same as any ordinary system',
    peaceClaim.claimed && peaceClaim.heldAfter, peaceClaim);
 
- // ---------- occupied systems return to the player immediately ----------
+ // ---------- occupied systems return to the player: on load (b647) and at peace ----------
  const occReturn = await p.evaluate(()=>{
    const G=window.__SD;
    G.adopt({...G.fresh(), lvl:99, lvSeen:99,
      sys:{ home:{b:{}}, kor:{b:{}} }, occ:{kor:'hel'}, occAt:{kor:Date.now()} });
+   // b647: occupation is retired, so adopt() hands an older save's occupied system straight back
+   const heldOnLoad=G.sysHeld('kor'), occOnLoad=Object.keys(G.S.occ||{}).length;
+   // force the mark anyway, so applyPeace() is still shown to clear it
+   G.S.occ.kor='hel'; G.S.occAt.kor=Date.now();
    const heldBefore=G.sysHeld('kor'), occBefore=!!G.S.occ.kor;
    G.finaleWon();
-   return { heldBefore, occBefore, heldAfter:G.sysHeld('kor'),
+   return { heldOnLoad, occOnLoad, heldBefore, occBefore, heldAfter:G.sysHeld('kor'),
      occAfter:Object.keys(G.S.occ||{}).length, thqAfter:(G.S.thq||[]).length };
  });
- ok('a rival-occupied system is NOT held before peace (sanity)', !occReturn.heldBefore && occReturn.occBefore, occReturn);
+ ok('an older save\'s occupied system comes back held on load (b647: occupation retired)', occReturn.heldOnLoad && occReturn.occOnLoad===0, occReturn);
+ ok('a forced S.occ mark still reads as not held (sanity)', !occReturn.heldBefore && occReturn.occBefore, occReturn);
  ok('peace clears S.occ/S.occAt - an occupied system returns to the player immediately',
    occReturn.heldAfter===true && occReturn.occAfter===0, occReturn);
 

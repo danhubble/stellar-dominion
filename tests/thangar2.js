@@ -192,20 +192,20 @@ const URL=GAME_URL;
 
  const unheldDrop=await p.evaluate(()=>{
    const G=window.__SD;
-   // Koru built+armed, then genuinely lost to occupation before the reload - a save
-   // claiming stationed ships there afterward is exactly the "no longer held" case.
+   // Koru built+armed, then genuinely gone from the save before the reload (b647: there
+   // is no occupation any more) - stationed ships claimed there is the "no longer held" case.
    G.adopt({...G.fresh(), lvl:20, lvSeen:20, all:1e30, ore:1e30, exo:{ir:1e9}, sh:[2,2,2]});
    G.claimSystem(G.SYSMAP.kor);
    G.dmodBuild(G.SYSMAP.kor,0,'han'); G.S.def.kor.s[0].q.dueAt=Date.now()-1; G.dmodComplete();
    const saved=JSON.parse(JSON.stringify(G.S));
    saved.han={ kor:[4,0,0] };
-   saved.occ={ kor:'hel' }; saved.occAt={ kor:Date.now() };   // now occupied, not held
+   delete saved.sys.kor;   // no longer held
    G.adopt(saved);
    return { hasKor:'kor' in G.S.han, sh0:G.S.fl[0].sh[0] };
  });
  ok('adopt() drops (and refunds) a stationed entry for a system that is no longer held', !unheldDrop.hasKor&&unheldDrop.sh0===2+4, unheldDrop);
 
- // ---------------- occupation: recalls the whole garrison, kindly, immediately ----------------
+ // ---------------- a raid (b647) leaves the stationed garrison exactly where it is ----------------
  const occupied=await p.evaluate(()=>{
    const G=window.__SD;
    G.adopt({...G.fresh(), lvl:20, lvSeen:20, all:1e30, ore:1e30, exo:{ir:1e9}, sh:[6,0,0]});
@@ -213,12 +213,12 @@ const URL=GAME_URL;
    G.dmodBuild(G.SYSMAP.kor,0,'han'); G.S.def.kor.s[0].q.dueAt=Date.now()-1; G.dmodComplete();
    G.stationHan('kor',0,5);
    const before={ sh:G.S.fl[0].sh[0], han:G.hanFleet('kor')[0] };
-   const took=G.occupySystem('kor','hel');
+   const took=G.raidSystem('kor','hel');
    const after={ sh:G.S.fl[0].sh[0], han:G.hanFleet('kor')[0], hasEntry:!!(G.S.han&&G.S.han.kor) };
    return { took, before, after };
  });
- ok('occupySystem() recalls every stationed hull immediately (the kinder reading - see HANDOVER)',
-   occupied.took&&occupied.after.sh===occupied.before.sh+occupied.before.han&&occupied.after.han===0, occupied);
+ ok('raidSystem() takes from the bank and leaves every stationed hull where it is (nothing changes hands)',
+   !!occupied.took&&occupied.after.sh===occupied.before.sh&&occupied.after.han===occupied.before.han&&occupied.after.hasEntry, occupied);
 
  // dmodSwap() removing the Hangar module itself also recalls everything
  const swapped=await p.evaluate(()=>{

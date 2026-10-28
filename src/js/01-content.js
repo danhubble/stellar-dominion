@@ -515,13 +515,17 @@ const DEFLV=20;            /* rivals ignore you until raiding is established */
    where these are read and why the roll can never reach csim4.js. */
 const SAB_CHANCE=0.35;     /* TUNING-PENDING: chance an eligible launch targets home instead */
 const SAB_STEAL=0.25;      /* TUNING-PENDING: fraction of banked S.en stolen on a loss */
+const LOSS_STEAL=0.15;     /* TUNING-PENDING: fraction of banked ore AND crystal a rival takes when a
+                              held system falls (b647: raids replaced occupation - see raidSystem) */
 const SAB_EN_MIN=10;       /* TUNING-PENDING: S.en must be at least this before sabotage can start */
 /* ======================= STAGE 2: occupation & the frontier =======================
    See HANDOVER "combat build, Stage 2" for the full reasoning. Short version:
-   - occupation replaces destruction: a held system a rival takes keeps its buildings
-     and stockpiles untouched (S.occ marks it; S.sys is never deleted for this reason
-     again) - production simply stops until it is retaken, then resumes instantly
-     because nothing about the system itself ever changed.
+   - b647: occupation is RETIRED. A held system a rival beats is raided, never taken:
+     raidSystem() (03-defence.js) moves LOSS_STEAL of the banked ore and crystal to
+     them and touches nothing else - no S.occ mark, production never stops, nothing to
+     retake. Dan's reason: coming back after weeks away to reconquer old ground was
+     tedious enough that the story's end never got reached. S.occ/S.occAt and their
+     readers stay (applyPeace, older saves) but nothing writes them any more.
    - frontier rule: a rival can only reach a held system that borders rival/contested
      ground (see sysIsFrontier, patch460) - home and the true interior are
      structurally unreachable, not just unlikely.

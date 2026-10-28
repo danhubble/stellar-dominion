@@ -334,21 +334,21 @@ const URL=GAME_URL;
  ok('holdResolve() consumes it again on a genuine offline-expiry resolution', path2.rearmed&&path2.afterOffline===false, path2);
  ok('a reload afterward does not restore it (path 2: delegated/offline)', path2.afterReload===false, path2);
 
- // path 3: the live-fleet offline-occupy road (lfOccupy) - needs >1 held system
+ // path 3: the live-fleet offline road (lfRaid; b647 - a raid, no longer an occupation)
  const path3=await p.evaluate(()=>{
    const G=window.__SD;
    G.adopt({...G.fresh(), lvl:20, lvSeen:20, all:1e30, ore:1e30, exo:{ir:1e9},
      sys:{ home:{b:{}}, kor:{b:{}}, dra:{b:{}} },
      def:{ kor:{ s:[ {m:'min',lv:1,armed:true,q:null}, null, null ] } } });
-   const occupied=G.lfOccupy('kor','hel');
-   const afterOccupy=G.S.def.kor.s[0].armed;
+   const raided=G.lfRaid('kor','hel');
+   const afterRaid=G.S.def.kor.s[0].armed;
    const saved=JSON.parse(JSON.stringify(G.S));
    G.adopt(saved);
    const afterReload=G.S.def.kor.s[0].armed;
-   return { occupied, afterOccupy, afterReload };
+   return { raided, afterRaid, afterReload };
  });
- ok('lfOccupy() (the live-fleet offline-occupy road) consumes an armed Minefield', path3.occupied&&path3.afterOccupy===false, path3);
- ok('a reload afterward does not restore it (path 3: live-fleet offline occupy)', path3.afterReload===false, path3);
+ ok('lfRaid() (the live-fleet offline road) consumes an armed Minefield', !!path3.raided&&path3.afterRaid===false, path3);
+ ok('a reload afterward does not restore it (path 3: live-fleet offline raid)', path3.afterReload===false, path3);
 
  // ---------------- patch631: defence picker is a modal, not an inline expansion ----------------
  await p.evaluate(()=>{

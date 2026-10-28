@@ -81,7 +81,7 @@ window.__SD={get S(){return S},NEXUS,buyNex,openSite,SITE,siteSlots,
   rvMeet,rvKnown,rvFirstSystem,offlineReport,
   /* STAGE 2 (2026-09-05): occupation, the frontier rule, the (offline-only) action
      budget. See HANDOVER "combat build, Stage 2" for the full scope note. */
-  sysOccupied,occupySystem,occWeakMul,sysIsFrontier,frontierSystems,
+  sysOccupied,raidSystem,raidLootText,LOSS_STEAL,occWeakMul,sysIsFrontier,frontierSystems,
   rvFrontierTargetFor,rvMoveAway,
   RIVAL_MOVE_HOURS,RIVAL_MOVE_CAP,RIVAL_MOVE_SECS,
   OCC_WEAKEN_SECS,OCC_WEAKEN_MULT,
@@ -89,7 +89,7 @@ window.__SD={get S(){return S},NEXUS,buyNex,openSite,SITE,siteSlots,
      while the tab is active, reached only from frame()/boot. See HANDOVER
      "telegraphed LIVE fleets, Stage 3" for the full scope note. */
   get LF(){return LF}, lfCdOf, lfClock, lfMaybeLaunch, lfLaunch,
-  lfCheckExpiry, lfOpenDefence, lfResolveOffline, lfOccupy, lfThreat, lfClear, lfSetDue,
+  lfCheckExpiry, lfOpenDefence, lfResolveOffline, lfRaid, lfThreat, lfClear, lfSetDue,
   lfSettleMarkOnLoad, renderLiveFleet,
   /* FIX 1 (2026-09-06): the arrival-choice prompt */
   lfPromptChoice, lfClearPromptTimer, lfPromptTick, get lfPromptLive(){return lfPromptLive},

@@ -106,12 +106,13 @@ const { chromium } = require('playwright-core');
      rv:{ hel:{p:G.RV_MAX, cd:0, seen:1, w:0, mv:G.RIVAL_MOVE_CAP} } });
      G.lfMaybeLaunch(0); return G.LF.sysId; };
    const R=Math.random;
-   let id=mk(); Math.random=()=>0.0; G.lfResolveOffline(); const held=!G.sysOccupied(id); Math.random=R;
-   id=mk(); Math.random=()=>0.999; G.lfResolveOffline(); const lost=G.sysOccupied(id); Math.random=R;
+   // b647: a loss is a raid on the bank (ore drops), never an occupation
+   let id=mk(); Math.random=()=>0.0; G.lfResolveOffline(); const held=!G.sysOccupied(id) && G.S.ore===1e30; Math.random=R;
+   id=mk(); Math.random=()=>0.999; G.lfResolveOffline(); const lost=G.S.ore<1e30 && G.sysOccupied(id)===null && G.sysHeld(id); Math.random=R;
    const odds=G.holdOdds(G.lfThreat('hel',id));
    return { held, lost, odds };
  });
- ok('a live strike resolved without the player is a defence roll: it can hold, and it can fall', h.held && h.lost==='hel' && h.odds>0.05 && h.odds<0.95, h);
+ ok('a live strike resolved without the player is a defence roll: it can hold, and it can fall (a raid, b647)', h.held && h.lost && h.odds>0.05 && h.odds<0.95, h);
 
  // ---------- (4) governor cap grows with sectors held ----------
  const g=await p.evaluate(()=>{

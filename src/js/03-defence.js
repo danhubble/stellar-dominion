@@ -337,26 +337,27 @@ function bestHeldDefSys(){
   for(const s of heldSystems()){ const v=defStrength(s.id); if(v>bv){ bv=v; best=s } }
   return best;
 }
-/* STAGE 2: the entire "occupation" transition. Deliberately tiny - it sets one flag
-   and one timestamp and touches nothing else, which is the whole point: S.sys[id]
-   is never read, written or deleted here, so whatever was built stays built, and
-   S.exo is never touched, so nothing is haircut. Every caller that used to delete
-   S.sys[id] and/or write S.lost[id] on a lost defence now calls this instead - see
-   HANDOVER for the endDefence()/holdResolve() reconciliation this replaces. */
-function occupySystem(id, rid){
-  const s=SYSMAP[id]; if(!s||s.home||!sysState(id))return false;
-  if(!S.occ||typeof S.occ!=="object")S.occ={};
-  S.occ[id]=rid;
-  if(!S.occAt||typeof S.occAt!=="object")S.occAt={};
-  S.occAt[id]=Date.now();
-  /* PLAN-defences.md: "keeps stationed ships out of the fleet until retaken - or
-     returns them; pick the reading that is kindest". Chosen: returns them, right
-     now - a system near the frontier might never be retaken, and losing real fleet
-     over that is a harsher penalty than the plan's own "buildings intact" framing
-     for everything else occupySystem() touches. */
-  recallHanAll(id);
+/* b647: the entire "lost a held system" transition, and it is a RAID, not an
+   occupation. Deliberately tiny, like the occupySystem() it replaces: a LOSS_STEAL
+   share of the banked ore and crystal leaves with the rival and nothing else moves -
+   S.sys, S.def, S.han and S.exo are never read or written here, so whatever was
+   built, armed or stationed stays exactly as it was and production never pauses.
+   No S.occ mark, so there is nothing to retake. Returns what was taken ({ore,cry})
+   or null when the system is not a raidable held one (home, or not held at all).
+   Every caller that used to occupySystem() calls this instead. */
+function raidSystem(id, rid){
+  const s=SYSMAP[id]; if(!s||s.home||!sysState(id))return null;
+  const ore=Math.floor(LOSS_STEAL*(S.ore||0)), cry=Math.floor(LOSS_STEAL*(S.cry||0));
+  S.ore=Math.max(0,(S.ore||0)-ore); S.cry=Math.max(0,(S.cry||0)-cry);
   queueNotice("vega:firstLoss");
-  return true;
+  return {ore,cry};
+}
+/* "12.3K ore and 400 crystal" - for toasts, result cards and the return report, in
+   one place so the three never word it differently. */
+function raidLootText(l){
+  if(!l||(!(l.ore>0)&&!(l.cry>0)))return "nothing \u2014 the bank was empty";
+  const p=[]; if(l.ore>0)p.push(fmt(l.ore)+" ore"); if(l.cry>0)p.push(fmt(l.cry)+" crystal");
+  return p.join(" and ");
 }
 /* the "comeback punch" from 2D: a system freshly taken is dug in loosely, not
    fortified - assaultTarget() multiplies its difficulty by this while the window

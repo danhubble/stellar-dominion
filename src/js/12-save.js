@@ -353,19 +353,13 @@ function adopt(o){
   /* home is always held - a save that predates a claim, or one that simply never had
      home in S.sys, still needs its count map to exist */
   if(!f.sys.home)f.sys.home={b:{}};
-  /* STAGE 2: occupied systems - a marker on top of an unmodified S.sys entry, never
-     a replacement for it. An entry naming a system that no longer exists, is home,
-     names an unrecognised rival, or - critically - has no surviving building data is
-     stale and is dropped rather than half-honoured; S.occAt (when the weakened-
-     garrison window started) follows the same fate as whatever it is timestamping. */
-  if(!f.occ||typeof f.occ!=="object")f.occ={};
-  for(const k in f.occ){
-    if(!SYSMAP[k]||SYSMAP[k].home||!RIVALMAP[f.occ[k]]||!f.sys[k])delete f.occ[k];
-  }
-  if(!f.occAt||typeof f.occAt!=="object")f.occAt={};
-  for(const k in f.occAt){ if(!f.occ[k])delete f.occAt[k]; else f.occAt[k]=Math.max(0,+f.occAt[k]||0); }
+  /* b647: occupation is retired. Any system an older save still shows as occupied
+     comes straight back on load - nothing about it was ever changed, so there is
+     nothing to restore. The two fields are kept (applyPeace() and the tests still
+     touch them) but are always empty from here on. */
+  f.occ={}; f.occAt={};
   /* STAGE 3: the live-fleet marker - a reload restores its countdown (if still
-     running) or resolves it straight to occupation (if its ETA already passed) via
+     running) or resolves it through holdResolve (a raid on a loss, b647) via
      lfSettleMarkOnLoad(), called at boot; see patch472/473. */
   if(f.lfMark && (typeof f.lfMark!=="object" || !SYSMAP[f.lfMark.sysId] ||
                   SYSMAP[f.lfMark.sysId].home || RVACT.indexOf(f.lfMark.rv)<0))
@@ -614,7 +608,7 @@ function offlineReport(){
   if(rvAwake())rvExpandAway(away);
   thqPrune();
   /* STAGE 2: offline=true - any thq entry whose telegraph expired while the page was
-     shut resolves straight to occupation (holdResolve, patch462), never an odds roll. */
+     shut resolves through holdResolve (patch462) - a loss is a raid since b647. */
   thqTick(away, true, true);
   /* STAGE 2: THEN spend whatever action-budget the absence regenerated - see
      rvMoveAway for why this can never be more than RIVAL_MOVE_CAP per rival no
@@ -624,9 +618,10 @@ function offlineReport(){
      rivals took that was never the player's, and - STAGE 2 - the player's own systems
      that were occupied */
   const rep=(S.thrRep||[]).slice();
-  const fought=rep.filter(f=>!f.claim&&!f.occ);
+  const fought=rep.filter(f=>!f.claim&&!f.raid);
   const claims=rep.filter(f=>f.claim);
-  const occupied=rep.filter(f=>f.occ);
+  const raided=rep.filter(f=>f.raid);   /* b647: rvMoveAway's raids (were occupations) */
+  const sumLoot=l=>l.reduce((a,f)=>{ if(f.loot){a.ore+=f.loot.ore||0; a.cry+=f.loot.cry||0} return a },{ore:0,cry:0});
   const cap=offlineCapH()*3600, t=Math.min(away,cap), eff=offlineEff();
   const ore=rate()*t*eff, cry=cryRate()*t*eff, en=enRate()*t*eff;
   /* "Now affordable" replaces the old "you gained a level" return - with levels
@@ -645,7 +640,7 @@ function offlineReport(){
      with nothing else to report is not worth a modal on its own (see the comment
      where fleetArrivals is computed above); it only ever shows as an extra line
      folded into a report already popping up for some other reason. */
-  if(ore<=0&&cry<=0&&en<=0&&!fought.length&&!claims.length&&!occupied.length)return;
+  if(ore<=0&&cry<=0&&en<=0&&!fought.length&&!claims.length&&!raided.length)return;
   S.ore+=ore;S.all+=ore;S.cry+=cry;S.en+=en;S.enAll+=en;
   for(const e of EXO){ const r=exoRate(e.id); if(r>0)S.exo[e.id]=exo(e.id)+r*t*eff }
   /* PLAN-governors commit 2: offlineReport() never calls tick(), so governor bank
@@ -668,16 +663,15 @@ function offlineReport(){
        meant to take is easier today than it will be tomorrow.</p></div>`:""}
    ${fought.length?`<div class="awrep fought"><h5>Your garrisons fought without you</h5>${
      fought.map(f=>`<div class="awrow ${f.won?"ok":"bad"}"><span>${f.sys}</span><b>${
-       f.won ? "held" : "occupied"}</b></div>`).join("")
+       f.won ? "held" : "raided"}</b></div>`).join("")
      }<p class="awnote">${fought.some(f=>!f.won)
-       ? "A system that fell is occupied, not destroyed \u2014 buildings and stockpile untouched. Retake it on the map."
+       ? "A system that fell was raided, not taken \u2014 buildings, stockpile and the system itself untouched. Lost from the bank: "+raidLootText(sumLoot(fought))+"."
        : "Nothing was lost. Defences pay for themselves."}</p></div>`:""}
-   ${occupied.length?`<div class="awrep occupied"><h5>Occupied while you were away</h5>${
-     occupied.map(f=>`<div class="awrow bad"><span>${f.sys}</span><b>${
+   ${raided.length?`<div class="awrep occupied"><h5>Raided while you were away</h5>${
+     raided.map(f=>`<div class="awrow bad"><span>${f.sys}</span><b>${
        RIVALMAP[f.rv]?RIVALMAP[f.rv].n:f.rv}</b></div>`).join("")
-     }<p class="awnote">Buildings and stockpiles are untouched \u2014 production has simply
-       stopped. These are freshly dug in and weakened: retake them on the map for an
-       easy win before that wears off.</p></div>`:""}
+     }<p class="awnote">Every system is still yours and production never stopped.
+       Lost from the bank: ${raidLootText(sumLoot(raided))}.</p></div>`:""}
    ${affordable.length?`<p style="margin-top:12px">Now affordable: <b>${affordable.join(", ")}</b></p>`:""}
    <p style="margin-top:12px">Offline cap is <b>${offlineCapH()}h</b> (Cryo Storage) at <b>${Math.round(eff*100)}%</b> rate (Chronal Buffer).</p>
    <div class="row"><button id="mOk">CONTINUE</button></div>`,()=>{ $("#mOk").onclick=hideModal; });

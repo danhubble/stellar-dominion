@@ -27,7 +27,7 @@ const VEGA={
  rival:     {t:"We are not alone out here. They have noticed us. Expect them to test the fence.", go:"p-map"},
  threat:    {t:"Inbound fleet. You have time to choose: fly it yourself, or trust the garrison.", go:"p-raid"},
  firstHold: {t:"Held. They will remember that longer than we will.", go:null},
- firstLoss: {t:"We lost that one. The system is theirs for now — nothing there is destroyed. Take it back when you can.", go:"p-map"},
+ firstLoss: {t:"We lost that one. They stripped the bank and left — the ground is still ours, and nothing there is destroyed. Stronger defences next time.", go:"p-map"},
  nexus:     {t:"Dark Matter is worth spending now. The Nexus makes permanent things.", go:"p-nex"},
  ring2:     {t:"The second ring is open. Farther, richer, and someone already lives there.", go:"p-map"},
  ring3:     {t:"Third ring. This is where the Vasht keep what they care about.", go:"p-map"},

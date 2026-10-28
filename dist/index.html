@@ -2279,7 +2279,7 @@ body.syspage #toasts{bottom:calc(var(--sysbarh) + 8px + env(safe-area-inset-bott
 "use strict";
 /* bumped by hand, one per patch that ships - shown in the dev panel so the owner
    can tell which build a report/screenshot came from. */
-const BUILD=646;
+const BUILD=647;
 /* ============================ storage (safe) ============================ */
 const Store=(()=>{let mem={},ok=false;
   try{const k="__sd";window.localStorage.setItem(k,"1");window.localStorage.removeItem(k);ok=true}catch(e){ok=false}
@@ -3253,13 +3253,17 @@ const DEFLV=20;            /* rivals ignore you until raiding is established */
    where these are read and why the roll can never reach csim4.js. */
 const SAB_CHANCE=0.35;     /* TUNING-PENDING: chance an eligible launch targets home instead */
 const SAB_STEAL=0.25;      /* TUNING-PENDING: fraction of banked S.en stolen on a loss */
+const LOSS_STEAL=0.15;     /* TUNING-PENDING: fraction of banked ore AND crystal a rival takes when a
+                              held system falls (b647: raids replaced occupation - see raidSystem) */
 const SAB_EN_MIN=10;       /* TUNING-PENDING: S.en must be at least this before sabotage can start */
 /* ======================= STAGE 2: occupation & the frontier =======================
    See HANDOVER "combat build, Stage 2" for the full reasoning. Short version:
-   - occupation replaces destruction: a held system a rival takes keeps its buildings
-     and stockpiles untouched (S.occ marks it; S.sys is never deleted for this reason
-     again) - production simply stops until it is retaken, then resumes instantly
-     because nothing about the system itself ever changed.
+   - b647: occupation is RETIRED. A held system a rival beats is raided, never taken:
+     raidSystem() (03-defence.js) moves LOSS_STEAL of the banked ore and crystal to
+     them and touches nothing else - no S.occ mark, production never stops, nothing to
+     retake. Dan's reason: coming back after weeks away to reconquer old ground was
+     tedious enough that the story's end never got reached. S.occ/S.occAt and their
+     readers stay (applyPeace, older saves) but nothing writes them any more.
    - frontier rule: a rival can only reach a held system that borders rival/contested
      ground (see sysIsFrontier, patch460) - home and the true interior are
      structurally unreachable, not just unlikely.
@@ -5235,26 +5239,27 @@ function bestHeldDefSys(){
   for(const s of heldSystems()){ const v=defStrength(s.id); if(v>bv){ bv=v; best=s } }
   return best;
 }
-/* STAGE 2: the entire "occupation" transition. Deliberately tiny - it sets one flag
-   and one timestamp and touches nothing else, which is the whole point: S.sys[id]
-   is never read, written or deleted here, so whatever was built stays built, and
-   S.exo is never touched, so nothing is haircut. Every caller that used to delete
-   S.sys[id] and/or write S.lost[id] on a lost defence now calls this instead - see
-   HANDOVER for the endDefence()/holdResolve() reconciliation this replaces. */
-function occupySystem(id, rid){
-  const s=SYSMAP[id]; if(!s||s.home||!sysState(id))return false;
-  if(!S.occ||typeof S.occ!=="object")S.occ={};
-  S.occ[id]=rid;
-  if(!S.occAt||typeof S.occAt!=="object")S.occAt={};
-  S.occAt[id]=Date.now();
-  /* PLAN-defences.md: "keeps stationed ships out of the fleet until retaken - or
-     returns them; pick the reading that is kindest". Chosen: returns them, right
-     now - a system near the frontier might never be retaken, and losing real fleet
-     over that is a harsher penalty than the plan's own "buildings intact" framing
-     for everything else occupySystem() touches. */
-  recallHanAll(id);
+/* b647: the entire "lost a held system" transition, and it is a RAID, not an
+   occupation. Deliberately tiny, like the occupySystem() it replaces: a LOSS_STEAL
+   share of the banked ore and crystal leaves with the rival and nothing else moves -
+   S.sys, S.def, S.han and S.exo are never read or written here, so whatever was
+   built, armed or stationed stays exactly as it was and production never pauses.
+   No S.occ mark, so there is nothing to retake. Returns what was taken ({ore,cry})
+   or null when the system is not a raidable held one (home, or not held at all).
+   Every caller that used to occupySystem() calls this instead. */
+function raidSystem(id, rid){
+  const s=SYSMAP[id]; if(!s||s.home||!sysState(id))return null;
+  const ore=Math.floor(LOSS_STEAL*(S.ore||0)), cry=Math.floor(LOSS_STEAL*(S.cry||0));
+  S.ore=Math.max(0,(S.ore||0)-ore); S.cry=Math.max(0,(S.cry||0)-cry);
   queueNotice("vega:firstLoss");
-  return true;
+  return {ore,cry};
+}
+/* "12.3K ore and 400 crystal" - for toasts, result cards and the return report, in
+   one place so the three never word it differently. */
+function raidLootText(l){
+  if(!l||(!(l.ore>0)&&!(l.cry>0)))return "nothing \u2014 the bank was empty";
+  const p=[]; if(l.ore>0)p.push(fmt(l.ore)+" ore"); if(l.cry>0)p.push(fmt(l.cry)+" crystal");
+  return p.join(" and ");
 }
 /* the "comeback punch" from 2D: a system freshly taken is dug in loosely, not
    fortified - assaultTarget() multiplies its difficulty by this while the window
@@ -6300,13 +6305,14 @@ function rvMoveAway(secs){
     r.mv=Math.min(RIVAL_MOVE_CAP, r.mv+secs/RIVAL_MOVE_SECS);
     const b=RVBEH[id];
     while(r.mv>=1 && r.p>=RV_MAX){
-      if(heldSystems().length<=1)break;         /* never the player's last system */
       const s=rvFrontierTargetFor(id); if(!s)break;
       r.mv-=1;
-      occupySystem(s.id, id);
+      /* b647: a raid on the bank, not an occupation - the system stays held, so the
+         "never the player's last system" guard that sat here had nothing left to protect */
+      const loot=raidSystem(s.id, id);
       r.cd=Math.max(r.cd, b.cool*0.8);
       if(!Array.isArray(S.thrRep))S.thrRep=[];
-      S.thrRep.push({occ:true, sys:s.n, rv:id});
+      S.thrRep.push({raid:true, loot, sys:s.n, rv:id});
       S.thrRep=S.thrRep.slice(-8);
       moves++; dirty=true;
     }
@@ -6865,7 +6871,7 @@ const VEGA={
  rival:     {t:"We are not alone out here. They have noticed us. Expect them to test the fence.", go:"p-map"},
  threat:    {t:"Inbound fleet. You have time to choose: fly it yourself, or trust the garrison.", go:"p-raid"},
  firstHold: {t:"Held. They will remember that longer than we will.", go:null},
- firstLoss: {t:"We lost that one. The system is theirs for now — nothing there is destroyed. Take it back when you can.", go:"p-map"},
+ firstLoss: {t:"We lost that one. They stripped the bank and left — the ground is still ours, and nothing there is destroyed. Stronger defences next time.", go:"p-map"},
  nexus:     {t:"Dark Matter is worth spending now. The Nexus makes permanent things.", go:"p-nex"},
  ring2:     {t:"The second ring is open. Farther, richer, and someone already lives there.", go:"p-map"},
  ring3:     {t:"Third ring. This is where the Vasht keep what they care about.", go:"p-map"},
@@ -10378,7 +10384,7 @@ function endDefence(how){
   if(!DT||DT.done)return; DT.done=1;
   const s=SYSMAP[DT.sysId], b=RVBEH[DT.rv]||RVBEH.hel, rv=RIVALMAP[DT.rv];
   if(s)dmodConsumeMines(s.id);   /* player-flown resolution - spent whether it fired or not */
-  let sv=0, ex=0, exId=s?s.res:null, taken=false, sab=0;
+  let sv=0, ex=0, exId=s?s.res:null, loot=null, sab=0;
   if(how==="held"){
     S.defw=(S.defw||0)+1; xpOnDef();
     if(S.defw===1)queueNotice("vega:firstHold");
@@ -10397,18 +10403,13 @@ function endDefence(how){
       sab=Math.floor(SAB_STEAL*(S.en||0));
       S.en=Math.max(0,(S.en||0)-sab);
     } else {
-      /* A fight you were shown, chose to enter and lost costs the system - the player's own
-         answer, and the one case where it is unambiguous. Never your last one, though:
-         being reduced to nothing by a single bad minute is an ending, not a setback, and
-         stage 1 has no shields to prevent it.
-         STAGE 2: "costs the system" now means occupied, not deleted - occupySystem()
-         leaves S.sys[s.id] and the exotic stockpile completely untouched, replacing both
-         the old delete-and-neutral-claim AND the old 28% stockpile haircut outright.
-         This is the endDefence side of the reconciliation HANDOVER documents; the
-         delegated/offline side is holdResolve() (patch462) and rvMoveAway() (patch461). */
-      const last=heldSystems().length<=1;
-      if(s&&!last){
-        taken=occupySystem(s.id, DT.rv);
+      /* A fight you were shown, chose to enter and lost used to cost the system
+         (occupied, STAGE 2). b647: it costs a share of the bank instead - raidSystem()
+         takes LOSS_STEAL of the ore and crystal and leaves the system, its buildings
+         and its stockpile exactly as they were. Nothing changes hands, so the old
+         last-system guard is gone too; holdResolve() and rvMoveAway() do the same. */
+      if(s){
+        loot=raidSystem(s.id, DT.rv);
         S.msel=null;
       }
     }
@@ -10420,8 +10421,8 @@ function endDefence(how){
   const col=held?"var(--gr)":"var(--rd)";
   const sub=held
     ? (rv?rv.n:"They")+" broke off and withdrew."
-    : taken
-      ? (rv?rv.n:"They")+" occupy "+(s?s.n:"the system")+" now \u2014 retake it on the map."
+    : loot
+      ? (rv?rv.n:"They")+" took "+raidLootText(loot)+". "+(s?s.n:"The system")+" is still yours."
       : (rv?rv.n:"They")+" stripped what they could carry and left.";
   let rows=`<div class="rline"><span>Hostiles destroyed</span><b>${DT.kills}</b></div>`;
   rows+=`<div class="rline"><span>System integrity</span><b>${Math.round(DT.hp*100)}%</b></div>`;
@@ -10429,13 +10430,12 @@ function endDefence(how){
   if(ex>0)rows+=`<div class="rline"><span>${exoDef(exId)?exoDef(exId).n:"Exotics"} secured</span><b>${fmt(ex)}</b></div>`;
   if(!held)rows+=`<div class="rline"><span style="color:var(--rd)">Losses</span><b style="color:var(--rd)">${
     DT.sab ? (sab>0 ? fmt(sab)+" Nodes stolen" : "nothing \u2014 no Nodes banked")
-    : taken ? (s?s.n:"the system")+" \u2014 occupied, buildings intact" : "nothing \u2014 the garrison held the ground itself"}</b></div>`;
+    : loot ? raidLootText(loot)+" (buildings and system intact)" : "nothing \u2014 the garrison held the ground itself"}</b></div>`;
   $("#dRes").innerHTML=`<div class="rescard"><h3 style="color:${col}">${ttl}</h3>
     <div class="rsub">${sub}</div>${rows}
     <button id="dDone">RETURN TO EMPIRE</button></div>`;
   $("#dRes").classList.add("on");
   $("#dDone").onclick=closeDefence;
-  if(taken){ toast((rv?rv.n:"They")+" now occupy "+(s?s.n:"a system")+" \u2014 retake it on the map","r"); flag("p-map") }
   blip(held?880:150,.4,held?"square":"sawtooth",.06);
   checkAchs(); dirty=true; save();
 }
@@ -10458,14 +10458,13 @@ function lfClear(){ LF=null; S.lfMark=null; lfClearPromptTimer(); lfPromptLive=f
    expiry behaviour without waiting out a real 30-60s countdown. No production
    code path calls this - see ttelegraph2.js. */
 function lfSetDue(ms){ if(LF)LF.dueAt=ms; if(S.lfMark)S.lfMark.dueAt=ms; }
-/* The "never the player's last system" guard, the same rule occupySystem's other
-   two callers (endDefence, rvMoveAway) already apply - checked here too since
-   this is a third, independent path to the same occupySystem() call. */
-function lfOccupy(sysId, rid){
+/* b647: the live-fleet loss road, a raid like every other loss - no last-system
+   guard needed since nothing changes hands. Returns raidSystem()'s loot (or null). */
+function lfRaid(sysId, rid){
   const s=SYSMAP[sysId];
-  if(!s||!sysHeld(s.id)||heldSystems().length<=1)return false;
-  dmodConsumeMines(sysId);   /* the live-fleet offline-occupy path also resolves an attack */
-  return occupySystem(s.id, rid);
+  if(!s||!sysHeld(s.id))return null;
+  dmodConsumeMines(sysId);   /* the live-fleet offline road also resolves an attack */
+  return raidSystem(s.id, rid);
 }
 /* The owner found defences made no difference to a system attacked while they were
    away ("doesn't matter how strong I have the defences"): this used to occupy
@@ -10479,8 +10478,7 @@ function lfResolveOffline(){
   if(!LF)return;
   const th=lfThreat(LF.rv, LF.sysId);
   lfClear();
-  const r=holdResolve(th, true, false, true);
-  if(r&&r.occ)flag("p-map");
+  holdResolve(th, true, false, true);
 }
 /* 2C: "enough to open the fight prepared" - the real tactical defence overlay,
    the same machinery startDefence() builds for the pre-existing thq mechanic.
@@ -10488,7 +10486,7 @@ function lfResolveOffline(){
    S.thq, which this mechanism never touches) - qid:-1 so endDefence()'s
    thqDrop(DT.qid) is a harmless no-op, and every other field mirrors
    startDefence() exactly, so endDefence()'s win/loss handling - including the
-   already-reconciled occupySystem() path on a loss (patch463/464) - needs no
+   raidSystem() path on a loss (b647; was occupySystem(), patch463/464) - needs no
    changes at all to serve this second caller. */
 function lfOpenDefence(){
   if(!LF)return;
@@ -10651,7 +10649,7 @@ function holdResolve(th, auto, quiet, offline){
      its defences. Same roll now, present or not. */
   const odds=holdOdds(th);
   const won=Math.random()<odds;
-  let sv=0, ex=0, occ=false, sab=0; const exId=isSab?null:s.res;
+  let sv=0, ex=0, occ=false, sab=0, loot=null; const exId=isSab?null:s.res;
   if(won){
     S.defw=(S.defw||0)+1; xpOnDef(quiet);
     if(S.defw===1)queueNotice("vega:firstHold");
@@ -10665,12 +10663,11 @@ function holdResolve(th, auto, quiet, offline){
     rvOf(th.rv).p=Math.max(0, rvOf(th.rv).p-8);
   } else if(offline){
     S.defl=(S.defl||0)+1;
-    /* STAGE 2: an offline-expired fleet always occupies (2C: "no simulated battle
-       needed in v1") - buildings/stockpile untouched, occupySystem() is the whole
-       effect. Never the player's last system. csim4.js never reaches this branch
-       (it never calls offlineReport()), so the economy sim is unaffected. */
-    const last=heldSystems().length<=1;
-    if(!last)occ=occupySystem(s.id, th.rv);
+    /* b647: an offline-expired fleet that beats the garrison RAIDS (was: occupied,
+       STAGE 2) - raidSystem() is the whole effect, buildings/stockpile/system
+       untouched, so no last-system guard. csim4.js never reaches this branch (it
+       never calls offlineReport()), so the economy sim is unaffected. */
+    loot=raidSystem(s.id, th.rv);
     rvOf(th.rv).cd=Math.max(rvOf(th.rv).cd, b.cool*0.8);
   } else if(isSab){
     S.defl=(S.defl||0)+1;
@@ -10694,18 +10691,18 @@ function holdResolve(th, auto, quiet, offline){
   /* kept for the player to read rather than flashed past - especially the ones that
      resolved while they were asleep */
   if(!Array.isArray(S.thrRep))S.thrRep=[];
-  S.thrRep.push({won, occ, sys:s.n, rv:th.rv, sv, ex, sab:isSab, sabAmt:sab, auto:!!auto});
+  S.thrRep.push({won, occ, loot, sys:s.n, rv:th.rv, sv, ex, sab:isSab, sabAmt:sab, auto:!!auto});
   S.thrRep=S.thrRep.slice(-8);
   if(!quiet){
     toast(won ? s.n+" held \u2014 the garrison drove them off"
               : isSab ? (sab>0 ? (rv?rv.n:"They")+" stole "+fmt(sab)+" Nodes from "+s.n
                                 : (rv?rv.n:"They")+" struck "+s.n+" \u2014 nothing to take")
-              : occ ? (rv?rv.n:"They")+" have occupied "+s.n+" \u2014 retake it on the map"
+              : loot ? (rv?rv.n:"They")+" raided "+s.n+" \u2014 lost from the bank: "+raidLootText(loot)
               : s.n+" was hit \u2014 defences and stores damaged", won?"g":"r");
     blip(won?760:170,.32,won?"square":"sawtooth",.05);
     checkAchs(); dirty=true; renderAll(); save();
   } else { checkAchs(); dirty=true }
-  return {won, occ, sv, ex, sab, odds};
+  return {won, occ, loot, sv, ex, sab, odds};
 }
 /* the threat card: the Raids page has to shout about this or it will be missed */
 function thqClock(t){
@@ -13364,19 +13361,13 @@ function adopt(o){
   /* home is always held - a save that predates a claim, or one that simply never had
      home in S.sys, still needs its count map to exist */
   if(!f.sys.home)f.sys.home={b:{}};
-  /* STAGE 2: occupied systems - a marker on top of an unmodified S.sys entry, never
-     a replacement for it. An entry naming a system that no longer exists, is home,
-     names an unrecognised rival, or - critically - has no surviving building data is
-     stale and is dropped rather than half-honoured; S.occAt (when the weakened-
-     garrison window started) follows the same fate as whatever it is timestamping. */
-  if(!f.occ||typeof f.occ!=="object")f.occ={};
-  for(const k in f.occ){
-    if(!SYSMAP[k]||SYSMAP[k].home||!RIVALMAP[f.occ[k]]||!f.sys[k])delete f.occ[k];
-  }
-  if(!f.occAt||typeof f.occAt!=="object")f.occAt={};
-  for(const k in f.occAt){ if(!f.occ[k])delete f.occAt[k]; else f.occAt[k]=Math.max(0,+f.occAt[k]||0); }
+  /* b647: occupation is retired. Any system an older save still shows as occupied
+     comes straight back on load - nothing about it was ever changed, so there is
+     nothing to restore. The two fields are kept (applyPeace() and the tests still
+     touch them) but are always empty from here on. */
+  f.occ={}; f.occAt={};
   /* STAGE 3: the live-fleet marker - a reload restores its countdown (if still
-     running) or resolves it straight to occupation (if its ETA already passed) via
+     running) or resolves it through holdResolve (a raid on a loss, b647) via
      lfSettleMarkOnLoad(), called at boot; see patch472/473. */
   if(f.lfMark && (typeof f.lfMark!=="object" || !SYSMAP[f.lfMark.sysId] ||
                   SYSMAP[f.lfMark.sysId].home || RVACT.indexOf(f.lfMark.rv)<0))
@@ -13625,7 +13616,7 @@ function offlineReport(){
   if(rvAwake())rvExpandAway(away);
   thqPrune();
   /* STAGE 2: offline=true - any thq entry whose telegraph expired while the page was
-     shut resolves straight to occupation (holdResolve, patch462), never an odds roll. */
+     shut resolves through holdResolve (patch462) - a loss is a raid since b647. */
   thqTick(away, true, true);
   /* STAGE 2: THEN spend whatever action-budget the absence regenerated - see
      rvMoveAway for why this can never be more than RIVAL_MOVE_CAP per rival no
@@ -13635,9 +13626,10 @@ function offlineReport(){
      rivals took that was never the player's, and - STAGE 2 - the player's own systems
      that were occupied */
   const rep=(S.thrRep||[]).slice();
-  const fought=rep.filter(f=>!f.claim&&!f.occ);
+  const fought=rep.filter(f=>!f.claim&&!f.raid);
   const claims=rep.filter(f=>f.claim);
-  const occupied=rep.filter(f=>f.occ);
+  const raided=rep.filter(f=>f.raid);   /* b647: rvMoveAway's raids (were occupations) */
+  const sumLoot=l=>l.reduce((a,f)=>{ if(f.loot){a.ore+=f.loot.ore||0; a.cry+=f.loot.cry||0} return a },{ore:0,cry:0});
   const cap=offlineCapH()*3600, t=Math.min(away,cap), eff=offlineEff();
   const ore=rate()*t*eff, cry=cryRate()*t*eff, en=enRate()*t*eff;
   /* "Now affordable" replaces the old "you gained a level" return - with levels
@@ -13656,7 +13648,7 @@ function offlineReport(){
      with nothing else to report is not worth a modal on its own (see the comment
      where fleetArrivals is computed above); it only ever shows as an extra line
      folded into a report already popping up for some other reason. */
-  if(ore<=0&&cry<=0&&en<=0&&!fought.length&&!claims.length&&!occupied.length)return;
+  if(ore<=0&&cry<=0&&en<=0&&!fought.length&&!claims.length&&!raided.length)return;
   S.ore+=ore;S.all+=ore;S.cry+=cry;S.en+=en;S.enAll+=en;
   for(const e of EXO){ const r=exoRate(e.id); if(r>0)S.exo[e.id]=exo(e.id)+r*t*eff }
   /* PLAN-governors commit 2: offlineReport() never calls tick(), so governor bank
@@ -13679,16 +13671,15 @@ function offlineReport(){
        meant to take is easier today than it will be tomorrow.</p></div>`:""}
    ${fought.length?`<div class="awrep fought"><h5>Your garrisons fought without you</h5>${
      fought.map(f=>`<div class="awrow ${f.won?"ok":"bad"}"><span>${f.sys}</span><b>${
-       f.won ? "held" : "occupied"}</b></div>`).join("")
+       f.won ? "held" : "raided"}</b></div>`).join("")
      }<p class="awnote">${fought.some(f=>!f.won)
-       ? "A system that fell is occupied, not destroyed \u2014 buildings and stockpile untouched. Retake it on the map."
+       ? "A system that fell was raided, not taken \u2014 buildings, stockpile and the system itself untouched. Lost from the bank: "+raidLootText(sumLoot(fought))+"."
        : "Nothing was lost. Defences pay for themselves."}</p></div>`:""}
-   ${occupied.length?`<div class="awrep occupied"><h5>Occupied while you were away</h5>${
-     occupied.map(f=>`<div class="awrow bad"><span>${f.sys}</span><b>${
+   ${raided.length?`<div class="awrep occupied"><h5>Raided while you were away</h5>${
+     raided.map(f=>`<div class="awrow bad"><span>${f.sys}</span><b>${
        RIVALMAP[f.rv]?RIVALMAP[f.rv].n:f.rv}</b></div>`).join("")
-     }<p class="awnote">Buildings and stockpiles are untouched \u2014 production has simply
-       stopped. These are freshly dug in and weakened: retake them on the map for an
-       easy win before that wears off.</p></div>`:""}
+     }<p class="awnote">Every system is still yours and production never stopped.
+       Lost from the bank: ${raidLootText(sumLoot(raided))}.</p></div>`:""}
    ${affordable.length?`<p style="margin-top:12px">Now affordable: <b>${affordable.join(", ")}</b></p>`:""}
    <p style="margin-top:12px">Offline cap is <b>${offlineCapH()}h</b> (Cryo Storage) at <b>${Math.round(eff*100)}%</b> rate (Chronal Buffer).</p>
    <div class="row"><button id="mOk">CONTINUE</button></div>`,()=>{ $("#mOk").onclick=hideModal; });
@@ -15338,7 +15329,7 @@ window.__SD={get S(){return S},NEXUS,buyNex,openSite,SITE,siteSlots,
   rvMeet,rvKnown,rvFirstSystem,offlineReport,
   /* STAGE 2 (2026-09-05): occupation, the frontier rule, the (offline-only) action
      budget. See HANDOVER "combat build, Stage 2" for the full scope note. */
-  sysOccupied,occupySystem,occWeakMul,sysIsFrontier,frontierSystems,
+  sysOccupied,raidSystem,raidLootText,LOSS_STEAL,occWeakMul,sysIsFrontier,frontierSystems,
   rvFrontierTargetFor,rvMoveAway,
   RIVAL_MOVE_HOURS,RIVAL_MOVE_CAP,RIVAL_MOVE_SECS,
   OCC_WEAKEN_SECS,OCC_WEAKEN_MULT,
@@ -15346,7 +15337,7 @@ window.__SD={get S(){return S},NEXUS,buyNex,openSite,SITE,siteSlots,
      while the tab is active, reached only from frame()/boot. See HANDOVER
      "telegraphed LIVE fleets, Stage 3" for the full scope note. */
   get LF(){return LF}, lfCdOf, lfClock, lfMaybeLaunch, lfLaunch,
-  lfCheckExpiry, lfOpenDefence, lfResolveOffline, lfOccupy, lfThreat, lfClear, lfSetDue,
+  lfCheckExpiry, lfOpenDefence, lfResolveOffline, lfRaid, lfThreat, lfClear, lfSetDue,
   lfSettleMarkOnLoad, renderLiveFleet,
   /* FIX 1 (2026-09-06): the arrival-choice prompt */
   lfPromptChoice, lfClearPromptTimer, lfPromptTick, get lfPromptLive(){return lfPromptLive},
